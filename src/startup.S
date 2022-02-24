@@ -11,6 +11,9 @@ _start:
     addi s2, s2, 1    # s2 := s2 + 1
     blt s2, s3, 1b    # if s2 < s3, branch back to 1
 
+    la sp, kernel_sp
+    call start
+
 .section .data
 message:
   .string "Hello, world!\n"

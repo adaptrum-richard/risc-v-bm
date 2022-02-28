@@ -55,6 +55,37 @@ load_isa_lhu:
     lhu a0, 0(s1)
     ret
 
+#
+#  unsigned long store_isa_sd(unsigned long *addr, unsigned long v)
+#  函数含义:
+#       将v存储到地址addr中，然后在读取addr内存中数据的值，返回
+#
+.globl store_isa_sd
+store_isa_sd:
+    sd a1, 0(a0)
+    ld a0, 0(a0)
+    ret
+
+#  unsigned int store_isa_sd(unsigned int *addr, unsigned int v)
+.globl store_isa_sw
+store_isa_sw:
+    sw a1, 0(a0)
+    lw a0, 0(a0)
+    ret
+
+#  unsigned short store_isa_sd(unsigned short *addr, unsigned short v)
+.globl store_isa_sh
+store_isa_sh:
+    sh a1, 0(a0)
+    lh a0, 0(a0)    
+    ret
+
+#  unsigned char store_isa_sd(unsigned short *char, unsigned char v)
+.globl store_isa_sb
+store_isa_sb:
+    sb a1, 0(a0)
+    lb a0, 0(a0)   
+    ret
 
 .section .data
 msg:

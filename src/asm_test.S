@@ -87,6 +87,38 @@ store_isa_sb:
     lb a0, 0(a0)   
     ret
 
+#
+#   unsigned long arithmetic_isa_add(unsigned long a, unsigned long b)
+#
+.globl arithmetic_isa_add
+arithmetic_isa_add:
+    add t1, a0, a1
+    add a0, t1, 0
+    ret
+#
+#   unsigned long arithmetic_isa_addi(unsigned long a)
+#
+.globl arithmetic_isa_addi
+arithmetic_isa_addi:
+    addi a0, a0, 1
+    ret
+
+#
+#   unsigned long arithmetic_isa_addiw(unsigned long a)
+#
+.globl arithmetic_isa_addiw
+arithmetic_isa_addiw:
+    addiw a0, a0, 1
+    ret
+
+#
+#   unsigned int arithmetic_isa_addw(unsigned long a, unsigned long b)
+#
+.globl arithmetic_isa_addw
+arithmetic_isa_addw:
+    addw a0, a0, a1
+    ret
+
 .section .data
 msg:
   .string "Hello, world!\n"

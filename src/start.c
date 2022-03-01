@@ -7,6 +7,10 @@ unsigned long store_isa_sd(unsigned long *addr, unsigned long v);
 unsigned int store_isa_sw(unsigned int *addr, unsigned int v);
 unsigned short store_isa_sh(unsigned short *addr, unsigned short v);
 unsigned char store_isa_sb(unsigned char *addr, unsigned char v);
+unsigned long arithmetic_isa_add(unsigned long a, unsigned long b);
+unsigned long arithmetic_isa_addi(unsigned long a);
+unsigned long arithmetic_isa_addiw(unsigned long a);
+unsigned int arithmetic_isa_addw(unsigned long a, unsigned long b);
 void asm_test(void)
 {
     printk("run %s\n", __func__);
@@ -39,6 +43,12 @@ void asm_test(void)
     printk("test sh: 0x%lx\n", store_isa_sh((unsigned short *)&v1, (unsigned short)v2));
     v1 = 0;
     printk("test sb: 0x%lx\n", store_isa_sb((unsigned char *)&v1, (unsigned char)v2));
+
+    printk("test add addi addiw addw:\n");
+    printk("test add:\t0x%lx\n", arithmetic_isa_add(0x1234567800000000, 0x0000000087654321));
+    printk("test addi:\t0x%lx\n", arithmetic_isa_addi(0xf0000000ffffffff));
+    printk("test addiw:\t0x%lx\n", arithmetic_isa_addiw(0x100000000fffffff));
+    printk("test addw:\t0x%lx\n", arithmetic_isa_addw(0x100000000fffffff, 0x1));
 
     printk("end %s\n", __func__);
 }

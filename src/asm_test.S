@@ -119,6 +119,18 @@ arithmetic_isa_addw:
     addw a0, a0, a1
     ret
 
+#
+#   int branch_isa_beq(unsigned long a, unsigned b)
+#   比较两个数是否相等，相等则返回0，不相等则返回-1
+.globl branch_isa_beq
+branch_isa_beq:
+    beq a0, a1, 1111f
+    li a0, -1
+    ret
+1111:
+    li a0, 0
+    ret
+    
 .section .data
 msg:
   .string "Hello, world!\n"

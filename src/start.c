@@ -11,6 +11,7 @@ unsigned long arithmetic_isa_add(unsigned long a, unsigned long b);
 unsigned long arithmetic_isa_addi(unsigned long a);
 unsigned long arithmetic_isa_addiw(unsigned long a);
 unsigned int arithmetic_isa_addw(unsigned long a, unsigned long b);
+int branch_isa_beq(unsigned long a, unsigned b);
 void asm_test(void)
 {
     printk("run %s\n", __func__);
@@ -50,6 +51,9 @@ void asm_test(void)
     printk("test addiw:\t0x%lx\n", arithmetic_isa_addiw(0x100000000fffffff));
     printk("test addw:\t0x%lx\n", arithmetic_isa_addw(0x100000000fffffff, 0x1));
 
+    unsigned long a = 1;
+    unsigned long b = 2;
+    printk("0x%lx == 0x%lx -> %s\n", a, b, branch_isa_beq(a, b) == 0 ? "yes" : "no");
     printk("end %s\n", __func__);
 }
 void start()

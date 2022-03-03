@@ -12,6 +12,9 @@ unsigned long arithmetic_isa_addi(unsigned long a);
 unsigned long arithmetic_isa_addiw(unsigned long a);
 unsigned int arithmetic_isa_addw(unsigned long a, unsigned long b);
 int branch_isa_beq(unsigned long a, unsigned b);
+unsigned long jump_isa_jal(unsigned long i);
+unsigned long jump_isa_jal_yes(unsigned long i);
+extern unsigned long jump_isa_ret(void);
 void asm_test(void)
 {
     printk("run %s\n", __func__);
@@ -50,10 +53,18 @@ void asm_test(void)
     printk("test addi:\t0x%lx\n", arithmetic_isa_addi(0xf0000000ffffffff));
     printk("test addiw:\t0x%lx\n", arithmetic_isa_addiw(0x100000000fffffff));
     printk("test addw:\t0x%lx\n", arithmetic_isa_addw(0x100000000fffffff, 0x1));
-
+    
     unsigned long a = 1;
     unsigned long b = 2;
     printk("0x%lx == 0x%lx -> %s\n", a, b, branch_isa_beq(a, b) == 0 ? "yes" : "no");
+
+    printk("test jal:\n");
+    //printk("0x%lx\n", jump_isa_jal(1));
+    printk("0x%lx\n", jump_isa_jal_yes(1));
+
+    printk("test isa ret:\n");
+    printk("ret isa: 0x%lx\n", jump_isa_ret());
+
     printk("end %s\n", __func__);
 }
 void start()

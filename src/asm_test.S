@@ -130,7 +130,49 @@ branch_isa_beq:
 1111:
     li a0, 0
     ret
-    
+
+#
+#  unsigned long jump_isa_jal(unsigned long i)
+#  下面的代码无法返回，因为ra被修改了。
+.globl jump_isa_jal
+jump_isa_jal:
+    addi a0, a0, 1
+    jal ra, jump_isa_jal_depend
+    ret 
+
+.globl jump_isa_jal_depend
+jump_isa_jal_depend:
+    addi a0, a0, 1
+    ret
+
+
+#
+#  unsigned long jump_isa_jal_yes(unsigned long i)
+#   在c语言调用jump_isa_jal_yes时，已经在使用ra寄存器了，
+#   但是在jump_isa_jal_yes中调用jump_isa_jal_depend_yes
+#   函数时需要使用ra作为返回地址，所以，这里必须要保存ra的值。
+#
+.globl jump_isa_jal_yes
+jump_isa_jal_yes:
+    add t1, ra, x0
+    addi a0, a0, 1
+    jal ra, jump_isa_jal_depend_yes
+    add ra, t1, x0
+    ret 
+
+.globl jump_isa_jal_depend_yes
+jump_isa_jal_depend_yes:
+    addi a0, a0, 1
+    ret
+
+#
+#   unsigned long jump_isa_ret(void)
+#
+.globl jump_isa_ret
+jump_isa_ret:
+    li a0, 1
+    jalr x0, 0(ra) #ra is return address
+
 .section .data
 msg:
   .string "Hello, world!\n"

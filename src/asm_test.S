@@ -173,6 +173,26 @@ jump_isa_ret:
     li a0, 1
     jalr x0, 0(ra) #ra is return address
 
+
+
+/*
+amoadd.w rd, rs2, (rs1)
+将寄存器rd+rs2的值存储到rs1指向的地址中
+
+注意value_zero的值是8字节对齐
+*/
+.globl amoadd_w
+amoadd_w:
+    lla a6, value_zero
+    li a7, 0xf
+    amoadd.w a6, a7, (a6)
+    lla a6, value_zero
+    lw  a0, (a6)
+    ret
+
 .section .data
 msg:
   .string "Hello, world!\n"
+.align 8
+value_zero:
+  .dword  0

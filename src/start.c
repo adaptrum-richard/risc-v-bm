@@ -15,6 +15,7 @@ int branch_isa_beq(unsigned long a, unsigned b);
 unsigned long jump_isa_jal(unsigned long i);
 unsigned long jump_isa_jal_yes(unsigned long i);
 extern unsigned long jump_isa_ret(void);
+extern unsigned long amoadd_w(void);
 void asm_test(void)
 {
     printk("run %s\n", __func__);
@@ -65,6 +66,7 @@ void asm_test(void)
     printk("test isa ret:\n");
     printk("ret isa: 0x%lx\n", jump_isa_ret());
 
+    printk("amoadd_w: 0x%lx\n", amoadd_w());
     printk("end %s\n", __func__);
 }
 void start()

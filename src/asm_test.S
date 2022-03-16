@@ -177,16 +177,16 @@ jump_isa_ret:
 
 /*
 amoadd.w rd, rs2, (rs1)
-将寄存器rd+rs2的值存储到rs1指向的地址中
+将内存x[rs1]的值复制到rd中，然后寄存器rd+rs2的值存储到rs1指向的地址中
 
 注意value_zero的值是8字节对齐
 */
 .globl amoadd_w
 amoadd_w:
-    lla a6, value_zero
+    lla a6, value_for_amoadd
     li a7, 0xf
     amoadd.w a6, a7, (a6)
-    lla a6, value_zero
+    lla a6, value_for_amoadd
     lw  a0, (a6)
     ret
 
@@ -194,5 +194,5 @@ amoadd_w:
 msg:
   .string "Hello, world!\n"
 .align 8
-value_zero:
-  .dword  0
+value_for_amoadd:
+  .dword  1

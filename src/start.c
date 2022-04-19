@@ -1,76 +1,79 @@
-#include <printk.h>
-extern char load_isa_la_lb(int index);
-unsigned long load_isa_ld(unsigned long *array, int index);
-unsigned int load_isa_lh(unsigned int *array, int index);
-unsigned int load_isa_lhu(unsigned int *array, int index);
-unsigned long store_isa_sd(unsigned long *addr, unsigned long v);
-unsigned int store_isa_sw(unsigned int *addr, unsigned int v);
-unsigned short store_isa_sh(unsigned short *addr, unsigned short v);
-unsigned char store_isa_sb(unsigned char *addr, unsigned char v);
-unsigned long arithmetic_isa_add(unsigned long a, unsigned long b);
-unsigned long arithmetic_isa_addi(unsigned long a);
-unsigned long arithmetic_isa_addiw(unsigned long a);
-unsigned int arithmetic_isa_addw(unsigned long a, unsigned long b);
-int branch_isa_beq(unsigned long a, unsigned b);
-unsigned long jump_isa_jal(unsigned long i);
-unsigned long jump_isa_jal_yes(unsigned long i);
-extern unsigned long jump_isa_ret(void);
-extern unsigned long amoadd_w(void);
-void asm_test(void)
-{
-    printk("run %s\n", __func__);
-    printk("test lb la isa:\n");
-    for(int index; index < 14; index++)
-        printk("%c", load_isa_la_lb(index));
-    
-    unsigned long array[9] = {0xfffffffffffffff1, 0xfffffffffffffff2, 0xfffffffffffffff3, 
-                            0xfffffffffffffff4, 0xfffffffffffffff5, 0xfffffffffffffff6, 
-                            0xfffffffffffffff7 ,0xfffffffffffffff8, 0xfffffffffffffff9};
-    printk("test ld isa:\n");
-    for(int index = 0; index < 9; index++)
-        printk("0x%lx\n", load_isa_ld(array, index));
+#include "param.h"
+#include "riscv.h"
+#include "memlayout.h"
 
-    printk("test lh isa:\n");
-    for(int index = 0; index < 9*2; index++)
-        printk("0x%lx\n", load_isa_lh((unsigned int*)array, index));
+/*保存m模式 timer中断的scratch*/
+uint64 timer_scratch[NCPU][5];
 
-    printk("test lhu isa:\n");
-    for(int index = 0; index < 9*2; index++)
-        printk("0x%lx\n", load_isa_lhu((unsigned int*)array, index));
-
-    printk("test sd sw sh sb isa:\n");
-    unsigned long v1 = 0;
-    unsigned long v2 = 0x1111111111111111;
-    printk("test sd: 0x%lx\n", store_isa_sd(&v1, v2));
-    v1 = 0;
-    printk("test sw: 0x%lx\n", store_isa_sw((unsigned int *)&v1, (unsigned int)v2));
-    v1 = 0;
-    printk("test sh: 0x%lx\n", store_isa_sh((unsigned short *)&v1, (unsigned short)v2));
-    v1 = 0;
-    printk("test sb: 0x%lx\n", store_isa_sb((unsigned char *)&v1, (unsigned char)v2));
-
-    printk("test add addi addiw addw:\n");
-    printk("test add:\t0x%lx\n", arithmetic_isa_add(0x1234567800000000, 0x0000000087654321));
-    printk("test addi:\t0x%lx\n", arithmetic_isa_addi(0xf0000000ffffffff));
-    printk("test addiw:\t0x%lx\n", arithmetic_isa_addiw(0x100000000fffffff));
-    printk("test addw:\t0x%lx\n", arithmetic_isa_addw(0x100000000fffffff, 0x1));
-    
-    unsigned long a = 1;
-    unsigned long b = 2;
-    printk("0x%lx == 0x%lx -> %s\n", a, b, branch_isa_beq(a, b) == 0 ? "yes" : "no");
-
-    printk("test jal:\n");
-    //printk("0x%lx\n", jump_isa_jal(1));
-    printk("0x%lx\n", jump_isa_jal_yes(1));
-
-    printk("test isa ret:\n");
-    printk("ret isa: 0x%lx\n", jump_isa_ret());
-
-    printk("amoadd_w: 0x%lx\n", amoadd_w());
-    printk("end %s\n", __func__);
-}
+__attribute__ ((aligned (16))) char stack0[4096 * NCPU];
+void main();
+void timerinit();
+extern void timervec();
 void start()
 {
-    asm_test();
-    printk("start\n");
+    unsigned long x = r_mstatus();
+    x &= ~MSTATUS_MPP_MASK;
+    x |= MSTATUS_MPP_S;
+    w_mstatus(x);
+
+    /*从m模式返回s模式时执行main函数*/
+    w_mepc((uint64)main);
+    
+    /*禁止地址翻译*/
+    w_satp(0);
+
+    /*代理所有中断和异常到s模式*/
+    w_medeleg(0xffff);
+    w_mideleg(0xffff);
+
+    /*开启s模式下的extension、异常、中断*/
+    w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+
+    // configure Physical Memory Protection to give supervisor mode
+    // access to all of physical memory.
+    /*0x3f_ffff_ffff_ffff
+    A:01 TOR
+    XRW均为1
+    */
+    w_pmpaddr0(0x3fffffffffffffull);
+    w_pmpcfg0(0xf);
+
+    // ask for clock interrupts.
+    timerinit();
+
+    // keep each CPU's hartid in its tp register, for cpuid().
+    int id = r_mhartid();
+    w_tp(id);
+
+    // switch to supervisor mode and jump to main().
+    asm volatile("mret");
+}
+
+void
+timerinit()
+{
+  // each CPU has a separate source of timer interrupts.
+  int id = r_mhartid();
+
+  // ask the CLINT for a timer interrupt.
+  int interval = 1000000; // cycles; about 1/10th second in qemu.
+  *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + interval;
+
+  // prepare information in scratch[] for timervec.
+  // scratch[0..2] : space for timervec to save registers.
+  // scratch[3] : address of CLINT MTIMECMP register.
+  // scratch[4] : desired interval (in cycles) between timer interrupts.
+  uint64 *scratch = &timer_scratch[id][0];
+  scratch[3] = CLINT_MTIMECMP(id);
+  scratch[4] = interval;
+  w_mscratch((uint64)scratch);
+
+  // set the machine-mode trap handler.
+  w_mtvec((uint64)timervec);
+
+  // enable machine-mode interrupts.
+  w_mstatus(r_mstatus() | MSTATUS_MIE);
+
+  // enable machine-mode timer interrupts.
+  w_mie(r_mie() | MIE_MTIE);
 }

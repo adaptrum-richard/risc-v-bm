@@ -3,4 +3,5 @@
 
 void printfinit(void);
 void printk(char *fmt, ...);
+void panic(char *s);
 #endif

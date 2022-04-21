@@ -2,6 +2,11 @@
 #define __RISCV_H__
 #include "types.h"
 
+#define PGSIZE 4096 // bytes per page
+#define PGSHIFT 12  // bits of offset within a page
+
+#define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
+#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
 
 static inline uint64
 r_mhartid()

@@ -2,6 +2,7 @@
 #include "printk.h"
 #include "console.h"
 #include "proc.h"
+#include "kalloc.h"
 
 void main()
 {
@@ -10,6 +11,7 @@ void main()
         consoleinit();
         printfinit();
         printk("hello world\n");
+        kinit();
         while(1);
     }else{
         while(1);

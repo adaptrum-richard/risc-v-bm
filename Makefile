@@ -1,8 +1,9 @@
 RISCVGNU ?= riscv64-linux-gnu
 
-COPS += -g -Wall -nostdlib  -Iinclude 
-COPS += -mcmodel=medany
-ASMOPS = -g -Iinclude 
+COPS += -Wall -Werror -O0 -fno-omit-frame-pointer -ggdb -MD 
+COPS += -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. 
+COPS += -fno-stack-protector -fno-pie -no-pie
+ASMOPS = -g
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -14,10 +15,10 @@ clean :
 
 $(BUILD_DIR)/%_c.o: $(SRC_DIR)/%.c
 	mkdir -p $(@D)
-	$(RISCVGNU)-gcc $(COPS) -MMD -c $< -o $@
+	$(RISCVGNU)-gcc $(COPS) -c $< -o $@
 
 $(BUILD_DIR)/%_s.o: $(SRC_DIR)/%.S
-	$(RISCVGNU)-gcc $(ASMOPS) -MMD -c -D__ASSEMBLY__ $< -o $@
+	$(RISCVGNU)-gcc $(ASMOPS) -c -D__ASSEMBLY__ $< -o $@
 
 C_FILES = $(wildcard $(SRC_DIR)/*.c)
 ASM_FILES = $(wildcard $(SRC_DIR)/*.S)
@@ -36,6 +37,6 @@ QEMU_FLAGS  += -nographic
 run:
 	qemu-system-riscv64 -machine virt -bios none -kernel build/kernel.elf  $(QEMU_FLAGS)
 debug:
-	qemu-system-riscv64 -M virt -smp 4 -bios none $(QEMU_FLAGS) -kernel build/kernel.elf  -S -s
+	qemu-system-riscv64 -machine virt -bios none $(QEMU_FLAGS) -kernel build/kernel.elf  -S -s
 gdb:
-	gdb-multiarch --tui  build/kernel.elf -ex 'target remote localhost:1234'
+	gdb-multiarch --tui build/kernel.elf -ex 'target remote localhost:1234'

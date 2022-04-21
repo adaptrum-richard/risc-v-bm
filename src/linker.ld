@@ -34,8 +34,5 @@ SECTIONS
 	.bss : { *(.bss*) } 
 	bss_end = .;
 
-	. += 0x8000;
-	kernel_sp = .;
-	
 	_end = .;
 }

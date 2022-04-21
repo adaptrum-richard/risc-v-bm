@@ -1,3 +1,5 @@
+#ifndef __RISCV_H__
+#define __RISCV_H__
 #include "types.h"
 
 
@@ -145,3 +147,5 @@ w_mscratch(uint64 x)
 {
   asm volatile("csrw mscratch, %0" : : "r" (x));
 }
+
+#endif

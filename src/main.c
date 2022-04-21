@@ -3,6 +3,7 @@
 #include "console.h"
 #include "proc.h"
 #include "kalloc.h"
+#include "vm.h"
 
 void main()
 {
@@ -10,8 +11,11 @@ void main()
     {
         consoleinit();
         printfinit();
-        printk("hello world\n");
+        printk("boot\n");
         kinit();
+        kvminit();
+        kvminithart();
+        printk("hello world\n");
         while(1);
     }else{
         while(1);

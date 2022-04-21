@@ -35,8 +35,8 @@ kernel.img: $(SRC_DIR)/linker.ld $(OBJ_FILES)
 QEMU_FLAGS  += -nographic
 
 run:
-	qemu-system-riscv64 -machine virt -bios none -kernel build/kernel.elf  $(QEMU_FLAGS)
+	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel build/kernel.elf  $(QEMU_FLAGS)
 debug:
-	qemu-system-riscv64 -machine virt -bios none $(QEMU_FLAGS) -kernel build/kernel.elf  -S -s
+	qemu-system-riscv64 -machine virt -m 128M  -bios none $(QEMU_FLAGS) -kernel build/kernel.elf  -S -s
 gdb:
 	gdb-multiarch --tui build/kernel.elf -ex 'target remote localhost:1234'

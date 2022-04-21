@@ -8,6 +8,25 @@
 #define PGROUNDUP(sz)  (((sz)+PGSIZE-1) & ~(PGSIZE-1))
 #define PGROUNDDOWN(a) (((a)) & ~(PGSIZE-1))
 
+static inline uint64 r_stval()
+{
+  uint64 x;
+  asm volatile("csrr %0, stval" : "=r" (x) );
+  return x;
+}
+
+static inline void w_sepc(uint64 x)
+{
+  asm volatile("csrw sepc, %0" : : "r" (x));
+}
+
+static inline uint64 r_sepc()
+{
+  uint64 x;
+  asm volatile("csrr %0, sepc" : "=r" (x) );
+  return x;
+}
+
 static inline uint64 r_mhartid()
 {
   uint64 x;
@@ -22,6 +41,27 @@ static inline uint64 r_mhartid()
 #define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
 #define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
 #define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
+
+// Supervisor Interrupt Pending
+static inline uint64 r_sip()
+{
+  uint64 x;
+  asm volatile("csrr %0, sip" : "=r" (x) );
+  return x;
+}
+
+static inline void w_sip(uint64 x)
+{
+  asm volatile("csrw sip, %0" : : "r" (x));
+}
+
+// Supervisor Trap Cause
+static inline uint64 r_scause()
+{
+  uint64 x;
+  asm volatile("csrr %0, scause" : "=r" (x) );
+  return x;
+}
 
 static inline void w_stvec(uint64 x)
 {
@@ -38,6 +78,12 @@ static inline uint64 r_sstatus()
 static inline void  w_sstatus(uint64 x)
 {
   asm volatile("csrw sstatus, %0" : : "r" (x));
+}
+
+static inline int intr_get()
+{
+  uint64 x = r_sstatus();
+  return (x & SSTATUS_SIE) != 0;
 }
 
 // enable device interrupts

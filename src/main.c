@@ -12,7 +12,7 @@ void main()
     if(cpuid() == 0)
     {
         consoleinit();
-        printfinit();
+        printkinit();
         printk("boot\n");
         kinit();
         kvminit();

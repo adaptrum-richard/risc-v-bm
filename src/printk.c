@@ -124,7 +124,7 @@ void printk(char *fmt, ...)
 }
 
 void
-printfinit(void)
+printkinit(void)
 {
   initlock(&pr.lock, "pr");
   pr.locking = 1;

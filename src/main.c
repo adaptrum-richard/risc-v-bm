@@ -4,6 +4,8 @@
 #include "proc.h"
 #include "kalloc.h"
 #include "vm.h"
+#include "trap.h"
+#include "plic.h"
 
 void main()
 {
@@ -16,6 +18,11 @@ void main()
         kvminit();
         kvminithart();
         printk("hello world\n");
+        trapinithart();
+        plicinit();
+        plicinithart();
+        __sync_synchronize();
+        intr_on();
         while(1);
     }else{
         while(1);

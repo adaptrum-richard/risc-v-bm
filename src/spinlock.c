@@ -1,4 +1,5 @@
 #include "spinlock.h"
+#include "sched.h"
 
 void initlock(struct spinlock *lk, char *name)
 {
@@ -36,6 +37,7 @@ static inline uint lock(uint *lock, uint new)
 
 void acquire(struct spinlock *lk)
 {
+    preempt_disable();
     while (lock(&lk->locked, 1) != 0)
         ;
 }
@@ -43,4 +45,5 @@ void acquire(struct spinlock *lk)
 void release(struct spinlock *lk)
 {
     unlock(&lk->locked);
+    preempt_enable();
 }

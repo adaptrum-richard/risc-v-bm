@@ -3,6 +3,7 @@
 #include "memlayout.h"
 #include "plic.h"
 #include "proc.h"
+#include "sched.h"
 
 void kernelvec();
 
@@ -32,8 +33,9 @@ int devintr()
             plic_complete(irq);
         return 1;
     } else if ( scause == ( (1L << 63) | 0x1L)) {
-        printk("cpu id = %d, rcv timer interrupt\n", cpuid());
+        //printk("cpu id = %d, rcv timer interrupt\n", cpuid());
         w_sip(r_sip() & ~(SSTATUS_SIE));
+        timer_tick();
         return 2;
     } else
         return 0;

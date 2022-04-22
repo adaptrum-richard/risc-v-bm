@@ -33,6 +33,7 @@ struct task_struct {
     char name[16]; //task name
     uint64 flags;
     uint64 priority;
+    uint64 chan;
 };
 
 extern struct task_struct *current;

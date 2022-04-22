@@ -9,24 +9,31 @@
 #include "fork.h"
 #include "sched.h"
 
-void kernel_process(uint64 arg)
+void kernel_process1(uint64 arg)
 {
     while(1){
-        for(int i = 0 ; i < 0xfffffff; i++)
-        {
-            if(i == 0xffff)
-                printk("arg = %d\n", (int)arg);
-        }
+        sleep(6);
+        printk("arg = %d\n", (int)arg);
     }
 }
 
+void kernel_process2(uint64 arg)
+{
+    while(1){
+        sleep(3);
+        printk("arg = %d\n", (int)arg);
+    }
+}
+
+
+
 void run_proc()
 {
-    int ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1);
+    int ret = copy_process(PF_KTHREAD, (uint64)&kernel_process1, 1);
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
 
-    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2);
+    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process2, 2);
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
 }

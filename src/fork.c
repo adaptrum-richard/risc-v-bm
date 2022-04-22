@@ -40,7 +40,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg)
         preempt_enable();
         return -1;
     }
-    p->flags = clone_flags;
+    
     p->priority = current->priority;
     p->counter = p->priority;
     p->preempt_count = 1;

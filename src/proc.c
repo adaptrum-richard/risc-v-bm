@@ -14,6 +14,7 @@ static struct task_struct init_task = {
   .state = UNUSED,
   .flags = PF_KTHREAD,
   .priority = 5,
+  .chan = 0,
 };
 
 struct task_struct *current = &init_task;

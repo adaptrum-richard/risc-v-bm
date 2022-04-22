@@ -25,8 +25,6 @@ void kernel_process2(uint64 arg)
     }
 }
 
-
-
 void run_proc()
 {
     int ret = copy_process(PF_KTHREAD, (uint64)&kernel_process1, 1);

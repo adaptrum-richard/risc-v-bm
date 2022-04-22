@@ -100,9 +100,11 @@ void sleep(uint64 sec)
 
 void timer_tick(void)
 {
-    jiffies++;
     current->counter--;
-    wakeup(jiffies);
+    if(cpuid() == 0){
+        jiffies++;
+        wakeup(jiffies);
+    }
     if(current->counter > 0 || current->preempt_count > 0)
         return;
     schedule();

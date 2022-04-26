@@ -2,6 +2,6 @@
 #define __PRINTF_H__
 
 void printkinit(void);
-void printk(char *fmt, ...);
+void printk(const char *fmt, ...);
 void panic(char *s);
 #endif

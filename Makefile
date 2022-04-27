@@ -46,6 +46,6 @@ QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 run:
 	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel build/kernel.elf  $(QEMU_FLAGS) $(QEMUOPTS)
 debug:
-	qemu-system-riscv64 -machine virt -m 128M  -bios none $(QEMU_FLAGS) -kernel build/kernel.elf  -S -s
+	qemu-system-riscv64 -machine virt -m 128M  -bios none $(QEMU_FLAGS) -kernel build/kernel.elf $(QEMUOPTS) -S -s
 gdb:
 	gdb-multiarch --tui build/kernel.elf -ex 'target remote localhost:1234'

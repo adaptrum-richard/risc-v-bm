@@ -12,23 +12,39 @@
 
 void kernel_process1(uint64 arg)
 {
+    uchar buff[1024] = {0};
     while(1){
         sleep(6);
-        printk("arg = %d\n", (int)arg);
+        disk_read_block(buff, 10);
+        printk("read block value is \"%s\"\n", buff);
     }
 }
 
 void kernel_process2(uint64 arg)
 {
+    uchar buff[1024] = {0};
+    int i = 0;
     while(1){
         sleep(3);
-        printk("arg = %d\n", (int)arg);
+        sprintf((char *)buff, "string = %d", i++);
+        //printk("arg = %d\n", (int)arg);
+        disk_write_block(buff, 10);
     }
+}
+
+void idle()
+{
+    //idle可以用来做负载均衡
+    while(1);
 }
 
 void run_proc()
 {
-    int ret = copy_process(PF_KTHREAD, (uint64)&kernel_process1, 1);
+    int ret = copy_process(PF_KTHREAD, (uint64)&idle, 0);
+    if(ret < 0)
+        panic("copy_process error ,arg = 0\n");
+
+    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process1, 1);
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
 

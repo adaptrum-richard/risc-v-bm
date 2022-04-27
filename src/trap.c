@@ -4,6 +4,7 @@
 #include "plic.h"
 #include "proc.h"
 #include "sched.h"
+#include "virtio_disk.h"
 
 void kernelvec();
 
@@ -24,7 +25,8 @@ int devintr()
         if(irq == UART0_IRQ){
             //printk("rcv uart0 irq\n");
         } else if (irq == VIRTIO0_IRQ){
-            printk("rcv virtio0 irq\n");
+            virtio_disk_intr();
+            //printk("rcv virtio0 irq\n");
         } else {
             printk("unexpected interrupt irq = %d\n", irq);
         }
@@ -68,4 +70,3 @@ void kerneltrap()
     w_sepc(sepc);
     w_sstatus(sstatus);
 }
-

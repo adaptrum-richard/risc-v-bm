@@ -4,4 +4,6 @@
 void printkinit(void);
 void printk(const char *fmt, ...);
 void panic(char *s);
+int sprintf(char *str, const char *fmt, ...);
+
 #endif

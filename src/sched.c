@@ -119,6 +119,7 @@ void wait(uint64 c)
     current->wait = c;
     current->state = SLEEPING;
     release(&current->lock);
+    
     __schedule();
 
     acquire(&current->lock);

@@ -502,6 +502,16 @@ static int simple_vsprintf(char **out, const char *format, va_list ap)
     return pc;
 }
 
+int sprintf(char *str, const char *fmt, ...)
+{
+    int c = 0;
+    va_list va;
+    va_start(va, fmt);
+	c = simple_vsprintf(&str, fmt, va);
+	va_end(va);
+    return c;
+}
+
 void printk(const char *fmt, ...)
 {
     va_list va;

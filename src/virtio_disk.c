@@ -252,7 +252,9 @@ void virtio_disk_rw(struct buf *b, int write)
 
     //等待virtio-disk处理完成，中断函数会将b->disk设置为0
     while(b->disk == 1){
+        release(&disk.vdisk_lock);
         wait((uint64)b);
+        acquire(&disk.vdisk_lock);
     }
 
     disk.info[idx[0]].b = 0;
@@ -276,7 +278,7 @@ void virtio_disk_intr()
         int id = disk.used->ring[disk.used_idx % NUM].id;
 
         if(disk.info[id].status != 0)
-        panic("virtio_disk_intr status");
+            panic("virtio_disk_intr status");
 
         struct buf *b = disk.info[id].b;
         b->disk = 0;   // disk is done with buf
@@ -286,4 +288,21 @@ void virtio_disk_intr()
     }
 
     release(&disk.vdisk_lock);    
+}
+
+
+void disk_read_block(uchar *block, int block_number)
+{
+    struct buf buf = {0};
+    buf.blockno = block_number;
+    virtio_disk_rw(&buf, 0);
+    memcpy(block, buf.data, BSIZE);
+}
+
+void disk_write_block(uchar *block, int block_number)
+{
+    struct buf buf = {0};
+    memcpy(buf.data, block, BSIZE);
+    buf.blockno = block_number;
+    virtio_disk_rw(&buf, 1);
 }

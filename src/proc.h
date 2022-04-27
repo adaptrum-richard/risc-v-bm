@@ -12,7 +12,7 @@ enum procstate {
     SLEEPING,
     RUNNABLE,
     RUNNING,
-    ZOMBIE
+    ZOMBIE,
 };
 
 struct thread_struct {
@@ -34,6 +34,7 @@ struct task_struct {
     uint64 flags;
     uint64 priority;
     uint64 chan;
+    uint64 wait;
 };
 
 extern struct task_struct *current;

@@ -8,7 +8,7 @@ ASMOPS = -g
 BUILD_DIR = build
 SRC_DIR = src
 
-all : clean kernel.img
+all : clean kernel.img fs.img
 
 clean :
 	rm -rf $(BUILD_DIR) *.img kernel.map
@@ -28,14 +28,23 @@ OBJ_FILES += $(ASM_FILES:$(SRC_DIR)/%.S=$(BUILD_DIR)/%_s.o)
 DEP_FILES = $(OBJ_FILES:%.o=%.d)
 -include $(DEP_FILES)
 
+mkfs/mkfs: mkfs/mkfs.c
+	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+
+fs.img: mkfs/mkfs README
+	mkfs/mkfs fs.img README 
+
 kernel.img: $(SRC_DIR)/linker.ld $(OBJ_FILES)
 	$(RISCVGNU)-ld -T $(SRC_DIR)/linker.ld -Map kernel.map -o $(BUILD_DIR)/kernel.elf  $(OBJ_FILES)
 	$(RISCVGNU)-objcopy $(BUILD_DIR)/kernel.elf -O binary kernel.img
 
 QEMU_FLAGS  += -nographic
 
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
 run:
-	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel build/kernel.elf  $(QEMU_FLAGS)
+	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel build/kernel.elf  $(QEMU_FLAGS) $(QEMUOPTS)
 debug:
 	qemu-system-riscv64 -machine virt -m 128M  -bios none $(QEMU_FLAGS) -kernel build/kernel.elf  -S -s
 gdb:

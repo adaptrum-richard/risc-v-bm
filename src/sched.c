@@ -76,7 +76,7 @@ void wakeup(uint64 chan)
         p = task[i];
         if(p){
             acquire(&p->lock);
-            if(p->state == SLEEPING && p->chan == chan){
+            if(p->state == SLEEPING && p->chan == chan ){
                 p->state = RUNNING;
             }
             release(&p->lock);
@@ -95,6 +95,34 @@ void sleep(uint64 sec)
 
     acquire(&current->lock);
     current->chan = 0;
+    release(&current->lock);
+}
+
+void wake(uint64 wait)
+{
+    struct task_struct *p;
+    for(int i = 0; i < NR_TASKS; i++){
+        p = task[i];
+        if(p){
+            acquire(&p->lock);
+            if(p->state == SLEEPING && p->wait == wait ){
+                p->state = RUNNING;
+            }
+            release(&p->lock);
+        }
+    }
+}
+
+void wait(uint64 c)
+{
+    acquire(&current->lock);
+    current->wait = c;
+    current->state = SLEEPING;
+    release(&current->lock);
+    __schedule();
+
+    acquire(&current->lock);
+    current->wait = 0;
     release(&current->lock);
 }
 

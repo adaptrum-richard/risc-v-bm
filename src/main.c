@@ -8,6 +8,7 @@
 #include "plic.h"
 #include "fork.h"
 #include "sched.h"
+#include "virtio_disk.h"
 
 void kernel_process1(uint64 arg)
 {
@@ -50,6 +51,7 @@ void main()
         plicinit();
         plicinithart();
         __sync_synchronize();
+        virtio_disk_init();
         run_proc();
         intr_on();
         for(;;){

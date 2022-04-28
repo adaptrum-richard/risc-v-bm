@@ -59,7 +59,12 @@ void __schedule(void)
                 p->counter = (p->counter >> 1) + p->priority;
         }
     }
-    switch_to(task[next]);
+
+    if(current == task[next] && current != task[1]) {
+        task[1]->counter = 15;
+        switch_to(task[1]);
+    }else
+        switch_to(task[next]);
     preempt_enable();
 }
 
@@ -86,6 +91,7 @@ void wakeup(uint64 chan)
 
 void sleep(uint64 sec)
 {
+    preempt_disable();
     acquire(&current->lock);
     current->chan = sec*HZ +jiffies;
     current->state = SLEEPING;
@@ -94,8 +100,11 @@ void sleep(uint64 sec)
     __schedule();
 
     acquire(&current->lock);
+    if(current->chan == 0)
+        panic("sleep");
     current->chan = 0;
     release(&current->lock);
+    preempt_disable();
 }
 
 void wake(uint64 wait)
@@ -115,16 +124,20 @@ void wake(uint64 wait)
 
 void wait(uint64 c)
 {
+    preempt_disable();
     acquire(&current->lock);
     current->wait = c;
     current->state = SLEEPING;
     release(&current->lock);
-    
-    __schedule();
 
+    __schedule();
+   
     acquire(&current->lock);
+    if(current->wait == 0)
+        panic("wait");
     current->wait = 0;
     release(&current->lock);
+    preempt_enable();
 }
 
 void timer_tick(void)

@@ -1,4 +1,5 @@
 kernel.img
 kernel.map
 build
+fs.img
 .vscode

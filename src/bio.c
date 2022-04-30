@@ -53,7 +53,7 @@ static struct buf *bget(uint dev, uint blockno)
         }
     }
     panic("bget: no buffers");
-    return NULL;
+    return 0;
 }
 
 struct buf *bread(uint dev, uint blockno)

@@ -10,6 +10,14 @@
 #include "bio.h"
 #include "sched.h"
 
+/*
+WAL机制
+WAL即 Write Ahead Log，WAL的主要意思是说在将元数据的变更操作写入磁盘之前，先预先写入到一个log文件中
+1.内存的读写速度比随机读写磁盘高出几个数量级。
+2.磁盘顺序读写效率堪比内存
+ref：https://zhuanlan.zhihu.com/p/228335203
+*/
+
 static void recover_from_log(void);
 static void install_trans(int recovering);
 static void commit(void);

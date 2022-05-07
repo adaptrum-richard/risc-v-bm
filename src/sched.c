@@ -39,10 +39,16 @@ void __schedule(void)
 
             
             if(p && p->state == RUNNABLE){
-                acquire_irq(&p->lock);
+                if(in_hardirq())
+                    acquire(&p->lock);
+                else
+                    acquire_irq(&p->lock);
                 if( p->state == RUNNABLE)
                     p->state = RUNNING;
-                release_irq(&p->lock);
+                if(in_hardirq())
+                    release(&p->lock);
+                else
+                    release_irq(&p->lock);
             }
 
             if(p && p->state == RUNNING && p->counter > c){
@@ -78,7 +84,7 @@ void wakeup(uint64 chan)
         if(p){
             acquire(&p->lock);
             if(p->state == SLEEPING && p->chan == chan ){
-                p->state = RUNNING;
+                p->state = RUNNABLE;
             }
             release(&p->lock);
         }
@@ -88,18 +94,18 @@ void wakeup(uint64 chan)
 void sleep(uint64 sec)
 {
     preempt_disable();
-    acquire(&current->lock);
+    acquire_irq(&current->lock);
     current->chan = sec*HZ +jiffies;
     current->state = SLEEPING;
-    release(&current->lock);
+    release_irq(&current->lock);
     
     __schedule();
 
-    acquire(&current->lock);
+    acquire_irq(&current->lock);
     if(current->chan == 0)
         panic("sleep");
     current->chan = 0;
-    release(&current->lock);
+    release_irq(&current->lock);
     preempt_enable();
 }
 
@@ -109,11 +115,17 @@ void wake(uint64 wait)
     for(int i = 0; i < NR_TASKS; i++){
         p = task[i];
         if(p){
-            acquire_irq(&p->lock);
+            if(in_hardirq())
+                acquire(&p->lock);
+            else
+                acquire_irq(&p->lock);
             if(p->wait == wait && p->state == SLEEPING){
                 p->state = RUNNABLE;
             }
-            release_irq(&p->lock);
+            if(in_hardirq())
+                release(&p->lock);
+            else
+                release_irq(&p->lock);
         }
     }
 }

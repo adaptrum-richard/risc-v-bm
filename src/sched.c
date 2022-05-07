@@ -91,7 +91,7 @@ void wakeup(uint64 chan)
 
 void sleep(uint64 sec)
 {
-    preempt_disable();
+    preempt_enable();
     acquire(&current->lock);
     current->chan = sec*HZ +jiffies;
     current->state = SLEEPING;
@@ -124,7 +124,7 @@ void wake(uint64 wait)
 
 void wait(uint64 c)
 {
-    preempt_disable();
+    preempt_enable();
     acquire(&current->lock);
     current->wait = c;
     current->state = SLEEPING;
@@ -137,7 +137,7 @@ void wait(uint64 c)
         panic("wait");
     current->wait = 0;
     release(&current->lock);
-    preempt_enable();
+    preempt_disable();
 }
 
 void timer_tick(void)

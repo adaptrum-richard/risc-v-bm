@@ -10,45 +10,42 @@
 #include "sched.h"
 #include "virtio_disk.h"
 
-void kernel_process1(uint64 arg)
+void delay()
 {
-    uchar buff[1024] = {0};
-    while(1){
-        sleep(6);
-        disk_read_block(buff, 10);
-        printk("read block value is \"%s\"\n", buff);
+    int j = 0;
+    for(int i ; i < 100000; i++){
+        j = i % 3;
+        j++;
     }
 }
 
-void kernel_process2(uint64 arg)
+void kernel_process(uint64 arg)
 {
-    uchar buff[1024] = {0};
-    int i = 0;
     while(1){
-        sleep(3);
-        sprintf((char *)buff, "string = %d", i++);
-        //printk("arg = %d\n", (int)arg);
-        disk_write_block(buff, 10);
+        sleep(arg);
+        printk("current %s run\n", current->name);
     }
 }
 
 void idle()
 {
     //idle可以用来做负载均衡
-    while(1);
+    while(1){
+        delay();
+    }
 }
 
 void run_proc()
 {
-    int ret = copy_process(PF_KTHREAD, (uint64)&idle, 0);
+    int ret = copy_process(PF_KTHREAD, (uint64)&idle, 0, "idle");
     if(ret < 0)
         panic("copy_process error ,arg = 0\n");
 
-    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process1, 1);
+    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1, "kernel_process1");
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
 
-    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process2, 2);
+    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
 }

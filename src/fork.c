@@ -7,6 +7,7 @@
 #include "pt_regs.h"
 #include "printk.h"
 #include "sched.h"
+#include "string.h"
 
 extern void ret_from_kernel_thread(void);
 
@@ -16,7 +17,7 @@ static inline struct pt_regs *task_pt_regs(struct task_struct *tsk)
     return (struct pt_regs *)p;
 }
 
-int copy_process(uint64 clone_flags, uint64 fn, uint64 arg)
+int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
 {
     preempt_disable();
     struct task_struct *p = get_free_one_page();
@@ -45,6 +46,8 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg)
     p->counter = p->priority;
     p->preempt_count = 1;
     p->pid = nr_tasks++;
+    if(!!name)
+        strcpy(p->name, name);
     task[p->pid] = p;
     p->thread.sp = (uint64)childregs;
     preempt_enable();

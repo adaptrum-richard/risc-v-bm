@@ -526,6 +526,14 @@ void printk(const char *fmt, ...)
         release(&pr.lock);
 }
 
+void printk_intr(const char *fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+	simple_vsprintf(0, fmt, va);
+	va_end(va); 
+}
+
 void printkinit(void)
 {
     initlock(&pr.lock, "pr");

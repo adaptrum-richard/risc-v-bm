@@ -8,6 +8,7 @@ void* memmove(void *dst, const void *src, uint n);
 void* memcpy(void *dst, const void *src, uint n);
 int strncmp(const char *p, const char *q, uint n);
 char* strncpy(char *s, const char *t, int n);
+char* strcpy(char *s, const char *t);
 char* safestrcpy(char *s, const char *t, int n);
 
 #endif

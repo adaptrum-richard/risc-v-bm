@@ -5,6 +5,7 @@
 #include "proc.h"
 #include "sched.h"
 #include "virtio_disk.h"
+#include "hardirq.h"
 
 void kernelvec();
 
@@ -18,7 +19,6 @@ int devintr()
 {
     uint64 scause = r_scause();
 
-    
     if( (scause & (1L<<63)) && (scause & 0xff) == 0x9 ){
         /*supervisor mode extension interrupt*/
         int irq = plic_claim();
@@ -50,10 +50,8 @@ void kerneltrap()
     uint64 sepc = r_sepc();
     uint64 sstatus = r_sstatus();
     uint64 scause = r_scause();
-    uint64 sip = r_sip();
-    if(sip != 0){
-        
-    }
+    if(scause & ( 1UL<< 63))
+        irq_enter();
     
     if((sstatus & SSTATUS_SPP) == 0){
         panic("kerneltrap: not from supervisor mode");
@@ -68,6 +66,9 @@ void kerneltrap()
         panic("kerneltrap");
     }
 
+
+    if(scause & ( 1UL<< 63))
+        irq_exit();
     /*maybe schedule thread*/
 
     /*restore programer counter and supervisor mode status*/

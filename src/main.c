@@ -15,7 +15,7 @@
 void delay()
 {
     int j = 0;
-    for(int i ; i < 100000; i++){
+    for(int i ; i < 100000000; i++){
         j = i % 3;
         j++;
     }
@@ -24,8 +24,9 @@ void delay()
 void kernel_process(uint64 arg)
 {
     while(1){
-        sleep(arg);
-        printk("current %s run\n", current->name);
+        //sleep(arg);
+        //printk("current %s run\n", current->name);
+        delay();
     }
 }
 
@@ -35,8 +36,9 @@ void idle()
     binit();
     fsinit(ROOTINO);
     while(1){
-        sleep(2);
-        printk("current %s run\n", current->name);
+        //sleep(2);
+        //printk("current %s run\n", current->name);
+        delay();
     }
 }
 
@@ -73,6 +75,8 @@ void main()
         run_proc();
         intr_on();
         for(;;){
+            //sleep(10);
+            //delay();
             schedule();
         }
     }else{

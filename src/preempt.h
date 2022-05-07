@@ -1,7 +1,7 @@
 #ifndef __PREEMPT_H__
 #define __PREEMPT_H__
 #include "proc.h"
-
+#include "types.h"
 
 /*
 PREEMPT_MASK:	0x000000ff
@@ -43,18 +43,31 @@ in_task()		- We're in task context
 */
 #define in_serving_softirq()	(softirq_count() & SOFTIRQ_OFFSET)
 #define in_hardirq()		(hardirq_count())
-#define in_task()		(in_hardirq() | in_serving_softirq()))
+#define in_task()		(!(in_hardirq() | in_serving_softirq()))
 
+/*判断是否在原子上下文*/
+#define in_atomic()     (preempt_count() != 0)
+static inline void __preempt_count_add(uint64 val)
+{
+    current->preempt_count += val;
+}
 
+static inline void __preempt_count_sub(uint64 val)
+{
+    current->preempt_count -= val;
+}
+
+#define preempt_count_add(val) __preempt_count_add(val)
+#define preempt_count_sub(val) __preempt_count_sub(val)
 
 static inline void preempt_disable(void)
 {
-    current->preempt_count++;
+    preempt_count_add(1);
 }
 
 static inline void preempt_enable(void)
 {
-    current->preempt_count--;
+    preempt_count_sub(1);
 }
 
 #endif

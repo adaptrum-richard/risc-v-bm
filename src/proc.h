@@ -35,6 +35,8 @@ struct task_struct {
     uint64 priority;
     uint64 chan;
     uint64 wait;
+    uint64 need_resched;
+    uint64 runtime;
 };
 
 extern struct task_struct *current;

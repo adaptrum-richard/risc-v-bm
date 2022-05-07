@@ -146,7 +146,8 @@ void timer_tick(void)
         jiffies++;
         wakeup(jiffies);
     }
-    if(current->counter > 0 || current->preempt_count > 0)
+    print_task_info();
+    if(current->counter > 0)
         return;
-    schedule();
+    current->need_resched = 1;
 }

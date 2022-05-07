@@ -41,5 +41,5 @@ extern struct task_struct *current;
 extern struct task_struct *task[];
 extern int nr_tasks;
 int cpuid();
-
+void print_task_info();
 #endif

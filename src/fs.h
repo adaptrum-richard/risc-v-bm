@@ -62,5 +62,6 @@ struct dirent {
   char name[DIRSIZ];
 };
 
+void fsinit(int dev);
 
 #endif

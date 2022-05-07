@@ -9,6 +9,8 @@
 #include "fork.h"
 #include "sched.h"
 #include "virtio_disk.h"
+#include "fs.h"
+#include "bio.h"
 
 void delay()
 {
@@ -30,8 +32,11 @@ void kernel_process(uint64 arg)
 void idle()
 {
     //idle可以用来做负载均衡
+    binit();
+    fsinit(ROOTINO);
     while(1){
-        delay();
+        sleep(2);
+        printk("current %s run\n", current->name);
     }
 }
 

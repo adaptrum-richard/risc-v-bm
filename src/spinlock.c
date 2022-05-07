@@ -1,5 +1,7 @@
 #include "spinlock.h"
 #include "sched.h"
+#include "preempt.h"
+#include "riscv.h"
 
 void initlock(struct spinlock *lk, char *name)
 {
@@ -46,4 +48,19 @@ void release(struct spinlock *lk)
 {
     unlock(&lk->locked);
     preempt_enable();
+}
+
+void acquire_irq(struct spinlock *lk)
+{
+    intr_off();
+    preempt_disable();
+    while (lock(&lk->locked, 1) != 0)
+        ;
+}
+
+void release_irq(struct spinlock *lk)
+{
+    unlock(&lk->locked);
+    preempt_enable();
+    intr_on();
 }

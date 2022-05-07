@@ -50,6 +50,10 @@ void kerneltrap()
     uint64 sepc = r_sepc();
     uint64 sstatus = r_sstatus();
     uint64 scause = r_scause();
+    uint64 sip = r_sip();
+    if(sip != 0){
+        
+    }
     
     if((sstatus & SSTATUS_SPP) == 0){
         panic("kerneltrap: not from supervisor mode");

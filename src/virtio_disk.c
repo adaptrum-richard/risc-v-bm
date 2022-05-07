@@ -193,15 +193,15 @@ void virtio_disk_rw(struct buf *b, int write)
     //每个扇区512字节，每个块1024字节
     uint64 sector = b->blockno * (BSIZE/512);
     
-    acquire(&disk.vdisk_lock);
+    acquire_irq(&disk.vdisk_lock);
     int idx[3];
     while(1){
         if(alloc3_desc(idx) == 0){
             break;
         }
-        release(&disk.vdisk_lock);
+        release_irq(&disk.vdisk_lock);
         wait((uint64)&disk.free[0]);
-        acquire(&disk.vdisk_lock);
+        acquire_irq(&disk.vdisk_lock);
     }
     
     struct virtio_blk_req *buf0 = &disk.ops[idx[0]];
@@ -252,16 +252,16 @@ void virtio_disk_rw(struct buf *b, int write)
 
     //等待virtio-disk处理完成，中断函数会将b->disk设置为0
     while(b->disk == 1){
-        release(&disk.vdisk_lock);
+        release_irq(&disk.vdisk_lock);
         wait((uint64)b);
-        acquire(&disk.vdisk_lock);
+        acquire_irq(&disk.vdisk_lock);
     }
 
     disk.info[idx[0]].b = 0;
 
     /*free_chain中的wake函数将唤醒等待free数组的进程*/
     free_chain(idx[0]);
-    release(&disk.vdisk_lock);
+    release_irq(&disk.vdisk_lock);
 }
 
 void virtio_disk_intr()

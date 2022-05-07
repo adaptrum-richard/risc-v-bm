@@ -3,6 +3,7 @@
 #include "param.h"
 #include "spinlock.h"
 #include "buf.h"
+#include "fs.h"
 
 struct logheader {
     int n;
@@ -22,5 +23,5 @@ struct log {
 void log_begin_op(void);
 void log_end_op(void);
 void log_write(struct buf *b);
-
+void initlog(int dev, struct superblock *sb);
 #endif

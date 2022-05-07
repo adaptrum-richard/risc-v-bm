@@ -4,8 +4,6 @@
 
 #define HZ 10
 
-void preempt_disable(void);
-void preempt_enable(void);
 void schedule_tail(void);
 void schedule(void);
 void timer_tick(void);

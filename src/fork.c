@@ -8,6 +8,7 @@
 #include "printk.h"
 #include "sched.h"
 #include "string.h"
+#include "preempt.h"
 
 extern void ret_from_kernel_thread(void);
 

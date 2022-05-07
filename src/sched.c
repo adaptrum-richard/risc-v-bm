@@ -2,20 +2,11 @@
 #include "proc.h"
 #include "riscv.h"
 #include "printk.h"
+#include "preempt.h"
 
 volatile uint64 jiffies = 0;
 
 extern void cpu_switch_to(struct thread_struct *prev, struct thread_struct *next);
-
-void preempt_disable(void)
-{
-    current->preempt_count++;
-}
-
-void preempt_enable(void)
-{
-    current->preempt_count--;
-}
 
 void schedule_tail(void)
 {
@@ -45,6 +36,15 @@ void __schedule(void)
         next = 0;
         for(int i = 0; i < NR_TASKS; i++){
             p = task[i];
+
+            
+            if(p && p->state == RUNNABLE){
+                acquire_irq(&p->lock);
+                if( p->state == RUNNABLE)
+                    p->state = RUNNING;
+                release_irq(&p->lock);
+            }
+
             if(p && p->state == RUNNING && p->counter > c){
                 c = p->counter;
                 next = i;
@@ -60,11 +60,7 @@ void __schedule(void)
         }
     }
 
-    if(current == task[next] && current != task[1]) {
-        task[1]->counter = 15;
-        switch_to(task[1]);
-    }else
-        switch_to(task[next]);
+    switch_to(task[next]);
     preempt_enable();
 }
 
@@ -91,7 +87,7 @@ void wakeup(uint64 chan)
 
 void sleep(uint64 sec)
 {
-    preempt_enable();
+    preempt_disable();
     acquire(&current->lock);
     current->chan = sec*HZ +jiffies;
     current->state = SLEEPING;
@@ -104,7 +100,7 @@ void sleep(uint64 sec)
         panic("sleep");
     current->chan = 0;
     release(&current->lock);
-    preempt_disable();
+    preempt_enable();
 }
 
 void wake(uint64 wait)
@@ -113,31 +109,34 @@ void wake(uint64 wait)
     for(int i = 0; i < NR_TASKS; i++){
         p = task[i];
         if(p){
-            acquire(&p->lock);
-            if(p->state == SLEEPING && p->wait == wait ){
-                p->state = RUNNING;
+            acquire_irq(&p->lock);
+            if(p->wait == wait && p->state == SLEEPING){
+                p->state = RUNNABLE;
             }
-            release(&p->lock);
+            release_irq(&p->lock);
         }
     }
 }
 
 void wait(uint64 c)
 {
-    preempt_enable();
-    acquire(&current->lock);
+    preempt_disable();
+    acquire_irq(&current->lock);
     current->wait = c;
-    current->state = SLEEPING;
-    release(&current->lock);
+    //说明已经中断已经发生了，防止等待进程无法被唤醒
+    if(current->state == RUNNABLE) 
+        current->state = SLEEPING;
+    release_irq(&current->lock);
 
     __schedule();
    
-    acquire(&current->lock);
+    /*如果中断没有发送，大不了再来一次。*/
+    acquire_irq(&current->lock);
     if(current->wait == 0)
         panic("wait");
     current->wait = 0;
-    release(&current->lock);
-    preempt_disable();
+    release_irq(&current->lock);
+    preempt_enable();
 }
 
 void timer_tick(void)

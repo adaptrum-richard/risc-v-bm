@@ -9,6 +9,9 @@
 
 struct superblock sb;
 
+void itrunc(struct inode *ip);
+void iupdate(struct inode *ip);
+
 void print_superblock(void)
 {
     printk("magic\t\t\t0x%x\n", sb.magic);
@@ -189,4 +192,73 @@ static struct inode *iget(int dev, int inum)
     ip->valid = 0;
     release(&itable.lock);
     return ip;
+}
+
+void iput(struct inode *ip)
+{
+    acquire(&itable.lock);
+
+    if(ip->ref == 1 && ip->valid && ip->nlink == 0){
+        /*当ip->ref等于1时，表示没有其他进程在持有此inode，所以也不会有
+          其他进程持有inode->lock锁。这里不会出现死锁*/
+        acquiresleep(&ip->lock);
+
+        release(&itable.lock);
+        /*acquiresleep(&ip->lock);不放置在这里，是因为在两个锁之间没有锁保护的话，ip->ref可能会被修改*/
+        itrunc(ip);
+        ip->type = 0;
+        iupdate(ip);
+        ip->valid = 0;
+        
+        releasesleep(&ip->lock);
+
+        acquire(&itable.lock);
+    }
+    ip->ref--;
+    release(&itable.lock);
+}
+
+/*内存中的inode更新到磁盘的dnode中*/
+void iupdate(struct inode *ip)
+{
+    struct buf *bp;
+    struct dinode *dip;
+    bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+    dip = (struct dinode *)bp->data + ip->inum % IPB;
+    dip->type = ip->type;
+    dip->major = ip->major;
+    dip->minor = ip->minor;
+    dip->nlink = ip->nlink;
+    dip->size = ip->size;
+    memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
+    log_write(bp);
+    brelse(bp);
+}
+
+/*释放inode中对应的block，并设置文件大小为0*/
+void itrunc(struct inode *ip)
+{
+    int i, j;
+    struct buf *bp;
+    uint *a;
+    for(i = 0; i < NDIRECT; i++){
+        if(ip->addrs[i]){
+            bfree(ip->dev, ip->addrs[i]);//在bmap上设置为0
+            ip->addrs[i] = 0;
+        }
+    }
+
+    if(ip->addrs[NDIRECT]){
+        bp = bread(ip->dev, ip->addrs[NDIRECT]);
+        a = (uint *)bp->data;
+        for(j = 0; j < NINDIRECT; j++){
+            if(a[j])
+                bfree(ip->dev, a[j]);
+        }
+        brelse(bp);
+        bfree(ip->dev, ip->addrs[NDIRECT]);
+        ip->addrs[NDIRECT] = 0;
+    }
+    ip->size = 0;
+    iupdate(ip);
 }

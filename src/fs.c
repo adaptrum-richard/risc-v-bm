@@ -340,3 +340,11 @@ int writei(struct inode *ip, uint64 src, uint off, uint n)
     iupdate(ip);
     return tot;
 }
+
+struct inode *idup(struct inode *ip)
+{
+    acquire(&itable.lock);
+    ip->ref++;
+    release(&itable.lock);
+    return ip;
+}

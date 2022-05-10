@@ -73,6 +73,7 @@ static int balloc(int dev)
         brelse(bp);
     }
     panic("balloc: out of blocks\n");
+    return 0;
 }
 
 static void bfree(int dev, int bn)
@@ -114,6 +115,7 @@ struct inode *ialloc(int dev, short type)
     for(inum = 1; inum < sb.ninodes; inum++){
         /*从磁盘中读取一个dinode*/
         bp = bread(dev, IBLOCK(inum, sb));
+        dip = (struct dinode *)bp->data + inum % IPB;
         if(dip->type == 0){
             /*a free inode*/
             memset(dip, 0, sizeof(*dip));
@@ -126,6 +128,7 @@ struct inode *ialloc(int dev, short type)
         brelse(bp);
     }
     panic("ialloc: no inodes");
+    return 0;
 }
 
 void ilock(struct inode *ip)
@@ -134,7 +137,7 @@ void ilock(struct inode *ip)
     struct dinode *dip;
     if(ip == 0 || ip->ref < 1)
         panic("ilock");
-        
+
     acquiresleep(&ip->lock);
     
     if(ip->valid == 0){
@@ -152,6 +155,13 @@ void ilock(struct inode *ip)
     }
 }
 
+void iunlock(struct inode *ip)
+{
+    if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
+        panic("iunlock");
+    
+    releasesleep(&ip->lock);
+}
 
 /*从itable中分配一个inode slot*/
 static struct inode *iget(int dev, int inum)

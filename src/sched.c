@@ -158,7 +158,7 @@ void timer_tick(void)
         jiffies++;
         wakeup(jiffies);
     }
-    print_task_info();
+    //print_task_info();
     if(current->counter > 0)
         return;
     current->need_resched = 1;

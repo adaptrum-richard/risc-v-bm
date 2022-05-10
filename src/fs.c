@@ -262,3 +262,81 @@ void itrunc(struct inode *ip)
     ip->size = 0;
     iupdate(ip);
 }
+
+/*通过文件在inode中addr的编号，找到对应的block编号*/
+static uint bmap(struct inode *ip, uint bn)
+{
+    uint addr, *a;
+    struct buf *bp;
+
+    if(bn < NDIRECT){
+        if((addr = ip->addrs[bn]) == 0){
+            ip->addrs[bn] = addr = balloc(ip->dev);
+        }
+        return addr;
+    }
+    bn -= NDIRECT;
+
+    if(bn < NINDIRECT){
+        if( (addr = ip->addrs[NDIRECT]) == 0){
+            ip->addrs[NDIRECT] = addr = balloc(ip->dev);
+        }
+        bp = bread(ip->dev, addr);
+        a = (uint *)bp->data;
+        if((addr = a[bn]) == 0){
+            a[bn] = addr = balloc(ip->dev);
+            log_write(bp);
+        }
+        brelse(bp);
+        return addr;
+    }
+    panic("bmap: out of range");
+    return 0;
+}
+
+int readi(struct inode *ip, uint64 dst, uint off, uint n)
+{
+    uint tot, m;
+    struct buf *bp;
+
+    /*off + n < off 防止溢出*/
+    if(off > ip->size || off + n < off)
+        return 0;
+    
+    if(off + n > ip->size)
+        n = ip->size - off;
+    
+    for(tot = 0; tot < n ; tot += m, off += m, dst += m){
+        bp = bread(ip->dev, bmap(ip, off/BSIZE));
+        m = min(n -  tot, BSIZE- off % BSIZE);
+        memmove((char *)dst, bp->data + (off % BSIZE), m);
+        brelse(bp);
+    }
+    return tot;
+}
+
+int writei(struct inode *ip, uint64 src, uint off, uint n)
+{
+    uint tot, m;
+    struct buf *bp;
+
+    if(off > ip->size || off + n < off)
+        return -1;
+    
+    if(off + n > MAXFILE*BSIZE)
+        return -1;
+
+    for(tot = 0; tot < n; tot += m, off += m, src += m){
+        bp = bread(ip->dev, bmap(ip, off/BSIZE));
+        m = min(n - tot, BSIZE - off % BSIZE);
+        memmove(bp->data + (off % BSIZE), (char *)src, m);
+        log_write(bp);
+        brelse(bp);
+    }
+
+    if(off > ip->size)
+        ip->size = off;
+    
+    iupdate(ip);
+    return tot;
+}

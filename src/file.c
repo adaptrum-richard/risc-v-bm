@@ -1,4 +1,93 @@
 #include "param.h"
 #include "file.h"
+#include "spinlock.h"
+#include "printk.h"
+#include "fs.h"
+#include "log.h"
 
 struct devsw devsw[NDEV];
+
+struct ftable {
+    struct spinlock lock;
+    struct file file[NFILE];
+};
+
+struct ftable ftable;
+
+void fileinit(void)
+{
+    initlock(&ftable.lock, "ftable");
+}
+
+struct file *filealloc(void)
+{
+    struct file *f;
+
+    acquire(&ftable.lock);
+    for(f = ftable.file; f < ftable.file + NFILE; f++){
+        if(f->ref == 0){
+            f->ref = 1;
+            release(&ftable.lock);
+        }
+    }
+    release(&ftable.lock);
+    return 0;
+}
+
+struct file *filedup(struct file *f)
+{
+    acquire(&ftable.lock);
+    if(f->ref < 1)
+        panic("filedup\n");
+
+    f->ref++;
+    release(&ftable.lock);
+    return f;
+}
+
+int fileread(struct file *f, uint64 addr, int n)
+{
+    int r = 0;
+    if(f->readable == 0)
+        return -1;
+    if(f->type == FD_INODE){
+        ilock(f->ip);
+        if((r = readi(f->ip, addr, f->off, n)) > 0)
+            f->off += r;
+        iunlock(f->ip);
+    }
+
+    return r;
+}
+
+int filewrite(struct file *f, uint64 addr, int n)
+{
+    int r, ret = 0;
+
+    if(f->writable == 0)
+        return -1;
+    
+    if(f->type == FD_INODE){
+        int max = ((MAXOPBLOCKS-1-1-2) / 2) * BSIZE;
+        int i = 0;
+        while(i < n){
+            int n1 = n - i;
+            if(n1 > max)
+                n1 = max;
+            
+            log_begin_op();
+            ilock(f->ip);
+            if((r = writei(f->ip, addr + i, f->off, n1)) > 0)
+                f->off += r;
+            log_end_op();
+
+            if(r != n1){
+                //writei error;
+                break;
+            }
+            i += r;
+        }
+        ret = (i==n ? n : -1);
+    }
+    return ret;
+}

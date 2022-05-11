@@ -34,6 +34,27 @@ struct file *filealloc(void)
     return 0;
 }
 
+void fileclose(struct file *f)
+{
+    struct file ff;
+    acquire(&ftable.lock);
+    if(f->ref < 1)
+        panic("fileclose");
+    if(--f->ref > 0){
+        release(&ftable.lock);
+    }
+    ff = *f;
+    f->ref = 0;
+    f->type = FD_NONE;
+    release(&ftable.lock);
+
+    if(ff.type == FD_INODE){
+        log_begin_op();
+        iput(ff.ip);
+        log_end_op();
+    }
+}
+
 struct file *filedup(struct file *f)
 {
     acquire(&ftable.lock);

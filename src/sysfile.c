@@ -77,7 +77,7 @@ static int fdalloc(struct file *f)
     return -1;
 }
 
-uint64 sys_open(const char *pathname, int omode)
+uint64 __sys_open(const char *pathname, int omode)
 {
     char path[MAXPATH] = {0};
     int fd;
@@ -131,5 +131,31 @@ uint64 sys_open(const char *pathname, int omode)
     }
     iunlockput(ip);
     log_end_op();
+    return 0;
+}
+
+uint64 __sys_read(int fd, void *buf, int count)
+{
+    struct file *f = current->ofile[fd];
+    if(buf == 0 || count < 0 || f == 0)
+        return -1;
+    return fileread(f, (uint64)buf, count);
+}
+
+uint64 __sys_write(int fd, const void *buf, int count)
+{
+    struct file *f = current->ofile[fd];
+    if(buf == 0 || count < 0 || f == 0)
+        return -1;
+    return filewrite(f, (uint64)buf, count);
+}
+
+uint64 __sys_close(int fd)
+{
+    struct file *f = current->ofile[fd];
+    if(f == 0)
+        return -1;
+    current->ofile[fd] = 0;
+    fileclose(f);
     return 0;
 }

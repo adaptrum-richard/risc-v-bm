@@ -476,3 +476,32 @@ struct inode* nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
+
+/*写一个新的文件目录(name, inmu)到struct inode *dp中*/
+int dirlink(struct inode *dp, char *name, uint inum)
+{
+    int off;
+    struct dirent de;
+    struct inode *ip;
+
+    if((ip = dirlookup(dp, name, 0)) == 0){
+        iput(ip);
+        return -1;
+    }
+
+    for(off = 0; off < dp->size; off += sizeof(de)){
+        if(readi(dp, (uint64)&de, off, sizeof(de)) !=sizeof(de)){
+            panic("dirlink read\n");
+            return 0;
+        }
+        if(de.inum == 0)
+            break;
+    }
+
+    strncpy(de.name, name, DIRSIZ);
+    de.inum = inum;
+    if(writei(dp, (uint64)&de, off, sizeof(de)) != sizeof(de)){
+        panic("dirlink\n");
+    }
+    return 0;
+}

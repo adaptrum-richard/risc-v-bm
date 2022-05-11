@@ -2,6 +2,8 @@
 #define __PROC_H__
 #include "types.h"
 #include "spinlock.h"
+#include "file.h"
+#include "param.h"
 
 #define THREAD_SIZE     (1<<12)
 #define PF_KTHREAD      (1UL<<63)
@@ -37,6 +39,7 @@ struct task_struct {
     uint64 wait;
     uint64 need_resched;
     uint64 runtime;
+    struct file *ofile[NOFILE]; //open file
 };
 
 extern struct task_struct *current;

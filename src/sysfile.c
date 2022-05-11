@@ -129,7 +129,7 @@ uint64 __sys_open(const char *pathname, int omode)
     if((omode & O_TRUNC) && ip->type == T_FILE){
         itrunc(ip);
     }
-    iunlockput(ip);
+    iunlock(ip);
     log_end_op();
     return 0;
 }

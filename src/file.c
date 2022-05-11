@@ -28,6 +28,7 @@ struct file *filealloc(void)
         if(f->ref == 0){
             f->ref = 1;
             release(&ftable.lock);
+            return f;
         }
     }
     release(&ftable.lock);

@@ -50,6 +50,7 @@ extern struct devsw devsw[];
 
 #define CONSOLE 1
 
+void fileinit(void);
 struct file *filealloc(void);
 void fileclose(struct file *f);
 int fileread(struct file *f, uint64 addr, int n);

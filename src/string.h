@@ -10,5 +10,6 @@ int strncmp(const char *p, const char *q, uint n);
 char* strncpy(char *s, const char *t, int n);
 char* strcpy(char *s, const char *t);
 char* safestrcpy(char *s, const char *t, int n);
+char* int strlen(const char *s);
 
 #endif

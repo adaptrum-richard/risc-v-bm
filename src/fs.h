@@ -75,5 +75,10 @@ int writei(struct inode *ip, uint64 src, uint off, uint n);
 int dirlink(struct inode *dp, char *name, uint inum);
 struct inode *namei(char *path);
 struct inode* nameiparent(char *path, char *name);
+struct inode *dirlookup(struct inode *dp, char *name, uint *poff);
+void iunlockput(struct inode *ip);
+void iupdate(struct inode *ip);
+void iput(struct inode *ip);
+void itrunc(struct inode *ip);
 
 #endif

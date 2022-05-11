@@ -10,9 +10,6 @@
 
 struct superblock sb;
 
-void itrunc(struct inode *ip);
-void iupdate(struct inode *ip);
-
 void print_superblock(void)
 {
     printk("magic\t\t\t0x%x\n", sb.magic);

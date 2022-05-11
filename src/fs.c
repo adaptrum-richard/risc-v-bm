@@ -415,3 +415,64 @@ struct inode *dirlookup(struct inode *dp, char *name, uint *poff)
     }
     return 0;
 }
+
+void iunlockput(struct inode *ip)
+{
+    iunlock(ip);
+    iput(ip);
+}
+
+static struct inode *namex(char *path, int nameiparent, char *name)
+{
+    struct inode *ip, *next;
+    if(*path == '/')
+        ip = iget(ROOTDEV, ROOTINO);
+    else {
+        panic("Unimplemented function\n");
+        return 0;
+    }
+    /*
+    一层一层遍历path，从path对开始遍历，比如目录为/a/b/c
+    则在根目录下的dinode的addr中遍历，查找对应a的inode，
+    然后再在a目录下的dinode的addr中遍历，依次类推，最终找到c文件
+    对应的dinode
+    */
+    while((path = skipelem(path, name)) != 0){
+        ilock(ip);
+        if(ip->type != T_DIR){
+            iunlockput(ip);
+            return 0;
+        }
+
+        if(nameiparent && *path == '\0'){
+            iunlock(ip);
+            return ip;
+        }
+
+        if((next = dirlookup(ip, name, 0)) == 0){
+            iunlockput(ip);
+            return 0;
+        }
+
+        iunlockput(ip);
+        ip = next;
+    }
+
+    if(nameiparent){
+        iput(ip);
+        return 0;
+    }
+
+    return ip;
+}
+
+struct inode *namei(char *path)
+{
+    char name[DIRSIZ];
+    return namex(path, 0, name);
+}
+
+struct inode* nameiparent(char *path, char *name)
+{
+  return namex(path, 1, name);
+}

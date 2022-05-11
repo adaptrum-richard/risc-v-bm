@@ -61,8 +61,19 @@ struct dirent {
   ushort inum;
   char name[DIRSIZ];
 };
+
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
 void fsinit(int dev);
+
+struct inode;
+void ilock(struct inode *ip);
+void iunlock(struct inode *ip);
+struct inode *ialloc(int dev, short type);
+int readi(struct inode *ip, uint64 dst, uint off, uint n);
+int writei(struct inode *ip, uint64 src, uint off, uint n);
+int dirlink(struct inode *dp, char *name, uint inum);
+struct inode *namei(char *path);
+struct inode* nameiparent(char *path, char *name);
 
 #endif

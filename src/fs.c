@@ -6,6 +6,7 @@
 #include "printk.h"
 #include "sched.h"
 #include "file.h"
+#include "stat.h"
 
 struct superblock sb;
 
@@ -347,4 +348,70 @@ struct inode *idup(struct inode *ip)
     ip->ref++;
     release(&itable.lock);
     return ip;
+}
+
+/*
+将path中最开始的路径放到name中。需要通过name去查找对应的inode的编号
+如：
+skipelem("a/bb/c", name) = "bb/c", setting name = "a"
+skipelem("///a//bb", name) = "bb", setting name = "a"
+skipelem("a", name) = "", setting name = "a"
+skipelem("", name) = skipelem("////", name) = 0
+*/
+static char* skipelem(char *path, char *name)
+{
+    char *s;
+    int len;
+
+    while(*path == '/')
+        path++;
+    if(*path == 0)
+        return 0;
+    s = path;
+    while(*path != '/' && *path != 0)
+        path++;
+    len = path - s;
+    if(len >= DIRSIZ)
+        memmove(name, s, DIRSIZ);
+    else {
+        memmove(name, s, len);
+        name[len] = 0;
+    }
+    while(*path == '/')
+        path++;
+    return path;
+}
+
+int namecmp(const char *s, const char *t)
+{
+    return strncmp(s, t, DIRSIZ);
+}
+
+struct inode *dirlookup(struct inode *dp, char *name, uint *poff)
+{
+    uint off, inum;
+    struct dirent de;
+    if(dp->type != T_DIR){
+        panic("dirlookup not DIR\n");
+        return 0;
+    }
+
+    /*读取目录block中存储的每个dirent结构体，判断目录或文件名是否为我们要查找的*/
+    for(off = 0; off < dp->size; off += sizeof(de)){
+        if(readi(dp, (uint64)&de, off, sizeof(de)) != sizeof(de)){
+            panic("dirlookup read\n");
+            return 0;
+        }
+        if(de.inum == 0)
+            continue;
+        
+        if(namecmp(name, de.name) == 0){
+            if(poff)
+                *poff = off;
+            inum = de.inum;
+            /*范围此目录或文件对应的inode*/
+            return iget(dp->dev, inum);
+        }
+    }
+    return 0;
 }

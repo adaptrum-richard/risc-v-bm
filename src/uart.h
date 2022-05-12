@@ -28,4 +28,6 @@
 void uartpuc(int c);
 void uartputc_sync(int c);
 void uartinit(void);
+void uartintr(void);
+
 #endif

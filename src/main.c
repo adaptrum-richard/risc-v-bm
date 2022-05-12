@@ -15,6 +15,7 @@
 #include "fcntl.h"
 #include "string.h"
 #include "file.h"
+
 static volatile int init_done = 0;
 void delay()
 {
@@ -23,6 +24,47 @@ void delay()
         j = i % 3;
         j++;
     }
+}
+
+void test_console()
+{
+    int fd, ret;
+    char buf[8];
+    if((fd = __sys_open("/console", O_RDWR)) < 0){
+        __sys_mknod("/console", CONSOLE, 0);
+        fd = __sys_open("/console", O_RDWR);
+    }
+    if(fd <  0){
+        panic("test_console\n");
+    }
+    __sys_close(fd);
+    int max = 100;
+    while(1){
+        fd = __sys_open("/console", O_RDWR);
+        if(fd <  0){
+            panic("test_console\n");
+        }   
+        memset(buf, 0x0, sizeof(buf));
+        int i = 0;
+        while(i < max){
+            char c;
+            ret = __sys_read(fd, &c, 1);
+            if(ret < 1)
+                break;
+            buf[i++] = c;
+            if(c == '\n' || c == '\r')
+                break;
+        }
+        buf[i] = '\0';
+        int j = 0;
+        while(buf[j] != '\0'){
+            __sys_write(fd, &buf[j], 1);
+            j++;
+        }
+        __sys_close(fd);
+    }
+ 
+    __sys_close(fd);
 }
 
 void test_sysfile(uint64 arg)
@@ -45,7 +87,7 @@ void test_sysfile(uint64 arg)
             panic("failed");
         }
         printk("%s:%d: write  %s , len = %d\n", __func__, __LINE__, path, ret);
-        sleep(1);
+        //sleep(1);
     }
     __sys_close(fd);
 
@@ -59,7 +101,7 @@ void test_sysfile(uint64 arg)
     __sys_close(fd);
     printk("read %s, len = %d\n", buf, ret);
 
-    while(1);
+    test_console();
 }
 
 void kernel_process(uint64 arg)

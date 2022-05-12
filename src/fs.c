@@ -481,7 +481,7 @@ int dirlink(struct inode *dp, char *name, uint inum)
     struct dirent de;
     struct inode *ip;
 
-    if((ip = dirlookup(dp, name, 0)) == 0){
+    if((ip = dirlookup(dp, name, 0)) != 0){
         iput(ip);
         return -1;
     }

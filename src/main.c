@@ -11,7 +11,11 @@
 #include "virtio_disk.h"
 #include "fs.h"
 #include "bio.h"
-
+#include "sysfile.h"
+#include "fcntl.h"
+#include "string.h"
+#include "file.h"
+static volatile int init_done = 0;
 void delay()
 {
     int j = 0;
@@ -19,6 +23,43 @@ void delay()
         j = i % 3;
         j++;
     }
+}
+
+void test_sysfile(uint64 arg)
+{
+    int ret;
+    char path[MAXPATH] = {0};
+    char buf[MAXPATH] = {0};
+    while(init_done == 0);
+
+    sprintf(path, "/tmp/%s", (char*)arg);
+    int fd = __sys_open("/test", O_CREATE| O_WRONLY);
+    if(fd < 0){
+        printk("%s:%d __sys_open %d failed\n", __func__, __LINE__, fd);
+        panic("open failed\n");
+    }
+    for(int i = 0; i < 3; ++i){
+        ret = __sys_write(fd, path, strlen(path));
+        if(ret < 0){
+            printk("%s:%d __sys_write failed\n", __func__, __LINE__);
+            panic("failed");
+        }
+        printk("%s:%d: write  %s , len = %d\n", __func__, __LINE__, path, ret);
+        sleep(1);
+    }
+    __sys_close(fd);
+
+    fd = __sys_open("/test", O_RDONLY);
+    if(fd < 0){
+        printk("%s:%d __sys_open %d failed\n", __func__, __LINE__, fd);
+        panic("open failed\n");
+    }
+    
+    ret = __sys_read(fd, buf, sizeof(buf));
+    __sys_close(fd);
+    printk("read %s, len = %d\n", buf, ret);
+
+    while(1);
 }
 
 void kernel_process(uint64 arg)
@@ -35,6 +76,8 @@ void idle()
     //idle可以用来做负载均衡
     binit();
     fsinit(ROOTINO);
+    fileinit();
+    init_done = 1;
     while(1){
         //sleep(2);
         //printk("current %s run\n", current->name);
@@ -53,6 +96,9 @@ void run_proc()
         panic("copy_process error ,arg = 1\n");
 
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
+    if(ret < 0)
+        panic("copy_process error ,arg = 2\n");
+    ret = copy_process(PF_KTHREAD, (uint64)&test_sysfile, (uint64)"aaa", "test_sysfile");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
 }

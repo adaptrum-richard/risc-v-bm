@@ -6,6 +6,7 @@
 #include "sched.h"
 #include "virtio_disk.h"
 #include "hardirq.h"
+#include "uart.h"
 
 void kernelvec();
 
@@ -23,7 +24,7 @@ int devintr()
         /*supervisor mode extension interrupt*/
         int irq = plic_claim();
         if(irq == UART0_IRQ){
-            //printk("rcv uart0 irq\n");
+            uartintr();
         } else if (irq == VIRTIO0_IRQ){
             virtio_disk_intr();
             //printk("rcv virtio0 irq\n");

@@ -12,4 +12,9 @@ typedef unsigned long uint64;
 
 typedef uint64 pde_t;
 
+typedef enum{
+    GFP_KERNEL,
+    GFP_ATOMIC
+} gfp_t;
+
 #endif

@@ -2,7 +2,7 @@
 #define __SCHED_H__
 #include "types.h"
 
-#define HZ 10
+#define HZ 100
 
 void schedule_tail(void);
 void schedule(void);

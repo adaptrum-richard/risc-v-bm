@@ -5,7 +5,7 @@
 /*保存m模式 timer中断的scratch*/
 uint64 timer_scratch[NCPU][5];
 
-__attribute__ ((aligned (16))) char stack0[4096 * NCPU];
+__attribute__((aligned(16))) char stack0[4096 * NCPU];
 void main();
 void timerinit();
 extern void timervec();
@@ -18,7 +18,7 @@ void start()
 
     /*从m模式返回s模式时执行main函数*/
     w_mepc((uint64)main);
-    
+
     /*禁止地址翻译*/
     w_satp(0);
 
@@ -49,31 +49,30 @@ void start()
     asm volatile("mret");
 }
 
-void
-timerinit()
+void timerinit()
 {
-  // each CPU has a separate source of timer interrupts.
-  int id = r_mhartid();
+    // each CPU has a separate source of timer interrupts.
+    int id = r_mhartid();
 
-  // ask the CLINT for a timer interrupt.
-  int interval = 1000000; // cycles; about 1/10th second in qemu.
-  *(uint64*)CLINT_MTIMECMP(id) = *(uint64*)CLINT_MTIME + interval;
+    // ask the CLINT for a timer interrupt.
+    int interval = 1000000; // cycles; about 1/10th second in qemu.
+    *(uint64 *)CLINT_MTIMECMP(id) = *(uint64 *)CLINT_MTIME + interval;
 
-  // prepare information in scratch[] for timervec.
-  // scratch[0..2] : space for timervec to save registers.
-  // scratch[3] : address of CLINT MTIMECMP register.
-  // scratch[4] : desired interval (in cycles) between timer interrupts.
-  uint64 *scratch = &timer_scratch[id][0];
-  scratch[3] = CLINT_MTIMECMP(id);
-  scratch[4] = interval;
-  w_mscratch((uint64)scratch);
+    // prepare information in scratch[] for timervec.
+    // scratch[0..2] : space for timervec to save registers.
+    // scratch[3] : address of CLINT MTIMECMP register.
+    // scratch[4] : desired interval (in cycles) between timer interrupts.
+    uint64 *scratch = &timer_scratch[id][0];
+    scratch[3] = CLINT_MTIMECMP(id);
+    scratch[4] = interval;
+    w_mscratch((uint64)scratch);
 
-  // set the machine-mode trap handler.
-  w_mtvec((uint64)timervec);
+    // set the machine-mode trap handler.
+    w_mtvec((uint64)timervec);
 
-  // enable machine-mode interrupts.
-  w_mstatus(r_mstatus() | MSTATUS_MIE);
+    // enable machine-mode interrupts.
+    w_mstatus(r_mstatus() | MSTATUS_MIE);
 
-  // enable machine-mode timer interrupts.
-  w_mie(r_mie() | MIE_MTIE);
+    // enable machine-mode timer interrupts.
+    w_mie(r_mie() | MIE_MTIE);
 }

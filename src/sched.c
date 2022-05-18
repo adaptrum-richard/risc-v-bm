@@ -3,6 +3,7 @@
 #include "riscv.h"
 #include "printk.h"
 #include "preempt.h"
+#include "jiffies.h"
 
 volatile uint64 jiffies = 0;
 
@@ -76,14 +77,14 @@ void schedule(void)
     __schedule();
 }
 
-void wakeup(uint64 chan)
+void wakeup()
 {
     struct task_struct *p;
     for(int i = 0; i < NR_TASKS; i++){
         p = task[i];
         if(p){
             acquire(&p->lock);
-            if(p->state == SLEEPING && p->chan == chan ){
+            if(p->state == SLEEPING && timer_after_eq(jiffies, p->chan)){
                 p->state = RUNNABLE;
             }
             release(&p->lock);
@@ -156,7 +157,7 @@ void timer_tick(void)
     current->counter--;
     if(cpuid() == 0){
         jiffies++;
-        wakeup(jiffies);
+        wakeup();
     }
     //print_task_info();
     if(current->counter > 0)

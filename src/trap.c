@@ -16,59 +16,63 @@ void trapinithart(void)
   w_stvec((uint64)kernelvec);
 }
 
-int devintr()
+void devintr()
 {
-    uint64 scause = r_scause();
+    /*supervisor mode extension interrupt*/
+    int irq = plic_claim();
+    if(irq == UART0_IRQ){
+        uartintr();
+    } else if (irq == VIRTIO0_IRQ){
+        virtio_disk_intr();
+        //printk("rcv virtio0 irq\n");
+    } else {
+        printk("unexpected interrupt irq = %d\n", irq);
+    }
 
-    if( (scause & (1L<<63)) && (scause & 0xff) == 0x9 ){
-        /*supervisor mode extension interrupt*/
-        int irq = plic_claim();
-        if(irq == UART0_IRQ){
-            uartintr();
-        } else if (irq == VIRTIO0_IRQ){
-            virtio_disk_intr();
-            //printk("rcv virtio0 irq\n");
-        } else {
-            printk("unexpected interrupt irq = %d\n", irq);
-        }
-
-        if(irq)
-            plic_complete(irq);
-        return 1;
-    } else if ( scause == ( (1L << 63) | 0x1L)) {
-        //printk("cpu id = %d, rcv timer interrupt\n", cpuid());
-        w_sip(r_sip() & ~(SSTATUS_SIE));
-        timer_tick();
-        return 2;
-    } else
-        return 0;
-
+    if(irq)
+        plic_complete(irq);
 }
 
 void kerneltrap()
 {
-    int which_dev = 0;
     uint64 sepc = r_sepc();
     uint64 sstatus = r_sstatus();
     uint64 scause = r_scause();
-    if(scause & ( 1UL<< 63))
+    uint64 intr_flag = scause & ( 1UL<< 63);
+    uint64 exception_code = (scause &(~(1UL<<63)));
+    if(intr_flag)
         irq_enter();
     
     if((sstatus & SSTATUS_SPP) == 0){
         panic("kerneltrap: not from supervisor mode");
     }
+    
     if(intr_get() != 0){
         panic("kerneltrap: interrupts enabled");
     }
 
-    if((which_dev = devintr()) == 0){
-        printk("scause %p\n", scause);
-        printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
-        panic("kerneltrap");
+    if(intr_flag){
+        switch (exception_code) {
+        case IRQ_S_EXT:
+            devintr();
+            break;
+        case IRQ_S_SOFT:
+            /*s模式的软件中断来时m模式的时钟中断*/
+            w_sip(r_sip() & ~(SSTATUS_SIE));
+            timer_tick();
+            break;
+        default:
+            printk("scause %p\n", scause);
+            printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
+            panic("kerneltrap");
+            break;
+        }
+    }else {
+        /*异常处理*/
+        
     }
 
-
-    if(scause & ( 1UL<< 63))
+    if(intr_flag)
         irq_exit();
     /*maybe schedule thread*/
 

@@ -69,7 +69,20 @@ void kerneltrap()
         }
     }else {
         /*异常处理*/
-        
+        switch (exception_code)
+        {
+        case EXC_SYSCALL:
+            break;
+        case EXC_LOAD_ACCESS:
+            break;
+        case EXC_STORE_ACCESS:
+            break;
+        default:
+            printk("scause %p\n", scause);
+            printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
+            panic("kerneltrap");
+            break;
+        }
     }
 
     if(intr_flag)

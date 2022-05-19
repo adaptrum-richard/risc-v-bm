@@ -299,6 +299,24 @@ w_mscratch(uint64 x)
                  : "r"(x));
 }
 
+#define csr_read_clear(csr, val)    \
+({  \
+    unsigned long __v = (unsigned long)(val); \
+    asm volatile("csrrc %0" #csr", %1" \
+        :"=r"(__v): "rK"(__v) \
+        :"memory"   \
+    );  \
+    __v;    \
+})
+
+#define csr_set(csr, val)   \
+({  \
+    unsigned long __v = (unsigned long)(val);   \
+    __asm__ __volatile__ ("csrs " #csr ", %0"	\
+            : : "rK" (__v)			\
+            : "memory");			\
+})
+
 typedef uint64 pte_t;
 typedef uint64 *pagetable_t; // 512 PTEs
 

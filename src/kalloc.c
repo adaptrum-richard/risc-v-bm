@@ -12,15 +12,15 @@ static void freerange(void *pa_start, void *pa_end)
     char *p;
     p = (char *)PGROUNDUP((uint64)pa_start);
     for (; p + PGSIZE <= (char *)pa_end; p += PGSIZE)
-        kfree(p);
+        free_page(p);
 }
 
-void kfree(void *pa)
+void free_page(void *pa)
 {
     struct run *r;
 
     if (((uint64)pa % PGSIZE) != 0 || (char *)pa < _end || (uint64)pa >= PHYSTOP)
-        panic("kfree");
+        panic("free_page");
 
     // Fill with junk to catch dangling refs.
     memset(pa, 1, PGSIZE);

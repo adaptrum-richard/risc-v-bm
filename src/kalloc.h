@@ -13,6 +13,6 @@ struct kmem{
 
 void kinit(void);
 void* kalloc(void);
-void kfree(void *pa);
+void free_page(void *pa);
 void *get_free_one_page(void);
 #endif

@@ -142,7 +142,9 @@ void log_end_op(void)
     if(log.outstanding == 0){
         /*当前没有线程对文件进行操作，则可以commit log*/
         log.committing = 1;
+        release(&log.lock);
         commit();
+        acquire(&log.lock);
         log.committing = 0;
         WRITE_ONCE(log_queue_condition, 1);
         release(&log.lock);

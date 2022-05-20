@@ -168,52 +168,11 @@ void preempt_schedule_irq(void)
     preempt_enable();
 }
 
-void wake(uint64 wait)
-{
-    struct task_struct *p;
-    /*这里需要修改，改成wait queue*/
-    for(int i = 0; i < NR_TASKS; i++){
-        p = task[i];
-        if(p){
-            if(in_hardirq())
-                acquire(&p->lock);
-            else
-                acquire_irq(&p->lock);
-            if(p->wait == wait && p->state == TASK_INTERRUPTIBLE){
-                p->state = TASK_RUNNING;
-            }
-            if(in_hardirq())
-                release(&p->lock);
-            else
-                release_irq(&p->lock);
-        }
-    }
-}
-
 void wake_up_process(struct task_struct *p)
 {
     struct run_queue *rq = &g_rq;
     p->state = TASK_RUNNING;
     enqueue_task(rq, p);
-}
-
-void wait(uint64 c)
-{
-    acquire_irq(&current->lock);
-    current->wait = c;
-    //说明已经中断已经发生了，防止等待进程无法被唤醒
-    if(current->state == TASK_RUNNING) 
-        current->state = TASK_INTERRUPTIBLE;
-    release_irq(&current->lock);
-
-    __schedule();
-   
-    /*如果中断没有发送，大不了再来一次。*/
-    acquire_irq(&current->lock);
-    if(current->wait == 0)
-        panic("wait");
-    current->wait = 0;
-    release_irq(&current->lock);
 }
 
 void timer_tick(void)

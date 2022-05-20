@@ -45,8 +45,6 @@ struct sched_class {
 void schedule_tail(struct task_struct *prev);
 void schedule(void);
 void timer_tick(void);
-void wake(uint64 wait);
-void wait(uint64 c);
 void set_task_sched_class(struct task_struct *p);
 struct run_queue *cpu_rq(int cpu);
 void sched_init(void);

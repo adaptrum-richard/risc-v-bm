@@ -142,6 +142,9 @@ void log_end_op(void)
     if(log.outstanding == 0){
         /*当前没有线程对文件进行操作，则可以commit log*/
         log.committing = 1;
+        /*在commit中会调用virtio_disk_rw，virtio_disk_rw会调用schedule，
+         *在调用schedule的时候最好不要在锁里面调用。会产生schedule while atomic的bug
+        */
         release(&log.lock);
         commit();
         acquire(&log.lock);

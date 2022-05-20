@@ -77,7 +77,7 @@ void sched_init(void)
     struct run_queue *rq = &g_rq;
     INIT_LIST_HEAD(&rq->rq_head);
     rq->nr_running = 0;
-    rq->nr_running = 0;
+    rq->nr_switches = 0;
     rq->curr = NULL;
 }
 

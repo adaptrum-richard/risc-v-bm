@@ -7,7 +7,7 @@ void *kmalloc(int size, gfp_t flags)
     return kalloc();
 }
 
-void kfree(const void *block)
+void kfree(void *block)
 {
     free_page(block);
 }

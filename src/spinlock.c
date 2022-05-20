@@ -75,33 +75,6 @@ void release_irq(struct spinlock *lk)
     intr_on();
 }
 
-static inline unsigned long arch_local_irq_save(void)
-{
-    return csr_read_clear(sstatus, SSTATUS_SIE);
-}
-
-#define raw_local_irq_save(flags)   \
-do{ \
-    typecheck(unsigned long, flags);    \
-    flags = arch_local_irq_save();  \
-}while(0)
-
-#define local_irq_save(flags)	do { raw_local_irq_save(flags); } while (0)
-
-
-static inline unsigned long __raw_spin_lock_irqsave(struct spinlock *lock)
-{
-    unsigned long flags;
-    local_irq_save(flags);
-    acquire(lock);
-    return flags;
-}
-
-#define spin_lock_irqsave(lock, flags)  \
-do {        \
-    flags = __raw_spin_lock_irqsave(lock);  \
-}while(0)   \
-
 static inline void arch_local_irq_restore(unsigned long flags)
 {
     csr_set(sstatus, flags & SSTATUS_SIE);

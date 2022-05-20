@@ -5,7 +5,7 @@
 
 void plicinithart(void)
 {
-  int hart = cpuid();
+  int hart = smp_processor_id();
   
   // set uart's enable bit for this hart's S-mode. 
   *(uint32*)PLIC_SENABLE(hart)= (1 << UART0_IRQ) | (1 << VIRTIO0_IRQ);
@@ -17,7 +17,7 @@ void plicinithart(void)
 // ask the PLIC what interrupt we should serve.
 int plic_claim(void)
 {
-    int hart = cpuid();
+    int hart = smp_processor_id();
     int irq = *(uint32*)PLIC_SCLAIM(hart);
     return irq;
 }
@@ -25,7 +25,7 @@ int plic_claim(void)
 // tell the PLIC we've served this IRQ.
 void plic_complete(int irq)
 {
-  int hart = cpuid();
+  int hart = smp_processor_id();
   *(uint32*)PLIC_SCLAIM(hart) = irq;
 }
 

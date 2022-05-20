@@ -32,6 +32,9 @@ static inline int preempt_count(void)
     return (int)current->preempt_count;
 }
 
+#define in_atomic_preempt_off() \
+    (preempt_count() != 1)
+
 #define hardirq_count()	(preempt_count() & HARDIRQ_MASK)
 #define softirq_count()	(preempt_count() & SOFTIRQ_MASK)
 #define irq_count()	(hardirq_count() | softirq_count())

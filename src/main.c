@@ -15,6 +15,7 @@
 #include "fcntl.h"
 #include "string.h"
 #include "file.h"
+#include "sleep.h"
 
 static volatile int init_done = 0;
 void delay()
@@ -107,29 +108,32 @@ void test_sysfile(uint64 arg)
 void kernel_process(uint64 arg)
 {
     while(1){
-        //sleep(arg);
-        //printk("current %s run\n", current->name);
-        delay();
+        sleep(1);
+        printk("1 current %s run pid:%d\n", current->name, current->pid);
+        //delay();
     }
 }
 
 void idle()
 {
     //idle可以用来做负载均衡
-    binit();
-    fsinit(ROOTINO);
-    fileinit();
+    //binit();
+    //fsinit(ROOTINO);
+    //fileinit();
     init_done = 1;
     while(1){
-        //sleep(2);
-        //printk("current %s run\n", current->name);
-        delay();
+        sleep(5);
+        printk("5 current %s run pid:%d\n", current->name, current->pid);
+        //traversing_rq();
+        //delay();
     }
 }
 
 void run_proc()
 {
-    int ret = copy_process(PF_KTHREAD, (uint64)&idle, 0, "idle");
+    int ret ;
+
+    ret = copy_process(PF_KTHREAD, (uint64)&idle, 0, "idle");
     if(ret < 0)
         panic("copy_process error ,arg = 0\n");
 
@@ -140,14 +144,16 @@ void run_proc()
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
+#if 0
     ret = copy_process(PF_KTHREAD, (uint64)&test_sysfile, (uint64)"aaa", "test_sysfile");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
+#endif
 }
 
 void main()
 {
-    if(cpuid() == 0)
+    if(smp_processor_id() == 0)
     {
         consoleinit();
         printkinit();
@@ -158,14 +164,16 @@ void main()
         trapinithart();
         plicinit();
         plicinithart();
+        sched_init();
+        init_process();
         __sync_synchronize();
         virtio_disk_init();
         run_proc();
         intr_on();
-        for(;;){
-            //sleep(10);
-            //delay();
-            schedule();
+        while(1){
+            //sleep(3);
+            //printk("current %s run pid:%d\n", current->name, current->pid);
+            delay();
         }
     }else{
         while(1);

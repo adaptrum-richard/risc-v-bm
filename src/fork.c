@@ -9,6 +9,8 @@
 #include "sched.h"
 #include "string.h"
 #include "preempt.h"
+#include "spinlock.h"
+#include "barrier.h"
 
 extern void ret_from_kernel_thread(void);
 
@@ -20,10 +22,16 @@ static inline struct pt_regs *task_pt_regs(struct task_struct *tsk)
 
 int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
 {
-    preempt_disable();
+    int pid = -1;
+    unsigned long flags;
     struct task_struct *p = get_free_one_page();
     if(!p)
         return -1;
+    
+    if((pid = get_free_pid()) == -1){
+        free_page(p);
+        return -1;
+    }
     memset(p, 0, sizeof(*p));
     struct pt_regs *childregs = task_pt_regs(p);
     memset(childregs, 0x0, sizeof(struct pt_regs));
@@ -33,24 +41,28 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
         p->thread.s[0] = fn;
         p->thread.s[1] = arg;
         p->thread.ra = (uint64)ret_from_kernel_thread;
-        p->state = RUNNING;
-        p->flags = PF_KTHREAD;
+        p->state = TASK_RUNNING;
+        p->flags = PF_KTHREAD | TASK_NORMAL;
         /* Supervisor irqs on: */
         childregs->status = SSTATUS_SPP | SSTATUS_SPIE;
     } else {
         printk("now , not implement user mode\n");
-        preempt_enable();
         return -1;
     }
     
     p->priority = current->priority;
-    p->counter = p->priority;
-    p->preempt_count = 1;
-    p->pid = nr_tasks++;
-    if(!!name)
+    p->counter = DEF_COUNTER;
+    p->preempt_count = 0;
+    p->pid = pid;
+    p->cpu = smp_processor_id();
+    set_task_sched_class(p);
+    if(name)
         strcpy(p->name, name);
-    task[p->pid] = p;
     p->thread.sp = (uint64)childregs;
-    preempt_enable();
+    LINK_TASK(p);
+    mb();
+    spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
+    p->sched_class->enqueue_task(cpu_rq(task_cpu(p)), p);
+    spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
     return 0;
 }

@@ -1,5 +1,6 @@
 #include "hardirq.h"
 #include "sched.h"
+#include "sleep.h"
 
 void irq_enter(void)
 {
@@ -9,8 +10,13 @@ void irq_enter(void)
 void irq_exit(void)
 {
     __irq_exit_raw();
-    if(current->need_resched == 1 && current->preempt_count == 0){
-        schedule();
-        current->need_resched = 0;
+    /*只有在当前进程的preemt_count为0 且need_resched为1时才能被抢占调度*/
+    if(READ_ONCE(current->preempt_count) != 0 )
+        goto out;
+    if(READ_ONCE(current->need_resched) == 1){
+        preempt_schedule_irq();
     }
+out:
+    wakes_sleep();
+    return;
 }

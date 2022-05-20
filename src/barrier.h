@@ -21,4 +21,16 @@ do {                \
 #define __smp_rmb()   RISCV_FENCE(r, r)
 #define __smp_wmb()   RISCV_FENCE(w, w)
 
+#define barrier() asm volatile("": : :"memory")
+#define smp_store_mb(var, value)  do { WRITE_ONCE(var, value); __smp_mb(); } while (0)
+
+#define smp_store_release(p, v) do { __smp_wmb(); WRITE_ONCE(*p, v);}while(0)
+
+# define smp_load_acquire(p)			\
+({						\
+    typeof(*p) ___p1 = READ_ONCE(*p);	\
+    __smp_rmb();				\
+    ___p1;   \
+})
+
 #endif

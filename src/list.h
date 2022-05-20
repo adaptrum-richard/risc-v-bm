@@ -76,7 +76,7 @@ static inline int list_empty(const struct list_head *head)
 }
 
 #define container_of(ptr, type, member) ({  \
-    ((type *)(__mptr - offsetof(type, member))); })
+    ((type *)((char*)ptr - offsetof(type, member))); })
 
 #define list_entry(ptr, type, member) \
     container_of(ptr, type, member)
@@ -101,4 +101,35 @@ static inline int list_empty(const struct list_head *head)
         !list_is_head(pos, (head)); \
             pos = n, n = pos->next)
 
+#define list_entry_is_head(pos, head, member)   \
+        (&pos->member == (head))
+
+#define list_for_each_entry(pos, head, member)  \
+    for (pos = list_first_entry(head, typeof(*pos), member);	\
+        !list_entry_is_head(pos, head, member);	    \
+        pos = list_next_entry(pos, member))
+
+#define list_for_each_entry_safe_from(pos, n, head, member) 			\
+    for (n = list_next_entry(pos, member);					\
+    !list_entry_is_head(pos, head, member);				\
+        pos = n, n = list_next_entry(n, member))
+
+static inline void list_del_init_careful(struct list_head *entry)
+{
+    __list_del_entry(entry);
+    entry->prev = entry;
+    smp_store_release(&entry->next, entry);
+}
+
+static inline int list_empty_careful(const struct list_head *head)
+{
+    struct list_head *next = smp_load_acquire(&head->next);
+    return list_is_head(next, head) && (next == head->prev);
+}
+
+static inline void list_del_init(struct list_head *entry)
+{
+    __list_del_entry(entry);
+    INIT_LIST_HEAD(entry);
+}
 #endif

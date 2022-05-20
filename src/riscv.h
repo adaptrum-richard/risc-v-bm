@@ -302,8 +302,9 @@ w_mscratch(uint64 x)
 #define csr_read_clear(csr, val)    \
 ({  \
     unsigned long __v = (unsigned long)(val); \
-    asm volatile("csrrc %0" #csr", %1" \
-        :"=r"(__v): "rK"(__v) \
+    asm volatile("csrrc %0, " #csr ", %1" \
+        :"=r"(__v)  \
+        : "rK"(__v) \
         :"memory"   \
     );  \
     __v;    \
@@ -313,7 +314,8 @@ w_mscratch(uint64 x)
 ({  \
     unsigned long __v = (unsigned long)(val);   \
     __asm__ __volatile__ ("csrs " #csr ", %0"	\
-            : : "rK" (__v)			\
+            :   \
+            : "rK" (__v)			\
             : "memory");			\
 })
 

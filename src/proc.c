@@ -2,30 +2,32 @@
 #include "proc.h"
 #include "printk.h"
 #include "preempt.h"
+#include "sched.h"
+#include "biops.h"
+#include "kalloc.h"
+#include "string.h"
+#include "spinlock.h"
 
-static struct task_struct init_task = {
-    .thread = {0},
-    .counter = 15,
-    .lock = {
-        .locked = 0,
-        .name = "init_task"},
-    .name = "init_task",
-    .pid = 0,
-    .preempt_count = 0,
-    .state = RUNNING,
-    .flags = PF_KTHREAD,
-    .priority = 5,
-    .chan = 0,
-    .wait = 0,
-    .need_resched = 1,
-    .runtime = 0
-};
+static unsigned long *pid_table;
+static struct spinlock task_list_lock;
+
+struct task_struct init_task = INIT_TASK(init_task);
 
 struct task_struct *current = &init_task;
 struct task_struct *task[NR_TASKS] = {
     &init_task,
 };
 int nr_tasks = 1;
+
+void get_task_list_lock(void)
+{
+    acquire(&task_list_lock);
+}
+
+void free_task_list_lock(void)
+{
+    release(&task_list_lock);
+}
 
 void print_task_info()
 {
@@ -42,8 +44,37 @@ void print_task_info()
         printk("%s", buf);
 }
 
-int cpuid()
+int smp_processor_id()
 {
     int id = r_tp();
     return id;
+}
+
+int get_free_pid(void)
+{
+    int pid = find_next_zero_bit(pid_table, MAX_PID+1, 0);
+    if(pid > MAX_PID)
+        pid = -1;
+    else
+        set_bit(pid, pid_table);
+    return pid;
+}
+
+void free_pid(int pid)
+{
+    clear_bit(pid, pid_table);
+}
+
+void init_process(void)
+{
+    struct task_struct *p = &init_task;
+    pid_table = (unsigned long*)get_free_one_page();
+    memset(pid_table, 0x0, PGSIZE);
+
+    /*init_task pid 0 used*/
+    set_bit(0, pid_table);
+    initlock(&task_list_lock, "task list lock");
+    p->cpu = smp_processor_id();
+    set_task_sched_class(p);
+    p->sched_class->enqueue_task(cpu_rq(p->cpu), p);
 }

@@ -77,6 +77,7 @@ void test_sysfile(uint64 arg)
 
     sprintf(path, "/tmp/%s", (char*)arg);
     int fd = __sys_open("/test", O_CREATE| O_WRONLY);
+
     if(fd < 0){
         printk("%s:%d __sys_open %d failed\n", __func__, __LINE__, fd);
         panic("open failed\n");
@@ -101,7 +102,6 @@ void test_sysfile(uint64 arg)
     ret = __sys_read(fd, buf, sizeof(buf));
     __sys_close(fd);
     printk("read %s, len = %d\n", buf, ret);
-
     test_console();
 }
 
@@ -109,7 +109,7 @@ void kernel_process(uint64 arg)
 {
     while(1){
         sleep(1);
-        printk("1 current %s run pid:%d\n", current->name, current->pid);
+        //printk("1 current %s run pid:%d\n", current->name, current->pid);
         //delay();
     }
 }
@@ -117,13 +117,13 @@ void kernel_process(uint64 arg)
 void idle()
 {
     //idle可以用来做负载均衡
-    //binit();
-    //fsinit(ROOTINO);
-    //fileinit();
+    binit();
+    fsinit(ROOTINO);
+    fileinit();
     init_done = 1;
     while(1){
         sleep(5);
-        printk("5 current %s run pid:%d\n", current->name, current->pid);
+        //printk("5 current %s run pid:%d\n", current->name, current->pid);
         //traversing_rq();
         //delay();
     }
@@ -144,11 +144,9 @@ void run_proc()
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
-#if 0
     ret = copy_process(PF_KTHREAD, (uint64)&test_sysfile, (uint64)"aaa", "test_sysfile");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
-#endif
 }
 
 void main()

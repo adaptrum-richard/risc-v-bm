@@ -6,7 +6,10 @@
 #include "sched.h"
 #include "string.h"
 #include "printk.h"
+#include "wait.h"
 
+DECLARE_WAIT_QUEUE_HEAD(console_wait_queue);
+static int console_wait_condition = 0;
 struct console cons;
 
 //user使用
@@ -26,21 +29,24 @@ int consoleread(uint64 dst, int n)
     uint target;
     int c;
     char cbuf;
-
+    unsigned long flags;
     target = n;
-    acquire_irq(&cons.lock);
+
+    spin_lock_irqsave(&cons.lock, flags);
     while(n > 0){
         while(cons.r == cons.w){
             /*环形缓冲区为空*/
-            release_irq(&cons.lock);
+            spin_unlock_irqrestore(&cons.lock, flags);
             return -1;
         }
-        release_irq(&cons.lock);
+        spin_unlock_irqrestore(&cons.lock, flags);
 
         /*等待中断唤醒*/
-        wait((uint64)&cons.r);
+        wait_event(console_wait_queue, READ_ONCE(console_wait_condition) == 1);
+        smp_store_release(&console_wait_condition, 0);
 
-        acquire_irq(&cons.lock);
+        spin_lock_irqsave(&cons.lock, flags);
+
         /*从缓冲区找中取走数据*/
         c = cons.buf[cons.r++ % INPUT_BUF];
 
@@ -58,7 +64,7 @@ int consoleread(uint64 dst, int n)
         if(c == '\n')
             break;
     }
-    release_irq(&cons.lock);
+    spin_unlock_irqrestore(&cons.lock, flags);
     return target-n;
 }
 
@@ -83,7 +89,8 @@ void consoleintr(int c)
                 
                 if(c == '\n' || c == C('D') || cons.e == cons.r + INPUT_BUF){
                     cons.w = cons.e;
-                    wake((uint64)&cons.r);
+                    smp_store_release(&console_wait_condition, 1);
+                    wake_up(&console_wait_queue);
                 } 
             }
         break;

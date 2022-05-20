@@ -11,9 +11,15 @@
 #include "proc.h"
 #include "sched.h"
 #include "string.h"
-
+#include "wait.h"
 // the address of virtio mmio register r.
 #define R(r) ((volatile uint32 *)(VIRTIO0 + (r)))
+
+DECLARE_WAIT_QUEUE_HEAD(virtio_disk_handle_queue);
+
+DECLARE_WAIT_QUEUE_HEAD(virtio_disk_free_buf_queue);
+static int free_buf_condition = 0;
+
 
 static struct disk {
   // the virtio driver and device mostly communicate through a set of
@@ -145,7 +151,9 @@ static void free_desc(int i)
     disk.desc[i].flags = 0;
     disk.desc[i].next = 0;
     disk.free[i] = 1;
-    wake((uint64)&disk.free[0]);
+
+    smp_store_release(&free_buf_condition, 1);
+    wake_up(&virtio_disk_free_buf_queue);
 }
 
 // free a chain of descriptors.
@@ -191,17 +199,19 @@ static int alloc3_desc(int *idx)
 void virtio_disk_rw(struct buf *b, int write)
 {
     //每个扇区512字节，每个块1024字节
+    unsigned long flags;
     uint64 sector = b->blockno * (BSIZE/512);
-    
-    acquire_irq(&disk.vdisk_lock);
     int idx[3];
+
+    spin_lock_irqsave(&disk.vdisk_lock, flags);
     while(1){
         if(alloc3_desc(idx) == 0){
+            WRITE_ONCE(free_buf_condition, 0);
             break;
         }
-        release_irq(&disk.vdisk_lock);
-        wait((uint64)&disk.free[0]);
-        acquire_irq(&disk.vdisk_lock);
+        spin_unlock_irqrestore(&disk.vdisk_lock, flags);
+        wait_event_interruptible(virtio_disk_free_buf_queue, READ_ONCE(free_buf_condition) == 1);
+        spin_lock_irqsave(&disk.vdisk_lock, flags);
     }
     
     struct virtio_blk_req *buf0 = &disk.ops[idx[0]];
@@ -251,17 +261,17 @@ void virtio_disk_rw(struct buf *b, int write)
     *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0;
 
     //等待virtio-disk处理完成，中断函数会将b->disk设置为0
-    while(b->disk == 1){
-        release_irq(&disk.vdisk_lock);
-        wait((uint64)b);
-        acquire_irq(&disk.vdisk_lock);
-    }
+    //while(b->disk == 1){
+    spin_unlock_irqrestore(&disk.vdisk_lock, flags);
+    wait_event(virtio_disk_handle_queue, READ_ONCE(b->disk) == 0);
+    spin_lock_irqsave(&disk.vdisk_lock, flags);
+    //}
 
     disk.info[idx[0]].b = 0;
 
     /*free_chain中的wake函数将唤醒等待free数组的进程*/
     free_chain(idx[0]);
-    release_irq(&disk.vdisk_lock);
+    spin_unlock_irqrestore(&disk.vdisk_lock, flags);
 }
 
 void virtio_disk_intr()
@@ -281,8 +291,9 @@ void virtio_disk_intr()
             panic("virtio_disk_intr status");
 
         struct buf *b = disk.info[id].b;
-        b->disk = 0;   // disk is done with buf
-        wake((uint64)b);
+        //b->disk = 0;   // disk is done with buf
+        smp_store_release(&b->disk, 0);
+        wake_up(&virtio_disk_handle_queue);
 
         disk.used_idx += 1;
     }

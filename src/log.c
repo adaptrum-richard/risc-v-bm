@@ -9,6 +9,7 @@
 #include "string.h"
 #include "bio.h"
 #include "sched.h"
+#include "wait.h"
 
 /*
 WAL机制
@@ -21,6 +22,9 @@ ref：https://zhuanlan.zhihu.com/p/228335203
 static void recover_from_log(void);
 static void install_trans(int recovering);
 static void commit(void);
+
+DECLARE_WAIT_QUEUE_HEAD(log_queue);
+static int log_queue_condition = 0;
 
 struct log log;
 
@@ -108,16 +112,17 @@ void log_begin_op(void)
         if(log.committing) {
             /*如果有线程正在提交log，则等待提交完成后，线程才能进入新的文件操作*/
             release(&log.lock);
-            wait((uint64)&log);
+            wait_event(log_queue, READ_ONCE(log_queue_condition) == 1);
             acquire(&log.lock);
         } else if(log.lh.n + (log.outstanding + 1)*MAXOPBLOCKS > LOGSIZE) {
             /*如果同时操作文件的线程或次数超过了log空间能承受的范围，则等待commit log*/
             release(&log.lock);
-            wait((uint64)&log);
+            wait_event(log_queue, READ_ONCE(log_queue_condition) == 1);
             acquire(&log.lock);
         } else {
             /*线程开始执行文件操作前需要将log.outstanding加1*/
             log.outstanding++;
+            smp_store_release(&log_queue_condition, 0);
             release(&log.lock);
             break;
         }
@@ -139,12 +144,14 @@ void log_end_op(void)
         log.committing = 1;
         commit();
         log.committing = 0;
+        WRITE_ONCE(log_queue_condition, 1);
         release(&log.lock);
-        wake((uint64)&log);
+        wake_up(&log_queue);
     }else {
+        WRITE_ONCE(log_queue_condition, 1);
         release(&log.lock);
         /*唤醒在log_begin_to等待的线程*/
-        wake((uint64)&log);
+        wake_up(&log_queue);
     }
 }
 

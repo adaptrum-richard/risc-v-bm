@@ -3,12 +3,15 @@
 #include "types.h"
 #include "console.h"
 #include "sched.h"
+#include "wait.h"
+
 struct spinlock uart_tx_lock;
 #define UART_TX_BUF_SIZE 32
 char uart_tx_buf[UART_TX_BUF_SIZE];
 uint64 uart_tx_w; // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
 uint64 uart_tx_r; // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
-
+DECLARE_WAIT_QUEUE_HEAD(uart_wait_queue);
+static int uart_wait_condition = 0;
 void uartinit(void)
 {
   // disable interrupts.
@@ -53,8 +56,9 @@ void uartstart()
         uart_tx_r += 1;
         /*注意: uart写不能在关闭外部中断的情况下执行*/
         UartWriteReg(THR, c);
-        
-        wake((uint64)&uart_tx_r);
+        smp_store_release(&uart_wait_condition, 1);
+        wake_up(&uart_wait_queue);
+        //wake((uint64)&uart_tx_r);
     }
 }
 
@@ -67,12 +71,13 @@ void uartpuc(int c)
             需要等候uartstart 开放一些buffer
             */
             release(&uart_tx_lock);
-            wait((uint64)&uart_tx_r);
+            wait_event(uart_wait_queue, READ_ONCE(uart_wait_condition) == 1);
             acquire(&uart_tx_lock);
         } else {
             uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE] = c;
             uart_tx_w += 1;
             uartstart();
+            smp_store_release(&uart_wait_condition, 0);
             release(&uart_tx_lock);
             return;
         }

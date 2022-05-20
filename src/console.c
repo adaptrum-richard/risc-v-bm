@@ -35,18 +35,15 @@ int consoleread(uint64 dst, int n)
     spin_lock_irqsave(&cons.lock, flags);
     while(n > 0){
         while(cons.r == cons.w){
+            /*TODO:如果收到kill信号，这里应该退出*/
             /*环形缓冲区为空*/
             spin_unlock_irqrestore(&cons.lock, flags);
-            return -1;
+            /*等待中断唤醒*/
+            wait_event(console_wait_queue, READ_ONCE(console_wait_condition) == 1);
+            spin_lock_irqsave(&cons.lock, flags);
         }
-        spin_unlock_irqrestore(&cons.lock, flags);
 
-        /*等待中断唤醒*/
-        wait_event(console_wait_queue, READ_ONCE(console_wait_condition) == 1);
-        smp_store_release(&console_wait_condition, 0);
-
-        spin_lock_irqsave(&cons.lock, flags);
-
+        
         /*从缓冲区找中取走数据*/
         c = cons.buf[cons.r++ % INPUT_BUF];
 
@@ -64,6 +61,7 @@ int consoleread(uint64 dst, int n)
         if(c == '\n')
             break;
     }
+    smp_store_release(&console_wait_condition, 0);
     spin_unlock_irqrestore(&cons.lock, flags);
     return target-n;
 }

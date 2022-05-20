@@ -56,22 +56,6 @@ static void schedule_debug(struct task_struct *p)
     }
 }
 
-void wakeup()
-{
-    struct task_struct *p;
-    for(int i = 0; i < NR_TASKS; i++){
-        p = task[i];
-        if(p){
-            acquire(&p->lock);
-            if(p->state == TASK_INTERRUPTIBLE && timer_after_eq(jiffies, p->chan)){
-                p->state = TASK_RUNNING;
-            }
-            release(&p->lock);
-        }
-    }
-}
-
-
 void sched_init(void)
 {
     struct run_queue *rq = &g_rq;

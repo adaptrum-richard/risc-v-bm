@@ -33,6 +33,7 @@ struct thread_struct {
 struct task_struct {
     struct thread_struct thread;
     int preempt_count;
+    int need_resched;
     int cpu;
     int counter;
     int pid;
@@ -43,9 +44,6 @@ struct task_struct {
     uint64 priority;
     int on_rq;
     struct sched_class *sched_class;
-    uint64 chan;
-    uint64 wait;
-    uint64 need_resched;
     struct file *ofile[NOFILE]; //open file
     struct list_head run_list;
     struct task_struct *prev_task;
@@ -68,8 +66,6 @@ static inline unsigned int task_cpu(const struct task_struct *p)
     .state = TASK_RUNNING,   \
     .flags = PF_KTHREAD | TASK_NORMAL,    \
     .priority = 5,  \
-    .chan = 0,  \
-    .wait = 0,  \
     .need_resched = 0,  \
     .on_rq = 0, \
     .run_list = LIST_HEAD_INIT(task.run_list), \

@@ -131,3 +131,130 @@ found_tail:
     new->prev = mrg;
     return 0;
 }
+
+static void *memblock_alloc(unsigned size)
+{
+    unsigned long alloc_start;
+    struct memblock_region *mrg, *prev;
+    unsigned long mbase, mend;
+    struct memblock_region *new;
+    unsigned long kernel_end = (unsigned long)_end;
+    size = PGROUNDUP(size);
+    
+    /*从内核结束位置开始查找空闲内存*/
+    alloc_start = PAGE_ALIGN(kernel_end);
+    for_each_memblock_region(mrg){
+        mbase = mrg->base;
+        mend = mrg->base+mrg->size;
+        prev = mrg->prev;
+
+        /*找到一个适合的memblock*/
+        if(mrg->flags == MEMBLOCK_RESERVE)
+            continue;
+        if(mbase < alloc_start || mend <= alloc_start)
+            continue;
+        if(mrg->size < size)
+            continue;
+        
+        /*当prev的memblock属性是RESERVE, next的属性是FREE，两者相邻，
+        那么可以把prev的memblock往上扩展，从而分配空闲页面*/
+        if(((prev->base + prev->size) == mbase) 
+            && prev->flags == MEMBLOCK_RESERVE 
+            && mrg->flags == MEMBLOCK_FREE){
+            prev->size += size;
+            mrg->base += size;
+            mrg->size -= size;
+            return (void*)mbase;
+        }
+        new = memblock_init_entity(mbase, size, MEMBLOCK_RESERVE);
+        if(!new)
+            return NULL;
+        
+        mrg->base = mbase + size;
+        mrg->size = mrg->size - size;
+
+        memblock_insert_new(prev, new, mrg);
+        memblock.num_regions++;
+        return (void*)new->base;
+    }
+    return NULL;
+}
+
+int memblock_reserve(unsigned long base, unsigned long size)
+{
+    struct memblock_region *mrg, *prev;
+    unsigned long mbase, mend;
+    struct memblock_region *new, *new1;
+    unsigned long end = base + size;
+
+    base = PGROUNDDOWN(base);
+    size = PGROUNDUP(size);
+
+    for_each_memblock_region(mrg){
+        mbase = mrg->base;
+        mend = mrg->base + mrg->size;
+        prev = mrg->prev;
+
+        /*memblock按照从小到大的顺序排列，根本没有合适的memblock，退出循环*/
+        if(mbase > end)
+            break;
+        
+        if(mend < base)
+            continue;
+        
+        if(mrg->flags == MEMBLOCK_RESERVE)
+            continue;
+        
+        /*情况1：刚好完全吻合*/
+        if(mend == end && mbase == base){
+            mrg->flags = MEMBLOCK_RESERVE;
+            return 0;
+        } else if(mbase == base){
+            /*情况2：低地址吻合*/
+            new = memblock_init_entity(base, size, MEMBLOCK_RESERVE);
+            if(!new)
+                return -EINVAL;
+            mrg->base += size;
+            mrg->size -= size;
+            memblock_insert_new(prev, new, mrg);
+            memblock.num_regions++;
+            return 0;
+        } else if (mend == base + size){
+            /*情况3：高地址正好相等，低地址多出一截*/
+            new = memblock_init_entity(mbase, mrg->size - size, MEMBLOCK_FREE);
+            if(!new)
+                return -EINVAL;
+            mrg->size -= size;
+            mrg->base += size;
+            mrg->flags = MEMBLOCK_RESERVE;
+            memblock_insert_new(prev, new, mrg);
+            memblock.num_regions++;
+            return 0;
+        } else if(mbase < base && mend > end){
+            /*情况4：正好在中间，两头多出一截*/
+            new = memblock_init_entity(mbase, base - mbase, MEMBLOCK_FREE);
+            if(!new)
+                return -EINVAL;
+            new1 = memblock_init_entity(base, size, MEMBLOCK_RESERVE);
+            if(!new1)
+                return -EINVAL;
+            mrg->base = base + size;
+            mrg->size = mrg->size - new1->size - new->size;
+            mrg->flags = MEMBLOCK_FREE;
+
+            memblock_insert_new(prev, new, new1);
+            memblock.num_regions++;
+
+            memblock_insert_new(new, new1, mrg);
+            memblock.num_regions++;
+            return 0;
+        }
+
+    }
+    return -EINVAL;
+}
+
+void *memblock_virt_alloc(unsigned long size)
+{
+    return memblock_alloc(size);
+}

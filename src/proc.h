@@ -8,15 +8,16 @@
 #include "sched.h"
 
 #define THREAD_SIZE     (1<<12)
-#define PF_KTHREAD      (0x100000)
-#define NR_TASKS        0xf
+#define PF_KTHREAD      (0x10000)
 #define MAX_PID         (4096*8 -1)
 
 #define TASK_RUNNING			0x0000
 #define TASK_INTERRUPTIBLE		0x0001
 #define TASK_UNINTERRUPTIBLE	0x0002
-
+#define TASK_ZOMBIIE            0x0004
+#define TASK_STOPPED            0X0008
 #define TASK_NORMAL			(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
+
 
 #define EXIT_DEAD			0x0010
 #define EXIT_ZOMBIE			0x0020
@@ -46,8 +47,8 @@ struct task_struct {
     struct sched_class *sched_class;
     struct file *ofile[NOFILE]; //open file
     struct list_head run_list;
-    struct task_struct *prev_task;
-    struct task_struct *next_task;
+    struct task_struct *prev_task, *next_task;
+    struct mm_struct *mm;
 };
 
 static inline unsigned int task_cpu(const struct task_struct *p)

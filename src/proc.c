@@ -14,10 +14,6 @@ static struct spinlock task_list_lock;
 struct task_struct init_task = INIT_TASK(init_task);
 
 struct task_struct *current = &init_task;
-struct task_struct *task[NR_TASKS] = {
-    &init_task,
-};
-int nr_tasks = 1;
 
 void get_task_list_lock(void)
 {
@@ -27,21 +23,6 @@ void get_task_list_lock(void)
 void free_task_list_lock(void)
 {
     release(&task_list_lock);
-}
-
-void print_task_info()
-{
-    char buf[1024] = {0};
-    char *p = buf;
-    for(int i = 0; i < nr_tasks; i++){
-        p += sprintf(p, "task name:%16s, state:%d, preempt_count: 0x%lx, counter: %d\n", 
-            task[i]->name, task[i]->state, task[i]->preempt_count, task[i]->counter);
-    }
-    p += sprintf(p, "===================\n");
-    if(in_hardirq())
-        printk_intr("interrupt print: \n%s\n", buf);
-    else
-        printk("%s", buf);
 }
 
 int smp_processor_id()

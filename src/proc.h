@@ -78,7 +78,6 @@ extern struct task_struct *task[];
 extern struct task_struct init_task;
 extern int nr_tasks;
 int smp_processor_id();
-void print_task_info();
 void init_process(void);
 
 int get_free_pid(void);

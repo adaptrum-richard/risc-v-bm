@@ -11,8 +11,14 @@ void sleep(uint64 times)
     set_current_state(TASK_INTERRUPTIBLE);
     wait_event_interruptible(sleep_queue, timer_after_eq(jiffies, timeout));
 }
-
+static unsigned long prev_jiffies = 0;
 void wakes_sleep(void)
 {
-    wake_up(&sleep_queue);
+    /*一秒钟唤醒一次在sleep中睡眠的进程*/
+    if(0 == prev_jiffies){
+        prev_jiffies = jiffies;
+    } else {
+        if(jiffies >= (prev_jiffies+HZ))
+            wake_up(&sleep_queue);
+    }
 }

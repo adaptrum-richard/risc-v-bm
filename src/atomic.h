@@ -7,6 +7,10 @@ typedef struct {
     int counter;
 }atomic_t;
 
+typedef struct {
+    unsigned long counter;
+}atomic64_t;
+
 /*
 riscv AMO指令
 amoadd.X X表示w或d，w表示4字节,d表示8字节
@@ -14,8 +18,8 @@ amoadd.X rd, rs2,(rs1)
 将内存中地址为 x[rs1]中的双字记为 t，把这个值变为 t+x[rs2]，把x[rd]设为 t。
 */
 
-#define ATOMIC_OP(op, asm_op, I, asm_type, c_type) \
-static inline void ____atomic_##op(c_type i, atomic_t *v) \
+#define ATOMIC_OP(op, asm_op, I, asm_type, c_type, prefix) \
+static inline void ____atomic##prefix##_##op(c_type i, atomic##prefix##_t *v) \
 {   \
     __asm__ volatile(   \
         "amo"#asm_op"." #asm_type " zero, %1, %0" \
@@ -26,7 +30,9 @@ static inline void ____atomic_##op(c_type i, atomic_t *v) \
 }
 
 #define ATOMIC_OPS(op, asm_op, I) \
-    ATOMIC_OP(op, asm_op, I, w, int)
+    ATOMIC_OP(op, asm_op, I, w, int, ) \
+    ATOMIC_OP(op, asm_op, I, d, unsigned long, 64)
+
 
 ATOMIC_OPS(add, add,  i)
 ATOMIC_OPS(sub, add, -i)
@@ -39,8 +45,15 @@ ATOMIC_OPS(xor, xor,  i)
 #define atomic_or   ____atomic_or
 #define atomic_xor  ____atomic_xor
 
+#define atomic64_add  ____atomic64_add
+#define atomic64_sub  ____atomic64_sub
+#define atomic64_or   ____atomic64_or
+#define atomic64_xor  ____atomic64_xor
+
 #undef ATOMIC_OP
 #undef ATOMIC_OPS
+
+
 
 static inline int ____atomic_read(const atomic_t *v)
 {
@@ -52,8 +65,20 @@ static inline void ____atomic_set(atomic_t *v, int i)
     WRITE_ONCE(v->counter, i);
 }
 
+static inline int ____atomic64_read(const atomic64_t *v)
+{
+    return READ_ONCE(v->counter);
+}
+
+static inline void ____atomic64_set(atomic64_t *v, int i)
+{
+    WRITE_ONCE(v->counter, i);
+}
+
 #define atmoic_read __atomic_read
 #define atomic_set  __atomic_set
+#define atmoic64_read __atomic64_read
+#define atomic64_set  __atomic64_set
 
 #define ATOMIC_FETCH_OP(op, asm_op, I, asm_type, c_type) \
 static inline c_type ____atomic_fetch_##op##_relaxed(c_type i, \
@@ -120,6 +145,12 @@ ATOMIC_OPS(sub, add, +, -i)
 ATOMIC_OPS(and, and, i)
 ATOMIC_OPS( or,  or, i)
 ATOMIC_OPS(xor, xor, i)
+
+/*and or xor*/
+#define ATOMIC64_OPS(op, asm_op, I)   \
+    ATOMIC_FETCH_OP(op, asm_op, I, d, unsigned long)
+
+
 
 /*返回旧值*/
 #define atomic_fetch_and_relaxed    ____atomic_fetch_and_relaxed

@@ -6,6 +6,8 @@
 #define BITS_PER_BYTE 8
 #define BITS_PER_LONG (sizeof(unsigned long) * BITS_PER_BYTE)
 #define BITS_TO_LONGS(nr) DIV_ROUND_UP(nr, BITS_PER_LONG)
+#define BIT_MASK(nr) (1UL << ((nr) % BITS_PER_LONG))
+#define BIT_WORD(nr) ((nr) / BITS_PER_LONG)
 
 #define get_bit_in_slot(u64slot, bit) ((u64slot) & (1UL << (bit)))
 
@@ -13,12 +15,49 @@
 
 #define set_bit_in_slot(u64slot, bit) ((u64slot) = (u64slot) | (1UL << (bit)))
 
-/* set No'nr bit to 1 in slot pointed by p */
-static inline void set_bit(unsigned int nr, volatile unsigned long *p)
+#define __test_and_op_bit_ord(op, mod, nr, addr, ord) \
+({ \
+    unsigned long __res, __mask; \
+    __mask = BIT_MASK(nr); \
+    __asm__ volatile(                           \
+        "amo" #op ".d" #ord " %0, %2, %1" \
+        :"=r"(__res), "+A"(addr[BIT_WORD(nr)]) \
+        :"r"(mod(__mask)) \
+        :"memory" \
+    ); \
+    ((__res & __mask) != 0); \
+})
+
+#define __op_bit_ord(op, mod, nr, addr, ord) \
+    __asm__ volatile( \
+        "amo" #op ".d" #ord " zero, %1, %0" \
+        : "+A" (addr[BIT_WORD(nr)]) \
+        : "r" (mod(BIT_MASK(nr))) \
+        : "memory");
+
+#define __test_and_op_bit(op, mod, nr, addr) \
+    __test_and_op_bit_ord(op, mod, nr, addr, .aqrl)
+
+#define __op_bit(op, mod, nr, addr) \
+    __op_bit_ord(op, mod, nr, addr, )
+
+#define __NOP(x)	(x)
+#define __NOT(x)	(~(x))
+
+static inline int test_and_set_bit(int nr, volatile unsigned long *addr)
 {
-    unsigned nlongs = nr / BITS_PER_LONG;
-    unsigned ilongs = nr % BITS_PER_LONG;
-    p[nlongs] |= 1UL << ilongs;
+    return __test_and_op_bit(or, __NOP, nr, addr);
+}
+
+static inline int test_and_clear_bit(int nr, volatile unsigned long *addr)
+{
+    return __test_and_op_bit(and, __NOT, nr, addr);
+}
+
+/* set No'nr bit to 1 in slot pointed by p */
+static inline void set_bit(int nr, volatile unsigned long *addr)
+{
+    __op_bit(or, __NOP, nr, addr);
 }
 
 /* get No'nr bit in slot pointed by p */
@@ -30,11 +69,9 @@ static inline int get_bit(unsigned int nr, volatile unsigned long *p)
 }
 
 /* clear No'nr bit in slot pointed by p */
-static inline void clear_bit(unsigned int nr, volatile unsigned long *p)
+static inline void clear_bit(int nr, volatile unsigned long *addr)
 {
-    unsigned nlongs = nr / BITS_PER_LONG;
-    unsigned ilongs = nr % BITS_PER_LONG;
-    p[nlongs] &= ~(1UL << ilongs);
+    __op_bit(and, __NOT, nr, addr);
 }
 
 /* return the first zero bit start from the lowerst bit */

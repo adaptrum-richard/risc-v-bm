@@ -75,10 +75,10 @@ static inline void ____atomic64_set(atomic64_t *v, int i)
     WRITE_ONCE(v->counter, i);
 }
 
-#define atmoic_read __atomic_read
-#define atomic_set  __atomic_set
-#define atmoic64_read __atomic64_read
-#define atomic64_set  __atomic64_set
+#define atmoic_read ____atomic_read
+#define atomic_set  ____atomic_set
+#define atmoic64_read ____atomic64_read
+#define atomic64_set  ____atomic64_set
 
 #define ATOMIC_FETCH_OP(op, asm_op, I, asm_type, c_type) \
 static inline c_type ____atomic_fetch_##op##_relaxed(c_type i, \

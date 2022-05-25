@@ -22,4 +22,9 @@ struct memblock {
 #define for_each_memblock_region(mrg) \
     for (mrg = memblock.head.next; mrg; mrg = mrg->next)
 
+void *memblock_virt_alloc(unsigned long size);
+int memblock_add_region(unsigned long base, unsigned long size);
+int memblock_reserve(unsigned long base, unsigned long size);
+void memblock_dump_region(void);
+unsigned long memblock_free_all(void);
 #endif

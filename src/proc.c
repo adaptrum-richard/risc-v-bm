@@ -4,7 +4,7 @@
 #include "preempt.h"
 #include "sched.h"
 #include "biops.h"
-#include "kalloc.h"
+#include "page.h"
 #include "string.h"
 #include "spinlock.h"
 
@@ -49,7 +49,7 @@ void free_pid(int pid)
 void init_process(void)
 {
     struct task_struct *p = &init_task;
-    pid_table = (unsigned long*)get_free_one_page();
+    pid_table = (unsigned long*)get_free_page();
     memset(pid_table, 0x0, PGSIZE);
 
     /*init_task pid 0 used*/

@@ -25,14 +25,6 @@
 #define EXC_VIRTUAL_INST_FAULT 22
 #define EXC_STORE_GUEST_PAGE_FAULT 23
 
-#define PGSIZE 4096 // bytes per page
-#define PGSHIFT 12  // bits of offset within a page
-
-#define PGROUNDUP(sz) (((sz) + PGSIZE - 1) & ~(PGSIZE - 1))
-#define PGROUNDDOWN(a) (((a)) & ~(PGSIZE - 1))
-#define PAGE_MASK (~(PGSIZE-1))
-#define PAGE_ALIGN(addr) (((addr) + PGSIZE - 1) & PAGE_MASK)
-
 static inline uint64 r_stval()
 {
     uint64 x;

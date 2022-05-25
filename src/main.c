@@ -2,7 +2,7 @@
 #include "printk.h"
 #include "console.h"
 #include "proc.h"
-#include "kalloc.h"
+#include "mm.h"
 #include "vm.h"
 #include "trap.h"
 #include "plic.h"
@@ -156,7 +156,7 @@ void main()
         consoleinit();
         printkinit();
         printk("boot\n");
-        kinit();
+        mem_init();
         kvminit();
         kvminithart();
         trapinithart();

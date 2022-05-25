@@ -3,6 +3,8 @@
 #include "riscv.h"
 #include "errorno.h"
 #include "printk.h"
+#include "page.h"
+#include "mm.h"
 
 static struct memblock_region memblock_regions[MAX_MEMBLOCK_REGIONS];
 
@@ -257,4 +259,68 @@ int memblock_reserve(unsigned long base, unsigned long size)
 void *memblock_virt_alloc(unsigned long size)
 {
     return memblock_alloc(size);
+}
+
+void reserve_mem_region(unsigned long start, unsigned long end)
+{
+    unsigned long start_pfn = PFN_DOWN(start);
+    unsigned long end_pfn = PFN_UP(end);
+    for(; start_pfn < end_pfn; start_pfn++){
+        struct page *page = pfn_to_page(start_pfn);
+        SetPageReserved(page);
+    }
+}
+static unsigned long memblock_free_memory(unsigned long start,
+                            unsigned long end)
+{
+    unsigned long start_pfn = PFN_DOWN(start);
+    unsigned long end_pfn = PFN_UP(end);
+    unsigned long size = 0;
+    int order;
+
+    if (start_pfn >= end_pfn)
+        return 0;
+    
+    size = end - start;
+    while(start_pfn < end_pfn){
+        order = min(MAX_ORDER - 1,  __ffs(start_pfn));
+        while ((start_pfn + (1 << order)) > end_pfn)
+            order--;
+        memblock_free_pages(pfn_to_page(start_pfn), order);
+        start_pfn += (1 << order);
+    }
+    return size;
+}
+
+unsigned long memblock_free_all(void)
+{
+    struct memblock_region *mrg;
+    unsigned long count = 0;
+    unsigned long reserve = 0;
+    for_each_memblock_region(mrg){
+        if(mrg->flags == MEMBLOCK_RESERVE){
+            reserve_mem_region(mrg->base, mrg->base + mrg->size);
+            reserve += mrg->size;
+        }
+        if(mrg->flags == MEMBLOCK_FREE){
+            count += memblock_free_memory(mrg->base, mrg->base + mrg->size);
+        }
+    }
+    printk("Memory: total %uMB, add %uKB to buddy, %uKB reserve\n",
+            (count + reserve)/1024/1024, count/1024, reserve/1024);
+    show_buddyinfo();
+    return count;
+}
+
+void memblock_dump_region(void)
+{
+    struct memblock_region *mrg;
+
+    printk("dump all memblock regions:\n");
+
+    for_each_memblock_region(mrg) {
+        printk("0x%08lx - 0x%08lx, flags: %s\n",
+            mrg->base, mrg->base + mrg->size,
+            mrg->flags ? "RESERVE":"FREE");
+    }
 }

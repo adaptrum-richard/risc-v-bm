@@ -1,6 +1,6 @@
 #include "fork.h"
 #include "types.h"
-#include "kalloc.h"
+#include "page.h"
 #include "proc.h"
 #include "string.h"
 #include "riscv.h"
@@ -24,12 +24,12 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
 {
     int pid = -1;
     unsigned long flags;
-    struct task_struct *p = get_free_one_page();
+    struct task_struct *p = (struct task_struct *)get_free_page();
     if(!p)
         return -1;
     
     if((pid = get_free_pid()) == -1){
-        free_page(p);
+        free_page((unsigned long)p);
         return -1;
     }
     memset(p, 0, sizeof(*p));

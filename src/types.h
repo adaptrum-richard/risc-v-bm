@@ -34,6 +34,12 @@ struct list_head{
 #define offsetof(TYPE, MEMBER)	((size_t)(&((TYPE *)0)->MEMBER))
 #endif
 
+#define min(a, b) (((a) < (b))?(a):(b))
+#define max(a, b) (((a) > (b))?(a):(b))
+
 #define NULL ((void *)0)
+
+#define __ALIGN_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+#define ALIGN(x, a) __ALIGN_MASK(x, (typeof(x))(a) - 1)
 
 #endif

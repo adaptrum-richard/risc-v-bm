@@ -3,7 +3,7 @@
 #include "riscv.h"
 #include "list.h"
 #include "atomic.h"
-#include "biops.h"
+#include "bitops.h"
 
 #define MAX_ORDER 11
 #define MAX_ORDER_NR_PAGES (1 << (MAX_ORDER - 1))

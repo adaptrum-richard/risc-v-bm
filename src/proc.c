@@ -3,7 +3,7 @@
 #include "printk.h"
 #include "preempt.h"
 #include "sched.h"
-#include "biops.h"
+#include "bitops.h"
 #include "page.h"
 #include "string.h"
 #include "spinlock.h"

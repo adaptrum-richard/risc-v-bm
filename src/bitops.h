@@ -1,5 +1,5 @@
-#ifndef __BIOPS_H__
-#define __BIOPS_H__
+#ifndef __BITOPS_H__
+#define __BITOPS_H__
 
 #define DIV_ROUND_UP(n, d) (((n) + (d)-1) / (d))
 

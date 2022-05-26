@@ -62,6 +62,7 @@ void kerneltrap()
             timer_tick();
             break;
         default:
+            printk("don't support interrupt\n");
             printk("scause %p\n", scause);
             printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
             panic("kerneltrap");
@@ -72,12 +73,16 @@ void kerneltrap()
         switch (exception_code)
         {
         case EXC_SYSCALL:
+            panic("syscall exception\n");
             break;
-        case EXC_LOAD_ACCESS:
+        case EXC_LOAD_PAGE_FAULT:
+            panic("load page fault exception\n");
             break;
-        case EXC_STORE_ACCESS:
+        case EXC_STORE_PAGE_FAULT:
+            panic("store page fault exception\n");
             break;
         default:
+            printk("don't support exception, code:%lu\n", exception_code);
             printk("scause %p\n", scause);
             printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
             panic("kerneltrap");

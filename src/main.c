@@ -128,6 +128,19 @@ void idle()
         //delay();
     }
 }
+extern char user_begin[], user_end[], user_process[];
+void copy_to_user_thread(uint64 arg)
+{
+    unsigned long begin = (unsigned long)&user_begin;
+    unsigned long end = (unsigned long)&user_end;
+    unsigned long proccess = (unsigned long)&user_process;
+    printk("user_beigin = 0x%lx, user_end = 0x%lx, pc = 0x%lx, process = 0x%lx\n",
+        begin, end, proccess - begin, proccess);
+    int err = move_to_user_mode(begin, end - begin, proccess - begin);
+    if(err < 0)
+        panic("move_to_user_mode\n");
+    while(1);
+}
 
 void run_proc()
 {
@@ -140,13 +153,18 @@ void run_proc()
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1, "kernel_process1");
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
-
+#if 0
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
     ret = copy_process(PF_KTHREAD, (uint64)&test_sysfile, (uint64)"aaa", "test_sysfile");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
+#else
+    ret = copy_process(PF_KTHREAD, (uint64)&copy_to_user_thread, 0, "init");
+    if(ret < 0)
+        panic("copy_process error init\n");
+#endif
 }
 
 void main()

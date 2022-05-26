@@ -63,6 +63,22 @@ static inline uint64 r_mhartid()
 #define SSTATUS_UPIE (1L << 4) // User Previous Interrupt Enable
 #define SSTATUS_SIE (1L << 1)  // Supervisor Interrupt Enable
 #define SSTATUS_UIE (1L << 0)  // User Interrupt Enable
+#define SSTATUS_UXLEN32 (1 << 32) // u-mode UXLEN = 32bit
+#define SSTATUS_UXLEN64 (2L << 32) // u-mode UXLEN = 64bit
+#define SSTATUS_UXLEN128 (3L << 32) // u-mode UXLEN = 128bit
+/*
+0：对U-mode(可访问的页面，S-mode访问将出错。
+1：s-mode访问u-mode的虚拟内存是被允许的。
+*/
+#define SSTATUS_SUM (1L<<18)
+
+/*
+全称：Endianness Control
+0：小端字节序
+1：大端字节序
+*/
+#define SSTATUS_UBE (1L<<6)
+
 
 // Supervisor Interrupt Pending
 static inline uint64 r_sip()

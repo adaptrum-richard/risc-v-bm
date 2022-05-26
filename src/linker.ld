@@ -7,7 +7,15 @@ SECTIONS
 	_text_boot = .;
 	.text.boot : { *(.text.boot) }
 	_etext_boot = .;
+	. = ALIGN(4096);
 	
+	user_begin = .;
+	.text.user : { build/user* (.text) }
+	.rodata.user : { build/user* (.rodata) }
+	.data.user : { build/user* (.data) }
+	.bss.user : { build/user* (.bss) }
+	user_end = .;
+
 	. = ALIGN(4096);
 	_text = .;
 	.text :

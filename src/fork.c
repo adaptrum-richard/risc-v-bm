@@ -11,6 +11,8 @@
 #include "preempt.h"
 #include "spinlock.h"
 #include "barrier.h"
+#include "vm.h"
+#include "slab.h"
 
 extern void ret_from_kernel_thread(void);
 
@@ -66,3 +68,24 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
     return 0;
 }
+
+int move_to_user_mode(unsigned long start, unsigned long size, 
+        unsigned long pc)
+{
+    struct pt_regs *regs = task_pt_regs(current);
+    memset((char*)regs, 0x0, sizeof(struct pt_regs));
+    regs->epc = pc;
+    regs->status = (SSTATUS_UXLEN64) | SSTATUS_SUM;
+    regs->sp = 2*PGSIZE;
+    pagetable_t upgd =  uvmcreate();
+    if(uvminit(upgd, (uchar*)start, size) < 0){
+        printk("%s %d: uvminit error\n", __func__, __LINE__);
+        return -1;
+    }
+    if(current->mm){
+        current->mm = kmalloc(sizeof(struct mm_struct));
+    }
+    current->mm->pagetable = upgd;
+    return 0;
+}
+

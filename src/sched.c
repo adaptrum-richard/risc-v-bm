@@ -6,6 +6,8 @@
 #include "jiffies.h"
 #include "wait.h"
 #include "spinlock.h"
+#include "vm.h"
+#include "mm.h"
 
 extern struct sched_class simple_sched_class;
 volatile uint64 jiffies = 0;
@@ -39,6 +41,8 @@ struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next
         return NULL;
     }
     current = next;
+    if(current->mm->pagetable)
+        set_pgd(current->mm->pagetable);
     return cpu_switch_to(&prev->thread, &next->thread);
 }
 

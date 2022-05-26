@@ -3,6 +3,7 @@
 #include "page.h"
 #include "memlayout.h"
 #include "printk.h"
+#include "slab.h"
 
 static void zone_sizes_init(unsigned long min, unsigned long max)
 {
@@ -70,4 +71,5 @@ void mem_init(void)
     memblock_init();
     bootmem_init();
     memblock_free_all();
+    kmem_cache_init();
 }

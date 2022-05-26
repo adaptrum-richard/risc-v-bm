@@ -65,6 +65,9 @@ struct page {
     unsigned int zone_id;
     unsigned int node_id;
     atomic_t refcount;
+    //slob
+    void *freelist;
+    int slob_left_units;
 };
 
 #define PageReserved(page)  get_bit(PG_reserved, &(page)->flags)

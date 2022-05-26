@@ -29,6 +29,15 @@ extern struct page *mem_map;
 #define page_to_address(page) __va(page_to_pfn(page) << PGSHIFT)
 #define virt_to_page(addr)  (pfn_to_page(__pa(addr) >> PGSHIFT))
 
+static inline int get_order(unsigned long size)
+{
+    int order;
+    size--;
+    size >>= PGSHIFT;
+    order =fls64(size);
+    return order;
+}
+
 //func
 void memblock_free_pages(struct page *page, unsigned int order);
 void clear_page_order(struct page *page);

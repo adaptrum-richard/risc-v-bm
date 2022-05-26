@@ -5,6 +5,7 @@
 #include "printk.h"
 #include "memlayout.h"
 #include "page.h"
+#include "errorno.h"
 
 pagetable_t kernel_pagetable;
 extern char _etext[];
@@ -111,4 +112,37 @@ void kvminithart()
 {
     w_satp(MAKE_SATP(kernel_pagetable));
     sfence_vma();
+}
+
+void set_pgd(pagetable_t pgd)
+{
+    w_satp(MAKE_SATP(pgd));
+    sfence_vma();    
+}
+
+/*创建一个空的page table*/
+pagetable_t uvmcreate()
+{
+    pagetable_t pagetable;
+    pagetable = (pagetable_t)get_free_page();
+    if(pagetable == 0)
+        return 0;
+    memset(pagetable, 0, PGSIZE);
+    return pagetable;
+}
+
+/*加载user的程序，并映射到0地址*/
+int uvminit(pagetable_t pagetable, uchar *src, uint size)
+{
+    char *mem;
+    int order = get_order(PGROUNDUP(size));
+    mem = (char*)get_free_pages(order);
+    /*TODO: 处理内存不足的情况*/
+    if(!mem){
+        return -ENOMEM;
+    }
+    memset(mem, 0, PGROUNDUP(size));
+    mappages(pagetable, 0, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+    memmove(mem, src, size);
+    return 0;
 }

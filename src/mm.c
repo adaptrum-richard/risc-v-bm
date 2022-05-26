@@ -27,6 +27,7 @@ void bootmem_init(void)
     min = PFN_UP(bootmem_get_start_ddr());
     max = PFN_DOWN(bootmem_get_end_ddr());
     zone_sizes_init(min, max);
+    memblock_dump_region();
 }
 
 
@@ -62,8 +63,6 @@ void memblock_init(void)
 
     printk("Memory: %uKB available, %u free pages, kernel_size: %uKB\n",
             free/1024, free/PGSIZE, kernel_size/1024);
-
-    memblock_dump_region();
 }
 
 void mem_init(void)

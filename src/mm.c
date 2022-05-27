@@ -4,6 +4,9 @@
 #include "memlayout.h"
 #include "printk.h"
 #include "slab.h"
+#include "errorno.h"
+#include "proc.h"
+#include "string.h"
 
 static void zone_sizes_init(unsigned long min, unsigned long max)
 {
@@ -73,3 +76,55 @@ void mem_init(void)
     memblock_free_all();
     kmem_cache_init();
 }
+
+static void vma_init(struct vm_area_struct *vma, 
+            struct mm_struct *mm)
+{
+    memset(vma, 0, sizeof(*vma));
+    vma->vm_mm = mm;
+}
+
+struct vm_area_struct *vm_area_alloc(struct mm_struct *mm)
+{
+    struct vm_area_struct *vma;
+    vma = kmalloc(sizeof(*vma));
+    if(vma)
+        vma_init(vma, mm);
+    return vma;
+}
+
+void vm_area_free(struct vm_area_struct *vma)
+{
+    if(vma)
+        kfree(vma);
+}
+
+static inline int mm_alloc_pgd(struct mm_struct *mm)
+{
+    mm->pagetable = (pagetable_t)get_free_page();
+    if(!mm->pagetable)
+        return -ENOMEM;
+    return 0;
+}
+
+static struct mm_struct *mm_init(struct mm_struct *mm, 
+    struct task_struct *p)
+{
+    mm->mmap = NULL;
+    if(mm_alloc_pgd(mm))
+        return NULL;
+    return mm;
+}
+
+/*分配mm，和pgd页面*/
+struct mm_struct *mm_alloc(void)
+{
+    struct mm_struct *mm;
+    mm = kmalloc(sizeof(*mm));
+    if(!mm){
+        return NULL;
+    }
+    memset(mm, 0, sizeof(*mm));
+    return mm_init(mm, current);
+}
+

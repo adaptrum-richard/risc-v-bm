@@ -94,4 +94,5 @@ static inline struct zone *page_zone(const struct page *page)
 }
 
 void mem_init(void);
+struct mm_struct *mm_alloc(void);
 #endif

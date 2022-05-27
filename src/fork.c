@@ -72,20 +72,17 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
 int move_to_user_mode(unsigned long start, unsigned long size, 
         unsigned long pc)
 {
+    struct mm_struct *mm;
     struct pt_regs *regs = task_pt_regs(current);
     memset((char*)regs, 0x0, sizeof(struct pt_regs));
     regs->epc = pc;
     regs->status = (SSTATUS_UXLEN64) | SSTATUS_SUM;
     regs->sp = 2*PGSIZE;
-    pagetable_t upgd =  uvmcreate();
-    if(uvminit(upgd, (uchar*)start, size) < 0){
+    mm = mm_alloc();
+    if(uvminit(mm->pagetable, (uchar*)start, size) < 0){
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
-    if(current->mm){
-        current->mm = kmalloc(sizeof(struct mm_struct));
-    }
-    current->mm->pagetable = upgd;
     return 0;
 }
 

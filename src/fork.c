@@ -13,6 +13,7 @@
 #include "barrier.h"
 #include "vm.h"
 #include "slab.h"
+#include "memlayout.h"
 
 extern void ret_from_kernel_thread(void);
 
@@ -53,7 +54,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     }
     
     p->priority = current->priority;
-    p->counter = DEF_COUNTER;
+    p->counter = 1;
     p->preempt_count = 0;
     p->pid = pid;
     p->cpu = smp_processor_id();
@@ -61,6 +62,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     if(name)
         strcpy(p->name, name);
     p->thread.sp = (uint64)childregs;
+    p->kernel_sp = p->thread.sp;
     LINK_TASK(p);
     mb();
     spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
@@ -76,13 +78,19 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     struct pt_regs *regs = task_pt_regs(current);
     memset((char*)regs, 0x0, sizeof(struct pt_regs));
     regs->epc = pc;
-    regs->status = (SSTATUS_UXLEN64) | SSTATUS_SUM;
-    regs->sp = 2*PGSIZE;
+    //regs->status = 0;
+    //regs->status |= (SSTATUS_UXLEN64 | SSTATUS_SUM);
+    regs->status &= ~SSTATUS_SPP;
+    regs->status |= SSTATUS_SPIE;
+
+    regs->sp = STACK_TOP_MAX;
+    
     mm = mm_alloc();
     if(uvminit(mm->pagetable, (uchar*)start, size) < 0){
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
+    printk("=====init:0x%lx\n", (uint64)current);
     return 0;
 }
 

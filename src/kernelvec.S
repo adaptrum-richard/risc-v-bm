@@ -1,79 +1,122 @@
 .globl kernelvec
 .align 4
 kernelvec:
-        // make room to save registers.
-        addi sp, sp, -256
+        /*sscratch为0，表示中断或异常在内核态触发，否则在用户态*/
+        csrrw tp, sscratch, tp //将tp和sscratch的值交换
+        //如果来自内核，sscratch则为0, 如果来自用户空间，则sscratch指向用户进程的task
+        bnez tp, __save_context
 
+        csrr tp, sscratch /*如果是内核态，则恢复tp的值*/
+        sd sp, 112(tp) //将此时的内核栈指针保存到task_struct的kernel_sp上
+__save_context:
+        /*TASK_TI_USER_SP*/
+        sd sp, 120(tp) //将此时的内核栈指针保存到task_struct的user_sp上
+        //TASK_TI_KERNEL_SP
+        ld sp, 112(tp) //内核sp
+
+        //保存一个pt_regs
+        addi sp, sp, -288
         // save the registers.
-        sd ra, 0(sp)
-        sd sp, 8(sp)
-        sd gp, 16(sp)
-        sd tp, 24(sp)
-        sd t0, 32(sp)
-        sd t1, 40(sp)
-        sd t2, 48(sp)
-        sd s0, 56(sp)
-        sd s1, 64(sp)
-        sd a0, 72(sp)
-        sd a1, 80(sp)
-        sd a2, 88(sp)
-        sd a3, 96(sp)
-        sd a4, 104(sp)
-        sd a5, 112(sp)
-        sd a6, 120(sp)
-        sd a7, 128(sp)
-        sd s2, 136(sp)
-        sd s3, 144(sp)
-        sd s4, 152(sp)
-        sd s5, 160(sp)
-        sd s6, 168(sp)
-        sd s7, 176(sp)
-        sd s8, 184(sp)
-        sd s9, 192(sp)
-        sd s10, 200(sp)
-        sd s11, 208(sp)
-        sd t3, 216(sp)
-        sd t4, 224(sp)
-        sd t5, 232(sp)
-        sd t6, 240(sp)
+        sd ra, 8(sp)
+        //sd sp, 16(sp)
+        sd gp, 24(sp)
+        //sd tp, 32(sp)
+        sd t0, 40(sp)
+        sd t1, 48(sp)
+        sd t2, 56(sp)
+        sd s0, 64(sp)
+        sd s1, 72(sp)
+        sd a0, 80(sp)
+        sd a1, 88(sp)
+        sd a2, 96(sp)
+        sd a3, 104(sp)
+        sd a4, 112(sp)
+        sd a5, 120(sp)
+        sd a6, 128(sp)
+        sd a7, 136(sp)
+        sd s2, 144(sp)
+        sd s3, 152(sp)
+        sd s4, 160(sp)
+        sd s5, 168(sp)
+        sd s6, 176(sp)
+        sd s7, 184(sp)
+        sd s8, 192(sp)
+        sd s9, 200(sp)
+        sd s10, 208(sp)
+        sd s11, 216(sp)
+        sd t3, 224(sp)
+        sd t4, 232(sp)
+        sd t5, 240(sp)
+        sd t6, 248(sp)
+        //status
+        csrr s1, sstatus
+        sd s1, 256(sp)
+        //sepc
+	csrr s2, sepc
+        sd s2, 0(sp)
+        //badaddr
+        csrr s3, stval
+        sd s3, 264(sp)
+        //cause
+        csrr s4, scause
+        sd s4, 272(sp)
 
+        ld s0, 120(tp) // TASK_TI_USER_SP
+        sd s0, 16(sp) // save to pt_regs->sp
+        csrr s5, sscratch
+        sd s5, 32(sp)// save to tp
+
+
+        csrw sscratch, x0 //scratch清0
 	// call the C trap handler in trap.c
-        call kerneltrap
+        la ra, ret_kerneltap
+        addi a0, sp, 0
+        la a1, kerneltrap
+        jr a1
 
+ret_kerneltap:
         // restore registers.
-        ld ra, 0(sp)
-        ld sp, 8(sp)
-        ld gp, 16(sp)
-        // not this, in case we moved CPUs: ld tp, 24(sp)
-        ld t0, 32(sp)
-        ld t1, 40(sp)
-        ld t2, 48(sp)
-        ld s0, 56(sp)
-        ld s1, 64(sp)
-        ld a0, 72(sp)
-        ld a1, 80(sp)
-        ld a2, 88(sp)
-        ld a3, 96(sp)
-        ld a4, 104(sp)
-        ld a5, 112(sp)
-        ld a6, 120(sp)
-        ld a7, 128(sp)
-        ld s2, 136(sp)
-        ld s3, 144(sp)
-        ld s4, 152(sp)
-        ld s5, 160(sp)
-        ld s6, 168(sp)
-        ld s7, 176(sp)
-        ld s8, 184(sp)
-        ld s9, 192(sp)
-        ld s10, 200(sp)
-        ld s11, 208(sp)
-        ld t3, 216(sp)
-        ld t4, 224(sp)
-        ld t5, 232(sp)
-        ld t6, 240(sp)
+        //sstatus
+        ld a0, 256(sp)
+        csrw sstatus, a0
+        //sepc
+        ld a2, 0(sp)
+        sc.d x0, a2, 0(sp)
+        csrw sepc, a2
+        
+	ld ra, 8(sp)
+        ld gp, 24(sp)
+        ld tp, 32(sp)
+        ld t0, 40(sp)
+        ld t1, 48(sp)
+        ld t2, 56(sp)
+        ld s0, 64(sp)
+        ld s1, 72(sp)
+        ld a0, 80(sp)
+        ld a1, 88(sp)
+        ld a2, 96(sp)
+        ld a3, 104(sp)
+        ld a4, 112(sp)
+        ld a5, 120(sp)
+        ld a6, 128(sp)
+        ld a7, 136(sp)
+        ld s2, 144(sp)
+        ld s3, 152(sp)
+        ld s4, 160(sp)
+        ld s5, 168(sp)
+        ld s6, 176(sp)
+        ld s7, 184(sp)
+        ld s8, 192(sp)
+        ld s9, 200(sp)
+        ld s10, 208(sp)
+        ld s11, 216(sp)
+        ld t3, 224(sp)
+        ld t4, 232(sp)
+        ld t5, 240(sp)
+        ld t6, 248(sp)
 
-        addi sp, sp, 256
+        ld sp, 16(sp) //restore sp
+        //addi sp, sp, 256
 
         // return to whatever we were doing in the kernel.
         sret

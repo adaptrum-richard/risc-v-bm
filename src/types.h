@@ -11,7 +11,7 @@ typedef unsigned int  uint32;
 typedef unsigned long uint64;
 typedef unsigned long size_t;
 typedef unsigned char bool;
-typedef uint64 pde_t;
+typedef uint64 pte_t;
 
 typedef enum{
     GFP_KERNEL,

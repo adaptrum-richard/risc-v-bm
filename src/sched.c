@@ -34,15 +34,19 @@ void schedule_tail(struct task_struct *prev)
 {
     intr_on();
 }
-
+extern void set_pgd(uint64);
 struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next)
 {
+    uint64 pgd = 0; 
     if(current == next){
         return NULL;
     }
     current = next;
-    if(current->mm->pagetable)
-        set_pgd(current->mm->pagetable);
+    if(next->mm && next->mm->pagetable){
+        //pgd = MAKE_SATP(next->mm->pagetable);
+    }else
+        pgd = MAKE_SATP(get_kpgtbl());
+    set_pgd(pgd);
     return cpu_switch_to(&prev->thread, &next->thread);
 }
 

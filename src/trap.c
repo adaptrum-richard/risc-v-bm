@@ -7,6 +7,7 @@
 #include "virtio_disk.h"
 #include "hardirq.h"
 #include "uart.h"
+#include "pt_regs.h"
 
 void kernelvec();
 
@@ -33,11 +34,11 @@ void devintr()
         plic_complete(irq);
 }
 
-void kerneltrap()
+void kerneltrap(struct pt_regs *regs)
 {
-    uint64 sepc = r_sepc();
-    uint64 sstatus = r_sstatus();
-    uint64 scause = r_scause();
+    uint64 sepc = regs->epc;
+    uint64 sstatus = regs->status;
+    uint64 scause = regs->cause;
     uint64 intr_flag = scause & ( 1UL<< 63);
     uint64 exception_code = (scause &(~(1UL<<63)));
     if(intr_flag)
@@ -64,7 +65,7 @@ void kerneltrap()
         default:
             printk("don't support interrupt\n");
             printk("scause %p\n", scause);
-            printk("sepc=%p stval=%p\n", r_sepc(), r_stval());
+            printk("sepc=%p stval=%p\n", regs->epc, regs->badaddr);
             panic("kerneltrap");
             break;
         }
@@ -76,9 +77,16 @@ void kerneltrap()
             panic("syscall exception\n");
             break;
         case EXC_LOAD_PAGE_FAULT:
+            printk("sstatus = 0x%lx, spec = 0x%lx, stval = 0x%lx\n", 
+                sstatus, sepc, r_stval());
+            /*sstatus = 0x100 stval = 0x8
+            sstatus 第8位是1，表示是从s-mode发生了缺页，说明有问题
+            */
             panic("load page fault exception\n");
             break;
         case EXC_STORE_PAGE_FAULT:
+            printk("sstatus = 0x%lx, spec = 0x%lx, stval = 0x%lx\n", 
+                sstatus, sepc, r_stval());
             panic("store page fault exception\n");
             break;
         default:
@@ -90,11 +98,18 @@ void kerneltrap()
         }
     }
 
+    /*判断返回用户空间还是内核空间*/
+    if(!(sstatus & SSTATUS_SPP)){
+        /*返回用户空间时，将task写入到sscratch*/
+        panic("not\n");
+        w_sscratch((uint64)current);
+        w_tp((uint64)current);
+    }
+    
     if(intr_flag)
         irq_exit();
-    /*maybe schedule thread*/
-
+    
     /*restore programer counter and supervisor mode status*/
-    w_sepc(sepc);
-    w_sstatus(sstatus);
+    //w_sstatus(sstatus);
+    //w_sepc(sepc);
 }

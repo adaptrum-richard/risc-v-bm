@@ -5,6 +5,16 @@
 #include "atomic.h"
 #include "bitops.h"
 
+/*vm flags*/
+#define VM_NONE		0x00000000
+#define VM_READ		0x00000001	/* currently active flags */
+#define VM_WRITE	0x00000002
+#define VM_EXEC		0x00000004
+#define VM_GROWSDOWN	0x00000100	/* general info on the segment */
+#define VM_STACK	VM_GROWSDOWN
+
+#define VM_ACCESS_FLAGS (VM_READ | VM_WRITE | VM_EXEC)
+
 #define MAX_ORDER 11
 #define MAX_ORDER_NR_PAGES (1 << (MAX_ORDER - 1))
 
@@ -12,6 +22,7 @@ struct vm_area_struct;
 struct mm_struct {
     struct vm_area_struct *mmap;
     pagetable_t pagetable;
+    unsigned long stack_vm;	   /* VM_STACK */
 };
 
 struct vm_area_struct {

@@ -114,11 +114,11 @@ void kvminithart()
     sfence_vma();
 }
 
-void set_pgd(pagetable_t pgd)
+pagetable_t get_kpgtbl()
 {
-    w_satp(MAKE_SATP(pgd));
-    sfence_vma();    
+    return kernel_pagetable;
 }
+
 
 /*创建一个空的page table*/
 pagetable_t uvmcreate()

@@ -6,5 +6,5 @@ void kvminit(void);
 void kvminithart();
 pagetable_t uvmcreate();
 int uvminit(pagetable_t pagetable, uchar *src, uint size);
-void set_pgd(pagetable_t pgd);
+pagetable_t get_kpgtbl();
 #endif

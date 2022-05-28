@@ -33,6 +33,8 @@ struct thread_struct {
 
 struct task_struct {
     struct thread_struct thread;
+    uint64 kernel_sp;//112 offset
+    uint64 user_sp;//在进入异常时保存用户的sp  120 offset
     int preempt_count;
     int need_resched;
     int cpu;
@@ -59,9 +61,11 @@ static inline unsigned int task_cpu(const struct task_struct *p)
 #define INIT_TASK(task) \
 {  \
     .thread = {0},  \
-    .counter = DEF_COUNTER, \
+    .counter = 1, \
     .lock = INIT_SPINLOCK(task), \
     .name = ""#task"",    \
+    .user_sp = 0x55555, \
+    .kernel_sp = 0x6666, \
     .pid = 0,   \
     .preempt_count = 0, \
     .state = TASK_RUNNING,   \

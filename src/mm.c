@@ -113,6 +113,7 @@ static struct mm_struct *mm_init(struct mm_struct *mm,
     mm->mmap = NULL;
     if(mm_alloc_pgd(mm))
         return NULL;
+    p->mm = mm;
     return mm;
 }
 

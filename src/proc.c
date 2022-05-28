@@ -27,8 +27,8 @@ void free_task_list_lock(void)
 
 int smp_processor_id()
 {
-    int id = r_tp();
-    return id;
+    //int id = r_tp();
+    return 0;
 }
 
 int get_free_pid(void)
@@ -58,4 +58,5 @@ void init_process(void)
     p->cpu = smp_processor_id();
     set_task_sched_class(p);
     p->sched_class->enqueue_task(cpu_rq(p->cpu), p);
+    w_tp((uint64)current);
 }

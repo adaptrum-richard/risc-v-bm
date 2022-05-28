@@ -1,3 +1,11 @@
+.globl set_pgd
+set_pgd:
+    beqz a0, 1f
+    csrw satp, a0
+    sfence.vma zero, zero
+1:
+    ret
+
 .globl cpu_switch_to
 cpu_switch_to:
     /* Save context into prev->thread */
@@ -31,5 +39,5 @@ cpu_switch_to:
     ld s9, 88(a1)
     ld s10, 96(a1)
     ld s11, 104(a1)
-
+    addi tp, a1, 0/*保存task_struct到tp中*/
     ret

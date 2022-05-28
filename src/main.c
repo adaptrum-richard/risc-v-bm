@@ -18,7 +18,7 @@
 #include "sleep.h"
 
 static volatile int init_done = 0;
-void delay()
+static void delay()
 {
     int j = 0;
     for(int i ; i < 100000000; i++){
@@ -109,23 +109,27 @@ void kernel_process(uint64 arg)
 {
     while(1){
         sleep(1);
-        //printk("1 current %s run pid:%d\n", current->name, current->pid);
+        printk("1 current %s run pid:%d\n", current->name, current->pid);
         //delay();
     }
 }
 
 void idle()
 {
+#if 0
     //idle可以用来做负载均衡
     binit();
     fsinit(ROOTINO);
     fileinit();
+ #endif  
     init_done = 1;
+    printk("run idle\n");
     while(1){
-        sleep(5);
-        //printk("5 current %s run pid:%d\n", current->name, current->pid);
+        
+        printk("current %s run pid:%d\n", current->name, current->pid);
+        //sleep(1);
         //traversing_rq();
-        //delay();
+        sleep(1);
     }
 }
 extern char user_begin[], user_end[], user_process[];
@@ -134,43 +138,63 @@ void copy_to_user_thread(uint64 arg)
     unsigned long begin = (unsigned long)&user_begin;
     unsigned long end = (unsigned long)&user_end;
     unsigned long proccess = (unsigned long)&user_process;
+    
     printk("user_beigin = 0x%lx, user_end = 0x%lx, pc = 0x%lx, process = 0x%lx\n",
         begin, end, proccess - begin, proccess);
+    acquire(&current->lock);
     int err = move_to_user_mode(begin, end - begin, proccess - begin);
+    release(&current->lock);
     if(err < 0)
         panic("move_to_user_mode\n");
-    while(1);
+    while(1);    
 }
 
 void run_proc()
 {
     int ret ;
-
     ret = copy_process(PF_KTHREAD, (uint64)&idle, 0, "idle");
     if(ret < 0)
         panic("copy_process error ,arg = 0\n");
-
+#if 0
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1, "kernel_process1");
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
-#if 0
+
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
     ret = copy_process(PF_KTHREAD, (uint64)&test_sysfile, (uint64)"aaa", "test_sysfile");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
-#else
+#endif
     ret = copy_process(PF_KTHREAD, (uint64)&copy_to_user_thread, 0, "init");
     if(ret < 0)
         panic("copy_process error init\n");
-#endif
+
 }
 
+void bge_test()
+{
+    unsigned long u = 0x100;
+    unsigned long ret = 0;
+    unsigned long tmp = 0;
+    asm volatile(
+        "bge %1,%2, 1f \n"
+        "addi %0, %0, 3\n"
+        "1:\n" 
+        "addi %0, %0, 1\n"
+        :"=r"(ret)
+        :"r"(u), "r"(tmp)
+        :"memory"
+    );
+    printk("========================ret = 0x%lx\n", ret);
+}
+extern char stack0[];
 void main()
 {
     if(smp_processor_id() == 0)
     {
+        w_sscratch(0);
         consoleinit();
         printkinit();
         printk("boot\n");
@@ -184,6 +208,7 @@ void main()
         init_process();
         __sync_synchronize();
         virtio_disk_init();
+        printk("========init_task:0x%lx, stack start = 0x%lx\n", (uint64)current, (uint64)&stack0[4096]);
         run_proc();
         intr_on();
         while(1){

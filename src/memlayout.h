@@ -70,4 +70,52 @@
 
 #define ARCH_PHYS_OFFSET (KERNBASE)
 
+/*
+https://docs.kernel.org/translations/zh_CN/riscv/vm-layout.html
+RISC-V Linux Kernel SV39
+========================================================================================================================
+    开始地址       |   偏移      |     结束地址      |  大小    | 虚拟内存区域描述
+========================================================================================================================
+                  |            |                  |         |
+ 0000000000000000 |    0       | 0000003fffffffff |  256 GB | 用户空间虚拟内存，每个内存管理器不同
+__________________|____________|__________________|_________|___________________________________________________________
+                  |            |                  |         |
+ 0000004000000000 | +256    GB | ffffffbfffffffff | ~16M TB | ... 巨大的、几乎64位宽的直到内核映射的-256GB地方
+                  |            |                  |         |     开始偏移的非经典虚拟内存地址空洞。
+                  |            |                  |         |
+__________________|____________|__________________|_________|___________________________________________________________
+                                                            |
+                                                            | 内核空间的虚拟内存，在所有进程之间共享:
+____________________________________________________________|___________________________________________________________
+                  |            |                  |         |
+ ffffffc6fee00000 | -228    GB | ffffffc6feffffff |    2 MB | fixmap
+ ffffffc6ff000000 | -228    GB | ffffffc6ffffffff |   16 MB | PCI io
+ ffffffc700000000 | -228    GB | ffffffc7ffffffff |    4 GB | vmemmap
+ ffffffc800000000 | -224    GB | ffffffd7ffffffff |   64 GB | vmalloc/ioremap space
+ ffffffd800000000 | -160    GB | fffffff6ffffffff |  124 GB | 直接映射所有物理内存
+ fffffff700000000 |  -36    GB | fffffffeffffffff |   32 GB | kasan
+__________________|____________|__________________|_________|____________________________________________________________
+                                                            |
+                                                            |
+____________________________________________________________|____________________________________________________________
+                  |            |                  |         |
+ ffffffff00000000 |   -4    GB | ffffffff7fffffff |    2 GB | modules, BPF
+ ffffffff80000000 |   -2    GB | ffffffffffffffff |    2 GB | kernel
+__________________|____________|__________________|_________|____________________________________________________________
+*/
+#define UVM_START (0)
+#define UVM_END (0x3fffffffff)
+
+#define PGSIZE 4096 // bytes per page
+#define PGSHIFT 12  // bits of offset within a page
+/*我们只有3级页表*/
+#define PGDIR_SHIFT_L3  30
+#define PGDIR_SHIFT     PGDIR_SHIFT_L3
+#define PGDIR_SIZE      (1UL << PGDIR_SHIFT)
+#define PTRS_PER_PGD    (PGSIZE / sizeof(pte_t))
+
+#define TASK_SIZE      (PGDIR_SIZE * PTRS_PER_PGD / 2)
+#define STACK_TOP		TASK_SIZE
+#define STACK_TOP_MAX	STACK_TOP  //0x4000000000 刚好是用户空间地址的最顶端
+#define STACK_ALIGN		16
 #endif

@@ -16,6 +16,7 @@
 #include "string.h"
 #include "file.h"
 #include "sleep.h"
+#include "preempt.h"
 
 static volatile int init_done = 0;
 static void delay()
@@ -147,6 +148,7 @@ void copy_to_user_thread(uint64 arg)
     release(&current->lock);
     if(err < 0)
         panic("move_to_user_mode\n");
+    preempt_disable(); //切换到第一个用户进程的时候，不能被抢占
     intr_off();//先关闭中断，在恢复pt_regs时会开启中断
     /*此函数返回时，就切换到用户空间，所以这里需要设置sscratch，
     在异常向量表中，通过sscratch判断是来自用户空间还是内核空间*/

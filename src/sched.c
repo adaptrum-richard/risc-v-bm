@@ -44,8 +44,7 @@ struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next
     current = next;
     if(next->mm && next->mm->pagetable){
         pgd = MAKE_SATP(next->mm->pagetable);
-    }else
-        pgd = MAKE_SATP(get_kpgtbl());
+    }
     set_pgd(pgd);
     return cpu_switch_to(&prev->thread, &next->thread);
 }

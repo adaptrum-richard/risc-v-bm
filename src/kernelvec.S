@@ -84,15 +84,20 @@ __save_context:
 
 ret_from_exception:
         ld s0, 256(sp)
-        csrc sstatus, (1<<1) //清除IE位,禁止中断
+        csrc sstatus, (1<<1) //清除IE位,禁止S模式中断
         andi s0, s0, (1<<8) //Previous mode, 1=Supervisor, 0=User
         bnez s0, resume_kernel //从内核返回
 
 resume_userspace:
         //TODO:处理work pending
+        ld s0, 136(tp) //检查NEED_RESCHED标志
+        andi s0, s0, 1
+        bnez s0, user_resched 
+
         addi s0, sp, 288
         sd s0, 112(tp) //TASK_TI_KERNEL_SP
         csrw sscratch, tp
+        
 
 restore_all:
         // restore registers.
@@ -105,7 +110,7 @@ restore_all:
         csrw sepc, a2
         
 	ld ra, 8(sp)
-        //ld gp, 24(sp)
+        ld gp, 24(sp)
         ld tp, 32(sp)
         ld t0, 40(sp)
         ld t1, 48(sp)
@@ -143,10 +148,13 @@ resume_kernel:
         ld s0, 128(tp) //检查preempt_count
         bnez s0, restore_all
         ld s0, 136(tp) //检查NEED_RESCHED标志
-        addi s0, s0, 1
+        andi s0, s0, 1
         beqz s0, restore_all
         call preempt_schedule_irq
         j restore_all
+
+user_resched:
+        tail schedule
 
 .globl ret_from_kernel_thread
 .align 4

@@ -1,7 +1,7 @@
-static void delay()
+static void delay(int loop)
 {
     int j = 0;
-    for(int i ; i < 100000000; i++){
+    for(int i ; i < loop; i++){
         j = i % 3;
         j++;
     }
@@ -9,7 +9,8 @@ static void delay()
 
 void user_process()
 {
+    int loop = 100000000;
     while(1){
-        delay();
+        delay(loop);
     }
 }

@@ -20,8 +20,8 @@
 
 struct vm_area_struct;
 struct mm_struct {
-    struct vm_area_struct *mmap;
     pagetable_t pagetable;
+    struct vm_area_struct *mmap;
     unsigned long stack_vm;	   /* VM_STACK */
 };
 

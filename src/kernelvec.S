@@ -5,8 +5,8 @@ kernelvec:
         csrrw tp, sscratch, tp //将tp和sscratch的值交换
         //如果来自内核，sscratch则为0, 如果来自用户空间，则sscratch指向用户进程的task
         bnez tp, __save_context
-
-        csrr tp, sscratch /*如果是内核态，则恢复tp的值*/
+        
+        csrr tp, sscratch /*如果是内核态，则恢复tp的值,tp指向当前的进程task*/
         sd sp, 112(tp) //将此时的内核栈指针保存到task_struct的kernel_sp上
 __save_context:
         /*TASK_TI_USER_SP*/
@@ -63,18 +63,38 @@ __save_context:
 
         ld s0, 120(tp) // TASK_TI_USER_SP
         sd s0, 16(sp) // save to pt_regs->sp
+
         csrr s5, sscratch
         sd s5, 32(sp)// save to tp
 
 
         csrw sscratch, x0 //scratch清0
-	// call the C trap handler in trap.c
-        la ra, ret_kerneltap
+
+        bge s4, zero, 1f //判断是中断还是异常, bge将把s4的二进制补码作为数据和zero比较
+        //中断
+        la ra, ret_from_exception //设置返回地址
+        addi a0, sp, 0 /*a0为pt_regs，作为参数传递*/
+        la a1, handler_irq
+        jr a1
+1:      /*异常*/
+        la ra, ret_from_exception
         addi a0, sp, 0
-        la a1, kerneltrap
+        la a1, hanlder_exception
         jr a1
 
-ret_kerneltap:
+ret_from_exception:
+        ld s0, 256(sp)
+        csrc sstatus, (1<<1) //清除IE位,禁止中断
+        addi s0, s0, (1<<8) //Previous mode, 1=Supervisor, 0=User
+        bnez s0, resume_kernel //从内核返回
+
+resume_userspace:
+        //TODO:处理work pending
+        addi s0, sp, 288
+        sd s0, 112(tp) //TASK_TI_KERNEL_SP
+        csrw sscratch, tp
+
+restore_all:
         // restore registers.
         //sstatus
         ld a0, 256(sp)
@@ -85,7 +105,7 @@ ret_kerneltap:
         csrw sepc, a2
         
 	ld ra, 8(sp)
-        ld gp, 24(sp)
+        //ld gp, 24(sp)
         ld tp, 32(sp)
         ld t0, 40(sp)
         ld t1, 48(sp)
@@ -116,10 +136,31 @@ ret_kerneltap:
         ld t6, 248(sp)
 
         ld sp, 16(sp) //restore sp
-        //addi sp, sp, 256
-
-        // return to whatever we were doing in the kernel.
         sret
+
+resume_kernel:
+        //TODO: 判断是否需要抢占调度
+        ld s0, 128(tp)
+        bnez s0, restore_all
+        ld s0, 136(tp)
+        addi s0, s0, 1
+        beqz s0, restore_all
+        call preempt_schedule_irq
+        j restore_all
+
+.globl ret_from_kernel_thread
+.align 4
+ret_from_kernel_thread:
+    call schedule_tail
+    la ra, ret_from_exception
+    mv a0, s1
+    jr s0
+
+.globl ret_from_fork
+.align 4
+ret_from_fork:
+        la ra, ret_from_exception
+        tail schedule_tail
 
 .globl timervec
 .align 4

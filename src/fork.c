@@ -77,7 +77,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     struct mm_struct *mm;
     struct pt_regs *regs = task_pt_regs(current);
     memset((char*)regs, 0x0, sizeof(struct pt_regs));
-    regs->epc = pc;
+    regs->epc = pc + USER_START;
     //regs->status = 0;
     //regs->status |= (SSTATUS_UXLEN64 | SSTATUS_SUM);
     regs->status &= ~SSTATUS_SPP;
@@ -90,7 +90,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
-    printk("=====init:0x%lx\n", (uint64)current);
+    //printk("=====init:0x%lx\n", (uint64)current);
     return 0;
 }
 

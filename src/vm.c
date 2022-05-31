@@ -131,6 +131,16 @@ pagetable_t uvmcreate()
     return pagetable;
 }
 
+pagetable_t copy_kernel_tbl(void)
+{
+    pagetable_t new = (pagetable_t)get_free_page();
+    if(new){
+        memset(new, 0, PGSIZE);
+        memcpy(new, kernel_pagetable, PGSIZE);
+    }
+    return new;
+}
+
 /*加载user的程序，并映射到0地址*/
 int uvminit(pagetable_t pagetable, uchar *src, uint size)
 {
@@ -142,7 +152,7 @@ int uvminit(pagetable_t pagetable, uchar *src, uint size)
         return -ENOMEM;
     }
     memset(mem, 0, PGROUNDUP(size));
-    mappages(pagetable, 0, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+    mappages(pagetable, USER_START, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
     memmove(mem, src, size);
     return 0;
 }

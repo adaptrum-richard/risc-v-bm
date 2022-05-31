@@ -118,4 +118,6 @@ __________________|____________|__________________|_________|___________________
 #define STACK_TOP		TASK_SIZE
 #define STACK_TOP_MAX	STACK_TOP  //0x4000000000 刚好是用户空间地址的最顶端
 #define STACK_ALIGN		16
+
+#define USER_START 0x1000000000
 #endif

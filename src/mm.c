@@ -7,6 +7,7 @@
 #include "errorno.h"
 #include "proc.h"
 #include "string.h"
+#include "vm.h"
 
 static void zone_sizes_init(unsigned long min, unsigned long max)
 {
@@ -101,7 +102,7 @@ void vm_area_free(struct vm_area_struct *vma)
 
 static inline int mm_alloc_pgd(struct mm_struct *mm)
 {
-    mm->pagetable = (pagetable_t)get_free_page();
+    mm->pagetable = copy_kernel_tbl();
     if(!mm->pagetable)
         return -ENOMEM;
     return 0;

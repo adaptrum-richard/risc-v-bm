@@ -35,8 +35,9 @@ struct task_struct {
     struct thread_struct thread;
     uint64 kernel_sp;//112 offset
     uint64 user_sp;//在进入异常时保存用户的sp  120 offset
-    int preempt_count;
-    int need_resched;
+    uint64 preempt_count; //128 offset
+    uint64 need_resched; //136 offset
+    struct mm_struct *mm;
     int cpu;
     int counter;
     int pid;
@@ -50,7 +51,7 @@ struct task_struct {
     struct file *ofile[NOFILE]; //open file
     struct list_head run_list;
     struct task_struct *prev_task, *next_task;
-    struct mm_struct *mm;
+    
 };
 
 static inline unsigned int task_cpu(const struct task_struct *p)

@@ -146,7 +146,8 @@ void copy_to_user_thread(uint64 arg)
     release(&current->lock);
     if(err < 0)
         panic("move_to_user_mode\n");
-    while(1);    
+    //intr_off();
+    w_sscratch((uint64)current);
 }
 
 void run_proc()

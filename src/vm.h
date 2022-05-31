@@ -8,4 +8,5 @@ pagetable_t uvmcreate();
 int uvminit(pagetable_t pagetable, uchar *src, uint size);
 pagetable_t get_kpgtbl();
 pagetable_t copy_kernel_tbl(void);
+int user_stack_growsdown(unsigned long addr);
 #endif

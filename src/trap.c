@@ -53,10 +53,17 @@ void hanlder_exception(struct pt_regs *regs)
         */
         panic("load page fault exception\n");
         break;
-    case EXC_STORE_PAGE_FAULT:
-        printk("status = 0x%lx, cause = 0x%lx, badaddr = 0x%lx\n", 
-            regs->status, regs->cause, regs->badaddr);
-        panic("store page fault exception\n");
+    case EXC_STORE_PAGE_FAULT:       
+        if(regs->badaddr <= STACK_TOP_MAX && regs->badaddr > STACK_BOTTOM){
+            user_stack_growsdown(regs->badaddr);
+        } else if(regs->badaddr > USER_MEM_START && regs->badaddr < USER_MEM_END){
+
+        }else       
+        {
+                printk("status = 0x%lx, cause = 0x%lx, badaddr = 0x%lx\n", 
+                    regs->status, regs->cause, regs->badaddr);
+                panic("store page fault exception, we don't deal\n");
+        }
         break;
     default:
         printk("don't support exception, code:%lu\n", exception_code);

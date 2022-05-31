@@ -115,9 +115,15 @@ __________________|____________|__________________|_________|___________________
 #define PTRS_PER_PGD    (PGSIZE / sizeof(pte_t))
 
 #define TASK_SIZE      (PGDIR_SIZE * PTRS_PER_PGD / 2)
-#define STACK_TOP		TASK_SIZE
-#define STACK_TOP_MAX	STACK_TOP  //0x4000000000 刚好是用户空间地址的最顶端
+#define STACK_TOP		TASK_SIZE //0x4000000000 刚好是用户空间地址的最顶端 254G
+#define STACK_TOP_MAX	(STACK_TOP)
 #define STACK_ALIGN		16
 
-#define USER_START 0x1000000000
+#define USER_START 0x1000000000 //64GB
+
+#define USER_MEM_START ((1UL<< 32)*8 + USER_START)     //72GB
+#define USER_MEM_END (USER_MEM_START + (1UL << 32)*30)   //102GB
+
+#define STACK_BOTTOM (STACK_TOP_MAX - (10UL << 32) ) //224G
+
 #endif

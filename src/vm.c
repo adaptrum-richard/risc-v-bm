@@ -157,3 +157,16 @@ int uvminit(pagetable_t pagetable, uchar *src, uint size)
     memmove(mem, src, size);
     return 0;
 }
+
+int user_stack_growsdown(unsigned long addr)
+{
+    addr = PAGE_ALIGN(addr) - PGSIZE;
+    uint64 mem = (uint64)get_free_page();
+    if(!mem){
+        return -ENOMEM;
+    }
+    memset((void *)mem, 0, PGSIZE);
+    mappages(current->mm->pagetable, addr, PGSIZE,  mem, PTE_W|PTE_R|PTE_U);
+    
+    return 0;
+}

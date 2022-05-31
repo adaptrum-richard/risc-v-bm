@@ -17,6 +17,7 @@
 #include "file.h"
 #include "sleep.h"
 #include "preempt.h"
+#include "memlayout.h"
 
 static volatile int init_done = 0;
 static void delay()
@@ -140,7 +141,6 @@ void copy_to_user_thread(uint64 arg)
     unsigned long begin = (unsigned long)&user_begin;
     unsigned long end = (unsigned long)&user_end;
     unsigned long proccess = (unsigned long)&user_process;
-    
     printk("user_beigin = 0x%lx, user_end = 0x%lx, pc = 0x%lx, process = 0x%lx\n",
         begin, end, proccess - begin, proccess);
     acquire(&current->lock);

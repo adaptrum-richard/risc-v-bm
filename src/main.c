@@ -133,6 +133,7 @@ void idle()
     }
 }
 extern char user_begin[], user_end[], user_process[];
+extern void set_pgd(uint64);
 void copy_to_user_thread(uint64 arg)
 {
     unsigned long begin = (unsigned long)&user_begin;
@@ -146,8 +147,11 @@ void copy_to_user_thread(uint64 arg)
     release(&current->lock);
     if(err < 0)
         panic("move_to_user_mode\n");
-    //intr_off();
-    w_sscratch((uint64)current);
+    intr_off();//先关闭中断，在恢复pt_regs时会开启中断
+    /*此函数返回时，就切换到用户空间，所以这里需要设置sscratch，
+    在异常向量表中，通过sscratch判断是来自用户空间还是内核空间*/
+    w_sscratch((uint64)current); 
+    set_pgd(MAKE_SATP(current->mm->pagetable)); /*立即切换页表*/
 }
 
 void run_proc()

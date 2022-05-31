@@ -140,9 +140,9 @@ restore_all:
 
 resume_kernel:
         //TODO: 判断是否需要抢占调度
-        ld s0, 128(tp)
+        ld s0, 128(tp) //检查preempt_count
         bnez s0, restore_all
-        ld s0, 136(tp)
+        ld s0, 136(tp) //检查NEED_RESCHED标志
         addi s0, s0, 1
         beqz s0, restore_all
         call preempt_schedule_irq

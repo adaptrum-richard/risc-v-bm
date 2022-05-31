@@ -154,6 +154,7 @@ void copy_to_user_thread(uint64 arg)
     在异常向量表中，通过sscratch判断是来自用户空间还是内核空间*/
     w_sscratch((uint64)current); 
     set_pgd(MAKE_SATP(current->mm->pagetable)); /*立即切换页表*/
+    preempt_enable();
 }
 
 void run_proc()

@@ -85,7 +85,7 @@ __save_context:
 ret_from_exception:
         ld s0, 256(sp)
         csrc sstatus, (1<<1) //清除IE位,禁止中断
-        addi s0, s0, (1<<8) //Previous mode, 1=Supervisor, 0=User
+        andi s0, s0, (1<<8) //Previous mode, 1=Supervisor, 0=User
         bnez s0, resume_kernel //从内核返回
 
 resume_userspace:

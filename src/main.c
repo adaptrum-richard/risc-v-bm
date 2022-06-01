@@ -18,7 +18,7 @@
 #include "sleep.h"
 #include "preempt.h"
 #include "memlayout.h"
-
+#define TEST_FILE 1
 static volatile int init_done = 0;
 static void delay()
 {
@@ -118,20 +118,18 @@ void kernel_process(uint64 arg)
 
 void idle()
 {
-#if 0
+#if TEST_FILE
     //idle可以用来做负载均衡
     binit();
     fsinit(ROOTINO);
     fileinit();
  #endif  
     init_done = 1;
-    printk("run idle\n");
     while(1){
         
         printk("current %s run pid:%d\n", current->name, current->pid);
-        //sleep(1);
-        //traversing_rq();
         sleep(1);
+        //traversing_rq();
     }
 }
 extern char user_begin[], user_end[], user_process[];
@@ -171,6 +169,8 @@ void run_proc()
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
+#endif
+#if TEST_FILE
     ret = copy_process(PF_KTHREAD, (uint64)&test_sysfile, (uint64)"aaa", "test_sysfile");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
@@ -197,7 +197,7 @@ void bge_test()
     );
     printk("========================ret = 0x%lx\n", ret);
 }
-extern char stack0[];
+
 void main()
 {
     if(smp_processor_id() == 0)
@@ -216,7 +216,6 @@ void main()
         init_process();
         __sync_synchronize();
         virtio_disk_init();
-        printk("========init_task:0x%lx, stack start = 0x%lx\n", (uint64)current, (uint64)&stack0[4096]);
         run_proc();
         intr_on();
         while(1){

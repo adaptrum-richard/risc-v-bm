@@ -18,7 +18,7 @@
 #include "sleep.h"
 #include "preempt.h"
 #include "memlayout.h"
-#define TEST_FILE 1
+#define TEST_FILE 0
 static volatile int init_done = 0;
 static void delay()
 {

@@ -78,6 +78,10 @@ __save_context:
         jr a1
 1:      /*异常*/
         la ra, ret_from_exception
+        /*判断是否为系统调用*/
+        li t0, 8
+        beq s4, t0, handle_syscall
+        //其他异常处理
         addi a0, sp, 0
         la a1, hanlder_exception
         jr a1
@@ -155,6 +159,25 @@ resume_kernel:
 
 user_resched:
         tail schedule
+
+handle_syscall:
+        sd a0, 280(sp) //save 
+        /*防止SEPC执行原始的值*/
+        addi s2, s2, 0x4 //s2在前面已经被保存为epc了
+        sd s2, 0(sp) //保存到pt_regs->epc
+
+        li t0, 3        //TODO:__NR_syscalls 
+        /*找到对应的函数地址*/
+        la s0, sys_call_table
+        slli t0, a7, 3
+        add s0, s0, t0
+        ld s0, 0(s0)
+
+        jalr s0 //跳转到对应的系统函数，并设置ra
+ret_from_syscall:
+        sd a0, 80(sp) //返回值
+        j ret_from_exception
+
 
 .globl ret_from_kernel_thread
 .align 4

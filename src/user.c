@@ -1,16 +1,10 @@
-static void delay(int loop)
-{
-    int j = 0;
-    for(int i ; i < loop; i++){
-        j = i % 3;
-        j++;
-    }
-}
+#include "user_sys.h"
 
 void user_process()
 {
-    int loop = 100000000;
+    char *buf = "user_process run\n";
     while(1){
-        delay(loop);
+        call_sys_printf(buf);
+        call_sys_sleep(1);
     }
 }

@@ -81,7 +81,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     //regs->status = 0;
     //regs->status |= (SSTATUS_UXLEN64 | SSTATUS_SUM);
     regs->status &= ~SSTATUS_SPP;
-    regs->status |= SSTATUS_SPIE;
+    regs->status |= (SSTATUS_SPIE|SSTATUS_SUM);
 
     regs->sp = STACK_TOP_MAX;
     

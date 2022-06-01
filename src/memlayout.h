@@ -103,6 +103,14 @@ ____________________________________________________________|___________________
  ffffffff80000000 |   -2    GB | ffffffffffffffff |    2 GB | kernel
 __________________|____________|__________________|_________|____________________________________________________________
 */
+
+#define KERNEL_VM_START 0xffffffff80000000
+#define KERNEL_VM_END 0xffffffffffffffff
+
+#define FIXMAP_VM_START 0xffffffc6fee00000
+#define FIXMAP_VM_END 0xffffffc6feffffff
+
+
 #define UVM_START (0)
 #define UVM_END (0x3fffffffff)
 

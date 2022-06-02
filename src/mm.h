@@ -23,6 +23,7 @@ struct mm_struct {
     pagetable_t pagetable;
     struct vm_area_struct *mmap;
     unsigned long stack_vm;	   /* VM_STACK */
+    unsigned long stack_size;
 };
 
 struct vm_area_struct {

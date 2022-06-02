@@ -119,9 +119,9 @@ __________________|____________|__________________|_________|___________________
 #define STACK_TOP_MAX	(STACK_TOP)
 #define STACK_ALIGN		16
 
-#define USER_START 0x1000000000 //64GB
+#define USER_CODE_VM_START 0x1000000000 //64GB
 
-#define USER_MEM_START ((1UL<< 32)*8 + USER_START)     //72GB
+#define USER_MEM_START ((1UL<< 32)*8 + USER_CODE_VM_START)     //72GB
 #define USER_MEM_END (USER_MEM_START + (1UL << 32)*30)   //102GB
 
 #define STACK_BOTTOM (STACK_TOP_MAX - (10UL << 32) ) //224G

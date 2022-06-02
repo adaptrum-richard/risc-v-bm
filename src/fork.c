@@ -77,20 +77,22 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     struct mm_struct *mm;
     struct pt_regs *regs = task_pt_regs(current);
     memset((char*)regs, 0x0, sizeof(struct pt_regs));
-    regs->epc = pc + USER_START;
-    //regs->status = 0;
-    //regs->status |= (SSTATUS_UXLEN64 | SSTATUS_SUM);
+    regs->epc = pc + USER_CODE_VM_START;
+
     regs->status &= ~SSTATUS_SPP;
     regs->status |= (SSTATUS_SPIE|SSTATUS_SUM);
 
     regs->sp = STACK_TOP_MAX;
-    
+
     mm = mm_alloc();
     if(uvminit(mm->pagetable, (uchar*)start, size) < 0){
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
-    //printk("=====init:0x%lx\n", (uint64)current);
+
+    current->mm->stack_vm = STACK_TOP_MAX;
+    current->mm->stack_size = 0;
+    
     return 0;
 }
 

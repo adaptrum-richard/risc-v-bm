@@ -153,7 +153,7 @@ int uvminit(pagetable_t pagetable, uchar *src, uint size)
         return -ENOMEM;
     }
     memset(mem, 0, PGROUNDUP(size));
-    mappages(pagetable, USER_START, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+    mappages(pagetable, USER_CODE_VM_START, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
     memmove(mem, src, size);
     return 0;
 }

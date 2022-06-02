@@ -168,6 +168,5 @@ int user_stack_growsdown(unsigned long addr)
     memset((void *)mem, 0, PGSIZE);
     mappages(current->mm->pagetable, addr, PGSIZE,  mem, PTE_W|PTE_R|PTE_U);
     current->mm->stack_vm   =  addr;
-    current->mm->stack_size += PGSIZE;
     return 0;
 }

@@ -125,6 +125,7 @@ void idle()
     fileinit();
  #endif  
     init_done = 1;
+
     while(1){
         
         printk("current %s run pid:%d\n", current->name, current->pid);

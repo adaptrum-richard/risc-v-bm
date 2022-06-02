@@ -23,14 +23,14 @@ struct mm_struct {
     pagetable_t pagetable;
     struct vm_area_struct *mmap;
     unsigned long stack_vm;	   /* VM_STACK */
-    unsigned long stack_size;
+    unsigned long total_vm;
 };
 
 struct vm_area_struct {
     unsigned long vm_start;
     unsigned long vm_end;
     struct mm_struct *vm_mm;
-    struct vm_area_struct *vm_next, *vm_prev;
+    struct vm_area_struct *vm_next, *vm_prev; /*双向链表，并不是双向循环链表*/
     unsigned long vm_pgoff;
     unsigned long vm_flags;
 };

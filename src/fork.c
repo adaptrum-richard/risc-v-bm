@@ -89,9 +89,8 @@ int move_to_user_mode(unsigned long start, unsigned long size,
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
-
     current->mm->stack_vm = STACK_TOP_MAX;
-    current->mm->stack_size = 0;
+    current->mm->stack_vm = current->mm->total_vm = 1;
     
     return 0;
 }

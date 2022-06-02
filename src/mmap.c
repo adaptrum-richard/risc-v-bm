@@ -1,6 +1,8 @@
 #include "mm.h"
 #include "mmap.h"
 #include "errorno.h"
+#include "slab.h"
+#include "string.h"
 
 //查找
 struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
@@ -64,6 +66,34 @@ int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma)
             return 0;
         }
     }
-    
+
     return -ENOMEM;
+}
+
+
+static void vma_init(struct vm_area_struct *vma, struct mm_struct *mm)
+{
+    memset(vma, 0 , sizeof(*vma));
+    vma->vm_mm = mm;
+}
+
+void vm_area_free(struct vm_area_struct *vma)
+{
+    kfree(vma);
+}
+
+struct vm_area_struct *vm_area_alloc(struct mm_struct *mm)
+{
+    struct vm_area_struct *vma;
+    vma = kmalloc(sizeof(*vma));
+    if(vma)
+        vma_init(vma, mm);
+    return vma;
+}
+
+struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
+{
+    struct vm_area_struct *next = vma->vm_next;
+    vm_area_free(vma);
+    return next;
 }

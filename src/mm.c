@@ -78,28 +78,6 @@ void mem_init(void)
     kmem_cache_init();
 }
 
-static void vma_init(struct vm_area_struct *vma, 
-            struct mm_struct *mm)
-{
-    memset(vma, 0, sizeof(*vma));
-    vma->vm_mm = mm;
-}
-
-struct vm_area_struct *vm_area_alloc(struct mm_struct *mm)
-{
-    struct vm_area_struct *vma;
-    vma = kmalloc(sizeof(*vma));
-    if(vma)
-        vma_init(vma, mm);
-    return vma;
-}
-
-void vm_area_free(struct vm_area_struct *vma)
-{
-    if(vma)
-        kfree(vma);
-}
-
 static inline int mm_alloc_pgd(struct mm_struct *mm)
 {
     mm->pagetable = copy_kernel_tbl();

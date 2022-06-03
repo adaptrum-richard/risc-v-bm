@@ -4,18 +4,29 @@
 #include "slab.h"
 #include "string.h"
 
-//查找
+/*
+满足启动一个即可
+1.addr在VMA空间范围内，即vma->vm_start <= addr < vma->vm_end。[vma->vm_start, vma->vm_end)
+2.距离addr最近并且VMA的结束地址大于addr的一个VMA。
+我马上会这么奇怪，要找最近的vma？
+原因是在做栈扩展的时候，addr没有落在对应的vma中，则需要做栈的expand(扩展)，不然也没法操作。
+参考：https://github.com/torvalds/linux/blob/v5.18/arch/riscv/mm/fault.c#L292
+*/
+
 struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
 {
     struct vm_area_struct *vma;
+    struct vm_area_struct *prev;
     /*[ vma )*/
     for(vma = mm->mmap; vma; vma = vma->vm_next){
         if(vma->vm_start <= addr && vma->vm_end > addr)
             return vma;
-        if(addr <  vma->vm_end)
-            goto out;        
+        if(vma->vm_prev){
+            prev = vma->vm_prev;
+            if(prev->vm_end <= addr && vma->vm_end > addr)
+                return vma;
+        }
     }
-out:
     return NULL;
 }
 
@@ -96,4 +107,17 @@ struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
     struct vm_area_struct *next = vma->vm_next;
     vm_area_free(vma);
     return next;
+}
+
+int expand_downwards(struct vm_area_struct *vma, unsigned long address)
+{
+    if(address >= vma->vm_end || address < vma->vm_start)
+        return -ENOMEM;
+    //TODO
+    return 0;
+}
+
+int expand_stack(struct vm_area_struct *vma, unsigned long address)
+{
+    return expand_downwards(vma, address);
 }

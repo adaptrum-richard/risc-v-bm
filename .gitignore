@@ -3,3 +3,4 @@ kernel.map
 build
 fs.img
 .vscode
+null.d

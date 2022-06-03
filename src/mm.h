@@ -5,18 +5,42 @@
 #include "atomic.h"
 #include "bitops.h"
 
+/*什么情况下，设置了VM_MAY%,而没有设置对应的VM_%属性呢？
+在内存为只读的情况下，希望设置写的属性。
+例如，COW机制根据VM_MAYWRITE标志来检测受COW保护的页面
+当设置VM_MAYWRITE时，Linux内核没有设置
+VM_WRITE标志吗?如果是的话，为什么不从一开始就设置一个标志呢?
+不，它没有。 is_cow_mapping() 不是检查内存是否可写，而是检查
+内存是否可以通过 mprotect() 变为可写。如果不能，那么它显然不是 COW 映射！
+https://stackoverflow.com/questions/48241187/memory-region-flags-in-linux-why-both-vm-write-and-vm-maywrite-are-needed
+*/
+/* mprotect() hardcodes VM_MAYREAD >> 4 == VM_READ, and so for r/w/x bits. */
+#define VM_MAYREAD	0x00000010	/* limits for mprotect() etc */
+#define VM_MAYWRITE	0x00000020
+#define VM_MAYEXEC	0x00000040
+#define VM_MAYSHARE	0x00000080
+
 /*vm flags*/
-#define VM_NONE		0x00000000
-#define VM_READ		0x00000001	/* currently active flags */
-#define VM_WRITE	0x00000002
-#define VM_EXEC		0x00000004
+#define VM_NONE		    0x00000000
+#define VM_READ		    0x00000001	/* currently active flags */
+#define VM_WRITE	    0x00000002
+#define VM_EXEC		    0x00000004
+#define VM_SHARED	    0x00000008
+
 #define VM_GROWSDOWN	0x00000100	/* general info on the segment */
-#define VM_STACK	VM_GROWSDOWN
+#define VM_ACCOUNT	    0x00100000	/* Is a VM accounted object */
+#define VM_STACK	     VM_GROWSDOWN
 
 #define VM_ACCESS_FLAGS (VM_READ | VM_WRITE | VM_EXEC)
 
 #define MAX_ORDER 11
 #define MAX_ORDER_NR_PAGES (1 << (MAX_ORDER - 1))
+
+#define VM_DATA_FLAGS_NON_EXEC	(VM_READ | VM_WRITE | VM_MAYREAD | \
+  				 VM_MAYWRITE | VM_MAYEXEC)
+#define VM_STACK_DEFAULT_FLAGS VM_DATA_FLAGS_NON_EXEC
+
+#define VM_STACK_FLAGS	(VM_STACK | VM_STACK_DEFAULT_FLAGS | VM_ACCOUNT)
 
 struct vm_area_struct;
 struct mm_struct {

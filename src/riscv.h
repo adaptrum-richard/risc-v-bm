@@ -79,6 +79,7 @@ static inline uint64 r_mhartid()
 */
 #define SSTATUS_UBE (1L<<6)
 
+#define user_mode(regs) (((regs)->status & SSTATUS_SPP) == 0)
 
 // Supervisor Interrupt Pending
 static inline uint64 r_sip()

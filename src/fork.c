@@ -14,6 +14,7 @@
 #include "vm.h"
 #include "slab.h"
 #include "memlayout.h"
+#include "mmap.h"
 
 extern void ret_from_kernel_thread(void);
 
@@ -75,6 +76,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
         unsigned long pc)
 {
     struct mm_struct *mm;
+    struct vm_area_struct *vma;
     struct pt_regs *regs = task_pt_regs(current);
     memset((char*)regs, 0x0, sizeof(struct pt_regs));
     regs->epc = pc + USER_CODE_VM_START;
@@ -89,8 +91,13 @@ int move_to_user_mode(unsigned long start, unsigned long size,
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
-    current->mm->stack_vm = STACK_TOP_MAX;
+    vma = vm_area_alloc(mm);
+    vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
+    vma->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
+    vma->vm_flags = VM_STACK_FLAGS;
     current->mm->stack_vm = current->mm->total_vm = 1;
+    
+    insert_vm_struct(mm, vma);
     
     return 0;
 }

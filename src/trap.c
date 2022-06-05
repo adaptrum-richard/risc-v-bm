@@ -10,6 +10,12 @@
 #include "pt_regs.h"
 #include "vm.h"
 #include "mm.h"
+#include "signal.h"
+#include "siginfo.h"
+#include "mmap.h"
+#include "errorno.h"
+#include "string.h"
+#include "vm.h"
 
 void kernelvec();
 
@@ -36,6 +42,97 @@ void devintr()
         plic_complete(irq);
 }
 
+void do_trap(struct pt_regs *regs, int signo, int code, unsigned long addr)
+{
+    /*TODO*/
+    panic("do_trap");
+}
+
+static inline void bad_area(struct pt_regs *regs, 
+    struct mm_struct *mm, int code, unsigned long addr)
+{
+    if (user_mode(regs)) {
+        /*TODO: 不用panic，杀死进程*/
+        do_trap(regs, SIGSEGV, code, addr);
+        return;
+    }
+    panic("bad_area");
+}
+vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+             unsigned int flags, struct pt_regs *regs)
+{
+    uint64 mem;
+    
+    mem = (uint64)get_free_page();
+    if(!mem){
+        return -ENOMEM;
+    }
+    memset((void *)mem, 0, PGSIZE);
+    mappages(current->mm->pagetable, address & PAGE_MASK, PGSIZE, mem, PTE_W|PTE_R|PTE_U);
+    
+    return 0;
+}
+
+void do_page_fault(struct pt_regs *regs)
+{
+    struct vm_area_struct *vma;
+    unsigned int flags = FAULT_FLAG_DEFAULT;
+    struct mm_struct *mm;
+    struct task_struct *tsk;
+    unsigned long addr, cause;
+    int code = SEGV_MAPERR;
+
+    tsk = current;
+    mm = tsk->mm;
+    addr = regs->badaddr;
+    cause = regs->cause;
+    
+
+    if(regs->status & SSTATUS_SPIE)
+        intr_on();
+    
+    if(in_atomic() || !mm){
+        /*do page fault不能能发送在in_atomic或没有mm的进程中*/
+        panic("do_page_fault\n");
+    }
+
+    if (user_mode(regs))
+        flags |= FAULT_FLAG_USER;
+
+    if(!user_mode(regs) && addr < USER_MEM_START 
+            && !(regs->status & SSTATUS_SUM)){
+        panic("access to user memory without uaccess routines");
+    }
+
+    if (cause == EXC_STORE_PAGE_FAULT)
+        flags |= FAULT_FLAG_WRITE;
+    else if (cause == EXC_INST_PAGE_FAULT){
+        flags |= FAULT_FLAG_INSTRUCTION;
+    }
+
+    vma = find_vma(mm, addr);
+    if(!vma){
+        bad_area(regs, mm, code, addr);
+        return;
+    }
+    if (vma->vm_start <= addr)
+        goto good_area;
+
+    if (!(vma->vm_flags & VM_GROWSDOWN)) {
+        bad_area(regs, mm, code, addr);
+        return;
+    }
+
+    if (expand_stack(vma, addr)) {
+        bad_area(regs, mm, code, addr);
+        return;
+    }
+
+good_area:
+    code = SEGV_ACCERR;
+    handle_mm_fault(vma, addr, flags, regs);
+}
+
 void hanlder_exception(struct pt_regs *regs)
 {
     /*异常处理*/
@@ -46,24 +143,8 @@ void hanlder_exception(struct pt_regs *regs)
         panic("syscall exception\n");
         break;
     case EXC_LOAD_PAGE_FAULT:
-        printk("status = 0x%lx, cause = 0x%lx, badaddr = 0x%lx\n", 
-            regs->status, regs->cause, regs->badaddr);
-        /*sstatus = 0x100 stval = 0x8
-        sstatus 第8位是1，表示是从s-mode发生了缺页，说明有问题
-        */
-        panic("load page fault exception\n");
-        break;
-    case EXC_STORE_PAGE_FAULT:       
-        if(regs->badaddr <= STACK_TOP_MAX && regs->badaddr > STACK_BOTTOM){
-            user_stack_growsdown(regs->badaddr);
-        } else if(regs->badaddr > USER_MEM_START && regs->badaddr < USER_MEM_END){
-
-        }else       
-        {
-                printk("status = 0x%lx, cause = 0x%lx, badaddr = 0x%lx\n", 
-                    regs->status, regs->cause, regs->badaddr);
-                panic("store page fault exception, we don't deal\n");
-        }
+    case EXC_STORE_PAGE_FAULT:
+        do_page_fault(regs);
         break;
     default:
         printk("don't support exception, code:%lu\n", exception_code);

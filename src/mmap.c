@@ -3,6 +3,8 @@
 #include "errorno.h"
 #include "slab.h"
 #include "string.h"
+#include "page.h"
+#include "types.h"
 
 /*
 满足启动一个即可
@@ -20,6 +22,8 @@ struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr)
     /*[ vma )*/
     for(vma = mm->mmap; vma; vma = vma->vm_next){
         if(vma->vm_start <= addr && vma->vm_end > addr)
+            return vma;
+        if(!vma->vm_prev && addr < vma->vm_start)
             return vma;
         if(vma->vm_prev){
             prev = vma->vm_prev;
@@ -111,8 +115,18 @@ struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
 
 int expand_downwards(struct vm_area_struct *vma, unsigned long address)
 {
-    if(address >= vma->vm_end || address < vma->vm_start)
-        return -ENOMEM;
+    address &= PAGE_MASK;
+    if(address < STACK_BOTTOM)
+        return -EPERM;
+    
+    if(address < vma->vm_start){
+        unsigned long grow;
+        grow = (vma->vm_start - address) >> PGSHIFT;/*计算需要增长的页面数量*/
+        if(grow <= vma->vm_pgoff){
+            vma->vm_start = address;//扩充栈
+            vma->vm_pgoff -= grow;
+        }
+    }
     //TODO
     return 0;
 }

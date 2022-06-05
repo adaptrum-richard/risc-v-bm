@@ -42,6 +42,23 @@ https://stackoverflow.com/questions/48241187/memory-region-flags-in-linux-why-bo
 
 #define VM_STACK_FLAGS	(VM_STACK | VM_STACK_DEFAULT_FLAGS | VM_ACCOUNT)
 
+enum fault_flag {
+    FAULT_FLAG_WRITE =		    1 << 0,
+    FAULT_FLAG_MKWRITE =		1 << 1,
+    FAULT_FLAG_ALLOW_RETRY =	1 << 2,
+    FAULT_FLAG_RETRY_NOWAIT = 	1 << 3,
+    FAULT_FLAG_KILLABLE =		1 << 4,
+    FAULT_FLAG_TRIED = 		    1 << 5,
+    FAULT_FLAG_USER =		    1 << 6,
+    FAULT_FLAG_REMOTE =		    1 << 7,
+    FAULT_FLAG_INSTRUCTION =	1 << 8,
+    FAULT_FLAG_INTERRUPTIBLE =	1 << 9,
+};
+
+#define FAULT_FLAG_DEFAULT  (FAULT_FLAG_ALLOW_RETRY | \
+                            FAULT_FLAG_KILLABLE | \
+                            FAULT_FLAG_INTERRUPTIBLE)
+
 struct vm_area_struct;
 struct mm_struct {
     pagetable_t pagetable;

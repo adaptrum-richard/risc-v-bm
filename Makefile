@@ -11,7 +11,7 @@ SRC_DIR = src
 all : clean kernel.img fs.img
 
 clean :
-	rm -rf $(BUILD_DIR) *.img kernel.map
+	rm -rf $(BUILD_DIR) *.img kernel.map null.d
 
 $(BUILD_DIR)/%_c.o: $(SRC_DIR)/%.c
 	mkdir -p $(@D)

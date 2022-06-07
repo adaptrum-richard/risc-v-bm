@@ -10,4 +10,5 @@ pagetable_t get_kpgtbl();
 pagetable_t copy_kernel_tbl(void);
 int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm);
 void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free);
+void uvunmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages);
 #endif

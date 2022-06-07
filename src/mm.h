@@ -65,6 +65,7 @@ struct mm_struct {
     struct vm_area_struct *mmap;
     unsigned long stack_vm;	   /* VM_STACK */
     unsigned long total_vm;
+    unsigned long start_brk, brk;
 };
 
 struct vm_area_struct {

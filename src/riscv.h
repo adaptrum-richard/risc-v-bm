@@ -364,6 +364,8 @@ typedef uint64 *pagetable_t; // 512 PTEs
 
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
+#define PTE_FLAGS(pte) ((pte) & 0x3FF)
+
 // flush the TLB.
 static inline void sfence_vma()
 {

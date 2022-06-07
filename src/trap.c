@@ -45,6 +45,7 @@ void devintr()
 void do_trap(struct pt_regs *regs, int signo, int code, unsigned long addr)
 {
     /*TODO*/
+    printk_intr("%s %d\n", __func__, __LINE__);
     panic("do_trap");
 }
 
@@ -56,20 +57,31 @@ static inline void bad_area(struct pt_regs *regs,
         do_trap(regs, SIGSEGV, code, addr);
         return;
     }
+    printk_intr("%s %d\n", __func__, __LINE__);
     panic("bad_area");
 }
+
 vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
              unsigned int flags, struct pt_regs *regs)
 {
     uint64 mem;
-    
+    //uint64 va_start = vma->vm_start;
+    int perm = 0;
+    if(flags & FAULT_FLAG_USER)
+        perm |= PTE_U;
+    if(vma->vm_flags & VM_EXEC)
+        perm |= PTE_X;
+    if(vma->vm_flags & VM_READ)
+        perm |= PTE_R;
+    if(vma->vm_flags & VM_WRITE)
+        perm |= PTE_W;
+
     mem = (uint64)get_free_page();
     if(!mem){
         return -ENOMEM;
     }
     memset((void *)mem, 0, PGSIZE);
-    mappages(current->mm->pagetable, address & PAGE_MASK, PGSIZE, mem, PTE_W|PTE_R|PTE_U);
-    
+    mappages(current->mm->pagetable, address & PAGE_MASK, PGSIZE, mem, perm);    
     return 0;
 }
 
@@ -87,7 +99,6 @@ void do_page_fault(struct pt_regs *regs)
     addr = regs->badaddr;
     cause = regs->cause;
     
-
     if(regs->status & SSTATUS_SPIE)
         intr_on();
     

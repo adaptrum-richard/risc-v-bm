@@ -96,7 +96,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     vma->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
     vma->vm_flags = VM_STACK_FLAGS;
     current->mm->stack_vm = current->mm->total_vm = 1;
-    
+    mm->brk = mm->start_brk = USER_MEM_START;
     insert_vm_struct(mm, vma);
     
     return 0;

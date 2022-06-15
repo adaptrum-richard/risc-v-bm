@@ -4,6 +4,9 @@
 #include "printk.h"
 #include "fs.h"
 #include "log.h"
+#include "proc.h"
+#include "vm.h"
+#include "mm.h"
 
 struct devsw devsw[NDEV];
 
@@ -123,4 +126,20 @@ int filewrite(struct file *f, uint64 addr, int n)
     }
 
     return ret;
+}
+
+// Get metadata about file f.
+// addr is a user virtual address, pointing to a struct stat.
+int filestat(struct file *f, uint64 addr)
+{
+    struct stat st;
+    if(f->type == FD_INODE || f->type == FD_DEVICE){
+        ilock(f->ip);
+        stati(f->ip, &st);
+        iunlock(f->ip);
+        if(copy_kernel_to_user(current->mm->pagetable, addr, (char *)&st, sizeof(st)) < 0)
+            return -1;
+        return 0;
+    }
+    return -1;
 }

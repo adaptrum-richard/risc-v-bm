@@ -503,3 +503,12 @@ int dirlink(struct inode *dp, char *name, uint inum)
     }
     return 0;
 }
+
+void stati(struct inode *ip, struct stat *st)
+{
+    st->dev = ip->dev;
+    st->ino = ip->inum;
+    st->type = ip->type;
+    st->nlink = ip->nlink;
+    st->size = ip->size;
+}

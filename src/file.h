@@ -55,4 +55,5 @@ struct file *filealloc(void);
 void fileclose(struct file *f);
 int fileread(struct file *f, uint64 addr, int n);
 int filewrite(struct file *f, uint64 addr, int n);
+int filestat(struct file *f, uint64 addr);
 #endif

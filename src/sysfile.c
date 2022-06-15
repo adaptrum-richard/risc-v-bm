@@ -8,6 +8,7 @@
 #include "fcntl.h"
 #include "proc.h"
 #include "string.h"
+#include "errorno.h"
 
 static struct inode *create(char *path, short type, 
     short major, short minor)
@@ -171,7 +172,7 @@ uint64 __sys_close(int fd)
     return 0;
 }
 
-int __sys_mknod(const char *pathname, short major, short minor)
+uint64 __sys_mknod(const char *pathname, short major, short minor)
 {
     struct inode *ip;
     char path[MAXPATH] = {0};
@@ -189,4 +190,35 @@ int __sys_mknod(const char *pathname, short major, short minor)
     log_end_op();
     
     return 0;
+}
+
+
+uint64 __sys_mkdir(const char *pt)
+{
+    char path[MAXPATH];
+    struct inode *ip;
+    if(pt == NULL)
+        return -1;
+    if(strlen(pt) > (MAXPATH-1))
+        return -ENAMETOOLONG;
+    strcpy(path, pt);
+    log_begin_op();
+    if((ip = create(path, T_DIR, 0, 0)) == NULL){
+        log_end_op();
+        return -1;
+    }
+    iunlockput(ip);
+    log_end_op();
+    return 0;
+}
+
+uint64 __sys_fstat(int fd, struct stat *st)
+{
+    struct file *f;
+    if(fd < 0 || st == NULL)
+        return -1;
+    f = current->ofile[fd];
+    if(f == NULL)
+        return -1;
+    return filestat(f, (uint64)st);
 }

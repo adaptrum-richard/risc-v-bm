@@ -3,6 +3,7 @@
 #include "printk.h"
 #include "sleep.h"
 #include "mmap.h"
+#include "sysfile.h"
 
 long sys_ni_syscall(void)
 {
@@ -91,19 +92,19 @@ unsigned long sys_uptime(void)
     return 0;
 }
 
-unsigned long sys_open(void)
+unsigned long sys_open(const char *pathname, int omode)
 {
-    return 0;
+    return __sys_open(pathname, omode);
 }
 
-unsigned long sys_write(void)
+unsigned long sys_write(int fd, const void *buf, int count)
 {
-    return 0;
+    return __sys_write(fd, buf, count);
 }
 
-unsigned long sys_mknod(void)
+unsigned long sys_mknod(const char *pathname, short major, short minor)
 {
-    return 0;
+    return __sys_mknod(pathname, major, minor);
 }
 
 unsigned long sys_unlink(void)
@@ -116,14 +117,14 @@ unsigned long sys_link(void)
     return 0;
 }
 
-unsigned long sys_mkdir(void)
+unsigned long sys_mkdir(const char *path)
 {
-    return 0;
+    return __sys_mkdir(path);
 }
 
-unsigned long sys_close(void)
+unsigned long sys_close(int fd)
 {
-    return 0;
+    return __sys_close(fd);
 }
 
 void * const sys_call_table[__NR_syscalls] = {

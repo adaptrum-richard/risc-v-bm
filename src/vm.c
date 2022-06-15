@@ -142,13 +142,6 @@ pagetable_t kvmmake(void)
     // map kernel data and the physical RAM we'll make use of.
     kvmmap(kpgtbl, (uint64)_etext, (uint64)_etext, PHYSTOP - (uint64)_etext, PTE_R | PTE_W);
 
-    // map the trampoline for trap entry/exit to
-    // the highest virtual address in the kernel.
-    // kvmmap(kpgtbl, TRAMPOLINE, (uint64)trampoline, PGSIZE, PTE_R | PTE_X);
-
-    // map kernel stacks
-    // proc_mapstacks(kpgtbl);
-
     return kpgtbl;
 }
 
@@ -203,5 +196,67 @@ int uvminit(pagetable_t pagetable, uchar *src, uint size)
     memset(mem, 0, PGROUNDUP(size));
     mappages(pagetable, USER_CODE_VM_START, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
     memmove(mem, src, size);
+    return 0;
+}
+
+/*根据虚拟地址找到对应的物理地址
+ *返回0，表示此虚拟地址没有被映射
+ *此函数仅仅能被用于查找用户空间的页
+ */
+uint64 walkaddr(pagetable_t pagetable, uint64 va)
+{
+    pte_t *pte;
+    uint64 pa;
+
+    if(va >= MAXVA)
+        return 0;
+
+    pte = walk(pagetable, va, 0);
+    if(pte == 0)
+        return 0;
+    if((*pte & PTE_V) == 0)
+        return 0;
+    if((*pte & PTE_U) == 0)
+        return 0;
+    pa = PTE2PA(*pte);
+    return pa;
+}
+
+int copy_kernel_to_user(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
+{
+    uint64 n, va0, pa0;
+    while(len > 0){
+        va0 = PGROUNDDOWN(dstva);
+        pa0 = walkaddr(pagetable, va0);
+        if(pa0 == 0)
+            return -1;
+        n = PGSIZE - (dstva - va0);
+        if(n > len)
+        memmove((void*)(pa0 + (dstva - va0)), src, n);
+        len -= n;
+        src += n;
+        dstva = va0 + PGSIZE; 
+    }
+    return 0;
+}
+
+int copy_user_to_kernel(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
+{
+    uint64 n, va0, pa0;
+
+    while(len > 0){
+        va0 = PGROUNDDOWN(srcva);
+        pa0 = walkaddr(pagetable, va0);
+        if(pa0 == 0)
+            return -1;
+        n = PGSIZE - (srcva - va0);
+        if(n > len)
+            n = len;
+        memmove(dst, (void *)(pa0 + (srcva - va0)), n);
+
+        len -= n;
+        dst += n;
+        srcva = va0 + PGSIZE;
+    }
     return 0;
 }

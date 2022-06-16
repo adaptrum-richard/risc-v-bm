@@ -1,6 +1,6 @@
 kernel.img
 kernel.map
-build
+kernel_build
 fs.img
 .vscode
 null.d

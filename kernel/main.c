@@ -110,7 +110,7 @@ void test_sysfile(uint64 arg)
 void kernel_process(uint64 arg)
 {
     while(1){
-        sleep(1);
+        kernel_sleep(1);
         printk("1 current %s run pid:%d\n", current->name, current->pid);
         //delay();
     }
@@ -129,7 +129,7 @@ void idle()
     while(1){
         
         printk("current %s run pid:%d\n", current->name, current->pid);
-        sleep(1);
+        kernel_sleep(1);
         //traversing_rq();
     }
 }

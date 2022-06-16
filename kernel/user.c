@@ -21,15 +21,15 @@ void user_process()
     int i = 0;
     while(1){
         if(heap_space == NULL){
-            heap_space = (char *)call_sys_malloc(sizeof(char)*BUF_SIZE);
-            call_sys_printf("user space: malloc heap space\n");
+            heap_space = (char *)malloc(sizeof(char)*BUF_SIZE);
+            printf("user space: malloc heap space\n");
         }
         if(i > (BUF_SIZE - 1)){
             i = 0;
-            call_sys_free((void*)heap_space);
+            free((void*)heap_space);
             heap_space = NULL;
-            call_sys_sleep(1);
-            call_sys_printf("user space: free heap space\n");
+            sleep(1);
+            printf("user space: free heap space\n");
         } else { 
             stack_space[i] = i%256;
             heap_space[i] = i%256;

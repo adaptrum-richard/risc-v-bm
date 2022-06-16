@@ -2,7 +2,7 @@
 #define __SLEEP_H__
 #include "types.h"
 
-void sleep(uint64 times);
+void kernel_sleep(uint64 times);
 void wakes_sleep(void);
 
 #endif

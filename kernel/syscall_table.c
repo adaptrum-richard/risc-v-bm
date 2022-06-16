@@ -20,7 +20,7 @@ void sys_printf(char *buf)
 
 void sys_sleep(unsigned long s)
 {
-    sleep(s);
+    kernel_sleep(s);
 }
 
 unsigned long sys_brk(unsigned long size)

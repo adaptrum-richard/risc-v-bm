@@ -5,7 +5,7 @@
 
 DECLARE_WAIT_QUEUE_HEAD(sleep_queue);
 
-void sleep(uint64 times)
+void kernel_sleep(uint64 times)
 {
     unsigned long timeout = jiffies + times*HZ;
     set_current_state(TASK_INTERRUPTIBLE);

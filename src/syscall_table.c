@@ -4,6 +4,8 @@
 #include "sleep.h"
 #include "mmap.h"
 #include "sysfile.h"
+#include "proc.h"
+#include "sysproc.h"
 
 long sys_ni_syscall(void)
 {
@@ -52,9 +54,9 @@ unsigned long sys_pipe(void)
     return 0;
 }
 
-unsigned long sys_read(void)
+unsigned long sys_read(int fd, void *buf, int count)
 {
-    return 0;
+    return __sys_read(fd, buf, count);
 }
 
 unsigned long sys_kill(void)
@@ -77,14 +79,14 @@ unsigned long sys_chdir(void)
     return 0;
 }
 
-unsigned long sys_dup(void)
+unsigned long sys_dup(int fd)
 {
-    return 0;
+    return __sys_dup(fd);
 }
 
 unsigned long sys_getpid(void)
 {
-    return 0;
+    return __sys_getpid();
 }
 
 unsigned long sys_uptime(void)

@@ -222,3 +222,13 @@ uint64 __sys_fstat(int fd, struct stat *st)
         return -1;
     return filestat(f, (uint64)st);
 }
+
+uint64 __sys_dup(int oldfd)
+{
+    int newfd;
+    struct file *f = current->ofile[oldfd];
+    if((newfd = fdalloc(f)) < 0)
+        return -1;
+    filedup(f);
+    return newfd;
+}

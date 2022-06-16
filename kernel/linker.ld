@@ -10,10 +10,10 @@ SECTIONS
 	. = ALIGN(4096);
 	
 	user_begin = .;
-	.text.user : { build/user* (.text) }
-	.rodata.user : { build/user* (.rodata) }
-	.data.user : { build/user* (.data) }
-	.bss.user : { build/user* (.bss) }
+	.text.user : { kernel_build/user* (.text) }
+	.rodata.user : { kernel_build/user* (.rodata) }
+	.data.user : { kernel_build/user* (.data) }
+	.bss.user : { kernel_build/user* (.bss) }
 	user_end = .;
 
 	. = ALIGN(4096);

@@ -27,6 +27,4 @@
 #define SYS_free   22
 #define __NR_syscalls 24
 
-extern void * const sys_call_table[];
-
 #endif

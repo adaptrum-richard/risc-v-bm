@@ -4,3 +4,4 @@ kernel_build
 fs.img
 .vscode
 null.d
+user_build

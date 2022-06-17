@@ -4,11 +4,14 @@ COPS += -Wall -Werror -O0 -fno-omit-frame-pointer -ggdb -MD
 COPS += -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. 
 COPS += -fno-stack-protector -fno-pie -no-pie
 ASMOPS = -g
+LDFLAGS = -z max-page-size=4096
 
+USER_DIR = user
+USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean kernel.img fs.img
+all : clean kernel.img fs.img initcode
 
 clean :
 	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d
@@ -39,6 +42,14 @@ kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 	$(RISCVGNU)-objcopy $(KERNEL_BUILD_DIR)/kernel.elf -O binary kernel.img
 	$(RISCVGNU)-objdump -S $(KERNEL_BUILD_DIR)/kernel.elf > $(KERNEL_BUILD_DIR)/kernel.asm
 	$(RISCVGNU)-objdump -t $(KERNEL_BUILD_DIR)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BUILD_DIR)/kernel.sym
+
+
+initcode: $(USER_DIR)/initcode.S
+	mkdir -p $(USER_BUILD_DIR)
+	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_BUILD_DIR)/initcode.o
+	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0 -o $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode.o
+	$(RISCVGNU)-objcopy -S -O binary $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode
+	$(RISCVGNU)-objdump -S $(USER_BUILD_DIR)/initcode.o > $(USER_BUILD_DIR)/initcode.asm
 
 QEMU_FLAGS  += -nographic
 

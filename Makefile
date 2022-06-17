@@ -11,10 +11,10 @@ USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean kernel.img fs.img initcode
+all : clean kernel.img fs.img mkdir_user_build initcode
 
 clean :
-	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d
+	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)
 
 $(KERNEL_BUILD_DIR)/%_c.o: $(KERNEL_DIR)/%.c
 	mkdir -p $(@D)
@@ -43,13 +43,17 @@ kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 	$(RISCVGNU)-objdump -S $(KERNEL_BUILD_DIR)/kernel.elf > $(KERNEL_BUILD_DIR)/kernel.asm
 	$(RISCVGNU)-objdump -t $(KERNEL_BUILD_DIR)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BUILD_DIR)/kernel.sym
 
-
-initcode: $(USER_DIR)/initcode.S
+mkdir_user_build:
 	mkdir -p $(USER_BUILD_DIR)
+	
+initcode: $(USER_DIR)/initcode.S usys.o
 	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_BUILD_DIR)/initcode.o
 	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0 -o $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode.o
 	$(RISCVGNU)-objcopy -S -O binary $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode
 	$(RISCVGNU)-objdump -S $(USER_BUILD_DIR)/initcode.o > $(USER_BUILD_DIR)/initcode.asm
+
+usys.o : $(USER_DIR)/sys.S
+	$(RISCVGNU)-gcc $(CFLAGS) -I. -Ikernel -c -o $(USER_BUILD_DIR)/sys.o $(USER_DIR)/sys.S
 
 QEMU_FLAGS  += -nographic
 

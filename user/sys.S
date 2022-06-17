@@ -1,7 +1,7 @@
 #include "syscall.h"
 
-.global printf
-printf:
+.global kprintf
+kprintf:
     li a7, SYS_printf
     ecall
     ret

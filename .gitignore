@@ -5,3 +5,8 @@ fs.img
 .vscode
 null.d
 user_build
+user/*.asm
+user/_*
+user/*.d
+user/*.sym
+user/*.o

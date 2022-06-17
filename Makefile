@@ -11,10 +11,7 @@ USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean kernel.img fs.img mkdir_user_build initcode
-
-clean :
-	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)
+all : clean kernel.img mkdir_user_build fs.img
 
 $(KERNEL_BUILD_DIR)/%_c.o: $(KERNEL_DIR)/%.c
 	mkdir -p $(@D)
@@ -31,11 +28,6 @@ OBJ_FILES += $(ASM_FILES:$(KERNEL_DIR)/%.S=$(KERNEL_BUILD_DIR)/%_s.o)
 DEP_FILES = $(OBJ_FILES:%.o=%.d)
 -include $(DEP_FILES)
 
-mkfs/mkfs: mkfs/mkfs.c
-	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
-
-fs.img: mkfs/mkfs README
-	mkfs/mkfs fs.img README 
 
 kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 	$(RISCVGNU)-ld -T $(KERNEL_DIR)/linker.ld -Map kernel.map -o $(KERNEL_BUILD_DIR)/kernel.elf  $(OBJ_FILES)
@@ -43,17 +35,51 @@ kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 	$(RISCVGNU)-objdump -S $(KERNEL_BUILD_DIR)/kernel.elf > $(KERNEL_BUILD_DIR)/kernel.asm
 	$(RISCVGNU)-objdump -t $(KERNEL_BUILD_DIR)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BUILD_DIR)/kernel.sym
 
-mkdir_user_build:
+mkdir_user_build: 
 	mkdir -p $(USER_BUILD_DIR)
-	
-initcode: $(USER_DIR)/initcode.S usys.o
+
+initcode: $(USER_DIR)/initcode.S 
 	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_BUILD_DIR)/initcode.o
 	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0 -o $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode.o
 	$(RISCVGNU)-objcopy -S -O binary $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode
 	$(RISCVGNU)-objdump -S $(USER_BUILD_DIR)/initcode.o > $(USER_BUILD_DIR)/initcode.asm
 
-usys.o : $(USER_DIR)/sys.S
-	$(RISCVGNU)-gcc $(CFLAGS) -I. -Ikernel -c -o $(USER_BUILD_DIR)/sys.o $(USER_DIR)/sys.S
+
+USER_CFLAGS=-Wall -Werror -O -fno-omit-frame-pointer \
+	-ggdb -MD -mcmodel=medany -ffreestanding -fno-common \
+		-nostdlib -mno-relax -fno-stack-protector -fno-pie -no-pie 
+
+$(USER_DIR)/sys.o : $(USER_DIR)/sys.S
+	$(RISCVGNU)-gcc $(CFLAGS) -I. -I$(KERNEL_DIR) -c -o $(USER_DIR)/sys.o $(USER_DIR)/sys.S
+
+$(USER_DIR)/string.o : $(USER_DIR)/string.c
+	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/string.o $(USER_DIR)/string.c
+
+$(USER_DIR)/printf.o : $(USER_DIR)/printf.c
+	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/printf.o $(USER_DIR)/printf.c
+
+
+ULIB = $(USER_DIR)/string.o $(USER_DIR)/sys.o $(USER_DIR)/printf.o 
+
+$(USER_DIR)/_init: $(ULIB) 
+	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/init.o $(USER_DIR)/init.c
+	$(RISCVGNU)-ld $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^ $(USER_DIR)/init.o
+	$(RISCVGNU)-objdump -S $@ > $@.asm
+	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
+
+mkfs/mkfs: mkfs/mkfs.c
+	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+
+USER_PROGS= $(USER_DIR)/_init
+
+fs.img: mkfs/mkfs README $(USER_PROGS) $(initcode)
+	mkfs/mkfs fs.img README 
+
+clean :
+	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)  \
+		$(USER_DIR)/*.o $(USER_DIR)/*.asm \
+		$(USER_DIR)/_* $(USER_DIR)/*.d \
+		 $(USER_DIR)/*.sym
 
 QEMU_FLAGS  += -nographic
 

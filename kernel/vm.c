@@ -222,7 +222,7 @@ uint64 walkaddr(pagetable_t pagetable, uint64 va)
     return pa;
 }
 
-int copy_kernel_to_user(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
+static int copy_data_kernel_to_user(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
     uint64 n, va0, pa0;
     while(len > 0){
@@ -232,7 +232,7 @@ int copy_kernel_to_user(pagetable_t pagetable, uint64 dstva, char *src, uint64 l
             return -1;
         n = PGSIZE - (dstva - va0);
         if(n > len)
-        memmove((void*)(pa0 + (dstva - va0)), src, n);
+            memmove((void*)(pa0 + (dstva - va0)), src, n);
         len -= n;
         src += n;
         dstva = va0 + PGSIZE; 
@@ -240,7 +240,7 @@ int copy_kernel_to_user(pagetable_t pagetable, uint64 dstva, char *src, uint64 l
     return 0;
 }
 
-int copy_user_to_kernel(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
+static int copy_data_user_to_kernel(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
     uint64 n, va0, pa0;
 
@@ -259,4 +259,39 @@ int copy_user_to_kernel(pagetable_t pagetable, char *dst, uint64 srcva, uint64 l
         srcva = va0 + PGSIZE;
     }
     return 0;
+}
+
+static int user_space_address(uint64 addr)
+{
+    if(addr >= USER_CODE_VM_START)
+        return 1;
+    return 0;
+}
+
+/*如果user dst为1，表示将数据复制到用户空间内存中，否则是内核中的操作
+找到dst_va虚拟地址对应的物理地址，将数据src_data_addr复制到物理地址中，长度为len
+*/
+int space_data_copy_out(uint64 dst_va, void *src_data_addr, uint len)
+{
+    int user_dst = user_space_address(dst_va);
+    if(user_dst){
+        return copy_data_kernel_to_user(current->mm->pagetable, dst_va, src_data_addr, len);
+    } else {
+        memmove((char *)dst_va, src_data_addr, len);
+        return 0;
+    }
+}
+
+/*如果user_src为1，表示将数据复制到用户空间内存中，否则为内存空间
+找到src_va对应的物理地址，将物理地址中的数据复制到dst_data_addr中。
+*/
+int spcae_data_copy_in(void *dst_data_addr, uint64 src_va, uint64 len)
+{
+    int user_src = user_space_address(src_va);
+    if(user_src){
+        return copy_data_user_to_kernel(current->mm->pagetable, dst_data_addr, src_va, len);
+    } else {
+        memmove(dst_data_addr, (char*)src_va, len);
+        return 0;
+    }
 }

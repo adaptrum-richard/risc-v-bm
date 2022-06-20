@@ -7,6 +7,7 @@
 #include "page.h"
 #include "string.h"
 #include "spinlock.h"
+#include "vm.h"
 
 static unsigned long *pid_table;
 static struct spinlock task_list_lock;

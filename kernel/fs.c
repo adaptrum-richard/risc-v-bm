@@ -7,6 +7,7 @@
 #include "sched.h"
 #include "file.h"
 #include "stat.h"
+#include "vm.h"
 
 struct superblock sb;
 
@@ -308,7 +309,11 @@ int readi(struct inode *ip, uint64 dst, uint off, uint n)
     for(tot = 0; tot < n ; tot += m, off += m, dst += m){
         bp = bread(ip->dev, bmap(ip, off/BSIZE));
         m = min(n -  tot, BSIZE- off % BSIZE);
-        memmove((char *)dst, bp->data + (off % BSIZE), m);
+        if(space_data_copy_out(dst, bp->data + (off % BSIZE), m) == -1){
+            tot = -1;
+            brelse(bp);
+            break;
+        }
         brelse(bp);
     }
     return tot;
@@ -328,7 +333,10 @@ int writei(struct inode *ip, uint64 src, uint off, uint n)
     for(tot = 0; tot < n; tot += m, off += m, src += m){
         bp = bread(ip->dev, bmap(ip, off/BSIZE));
         m = min(n - tot, BSIZE - off % BSIZE);
-        memmove(bp->data + (off % BSIZE), (char *)src, m);
+        if(spcae_data_copy_in(bp->data + (off % BSIZE), src, m) == -1){
+            brelse(bp);
+            break;
+        }
         log_write(bp);
         brelse(bp);
     }

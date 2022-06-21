@@ -66,13 +66,6 @@ kill:
     ecall
     ret
 
-
-.global exec
-exec:
-    li a7, SYS_exec
-    ecall
-    ret
-
 .global fstat
 fstat:
     li a7, SYS_fstat

@@ -4,4 +4,5 @@ extern void printf(char * buf);
 extern void sleep(unsigned long);
 extern unsigned long malloc(unsigned long);
 extern unsigned long free(void *);
+extern int fork(void);
 #endif

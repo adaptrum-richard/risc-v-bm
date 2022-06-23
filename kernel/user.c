@@ -19,21 +19,30 @@ void user_process()
     char *heap_space = NULL;
     memset(stack_space, 0x1, BUF_SIZE);
     int i = 0;
-    while(1){
-        if(heap_space == NULL){
-            heap_space = (char *)malloc(sizeof(char)*BUF_SIZE);
-            printf("user space: malloc heap space\n");
-        }
-        if(i > (BUF_SIZE - 1)){
-            i = 0;
-            free((void*)heap_space);
-            heap_space = NULL;
+    int pid = fork();
+    if(pid == 0){
+        while(1){
+            printf("child thread run\n");
             sleep(1);
-            printf("user space: free heap space\n");
-        } else { 
-            stack_space[i] = i%256;
-            heap_space[i] = i%256;
-            i++;
+        }
+    }else {
+        printf("parent thread run\n");
+        while(1){
+            if(heap_space == NULL){
+                heap_space = (char *)malloc(sizeof(char)*BUF_SIZE);
+                printf("user space: malloc heap space\n");
+            }
+            if(i > (BUF_SIZE - 1)){
+                i = 0;
+                free((void*)heap_space);
+                heap_space = NULL;
+                sleep(1);
+                printf("user space: free heap space\n");
+            } else { 
+                stack_space[i] = i%256;
+                heap_space[i] = i%256;
+                i++;
+            }
         }
     }
 }

@@ -68,7 +68,8 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
     mm->total_vm = oldmm->total_vm;
     mm->stack_vm = oldmm->stack_vm;
     mm->start_brk = oldmm->start_brk;
-    for(oldvma = mm->mmap; oldvma; oldvma = oldvma->vm_next){
+    mm->brk = oldmm->brk;
+    for(oldvma = oldmm->mmap; oldvma; oldvma = oldvma->vm_next){
         newvma = vm_area_dup(oldvma);
         insert_vm_struct(mm, newvma);
         dup_vma_mmap(oldmm->pagetable, mm->pagetable, oldvma->vm_start, 
@@ -151,6 +152,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
         strcpy(p->name, name);
     p->thread.sp = (uint64)childregs;
     p->kernel_sp = p->thread.sp;
+    p->parent = current;
     LINK_TASK(p);
     mb();
     spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
@@ -174,10 +176,17 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     regs->sp = STACK_TOP_MAX;
 
     mm = mm_alloc();
+
     if(uvminit(mm->pagetable, (uchar*)start, size) < 0){
         printk("%s %d: uvminit error\n", __func__, __LINE__);
         return -1;
     }
+    vma = vm_area_alloc(mm);
+    vma->vm_start = USER_CODE_VM_START;
+    vma->vm_end = USER_CODE_VM_START + PGROUNDUP(size);
+    vma->vm_flags = VM_EXEC | VM_READ;
+    insert_vm_struct(mm, vma);
+    
     vma = vm_area_alloc(mm);
     vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
     vma->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;

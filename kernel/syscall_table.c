@@ -6,6 +6,7 @@
 #include "sysfile.h"
 #include "proc.h"
 #include "sysproc.h"
+#include "fork.h"
 
 long sys_ni_syscall(void)
 {
@@ -36,7 +37,7 @@ unsigned long sys_free(void *addr)
 
 unsigned long sys_fork(void)
 {
-    return 0;
+    return do_fork();
 }
 
 unsigned long sys_exit(void)

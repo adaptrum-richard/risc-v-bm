@@ -50,6 +50,7 @@ struct task_struct {
     struct sched_class *sched_class;
     struct file *ofile[NOFILE]; //open file
     struct list_head run_list;
+    struct task_struct *parent;
     struct task_struct *prev_task, *next_task;
     
 };
@@ -75,6 +76,7 @@ static inline unsigned int task_cpu(const struct task_struct *p)
     .need_resched = 0,  \
     .on_rq = 0, \
     .run_list = LIST_HEAD_INIT(task.run_list), \
+    .parent = NULL, \
     .next_task = (struct task_struct *)&task, \
     .prev_task = (struct task_struct *)&task, \
 }

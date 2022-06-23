@@ -69,7 +69,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     }
 }
 
-void uvunmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
+void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
 {
     uint64 a;
     pte_t *pte;

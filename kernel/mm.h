@@ -4,6 +4,7 @@
 #include "list.h"
 #include "atomic.h"
 #include "bitops.h"
+#include "proc.h"
 
 /*什么情况下，设置了VM_MAY%,而没有设置对应的VM_%属性呢？
 在内存为只读的情况下，希望设置写的属性。
@@ -149,4 +150,6 @@ static inline struct zone *page_zone(const struct page *page)
 
 void mem_init(void);
 struct mm_struct *mm_alloc(void);
+struct mm_struct *mm_init(struct mm_struct *mm, 
+    struct task_struct *p);
 #endif

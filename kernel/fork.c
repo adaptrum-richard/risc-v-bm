@@ -15,8 +15,89 @@
 #include "slab.h"
 #include "memlayout.h"
 #include "mmap.h"
+#include "mm.h"
 
 extern void ret_from_kernel_thread(void);
+extern void ret_from_fork(void);
+
+struct vm_area_struct *vm_area_dup(struct vm_area_struct *orig)
+{
+    struct vm_area_struct *new = kmalloc(sizeof(struct vm_area_struct));
+    if(new){
+        *new = *orig;
+        new->vm_next = new->vm_prev = NULL;
+    }
+    return new;
+}
+
+static int dup_vma_mmap(pagetable_t oldpt, pagetable_t newpt, uint64 oldva, uint64 newva, uint64 sz)
+{
+    pte_t *pte;
+    uint flags;
+    uint64 va, pa;
+    uint64 mem;
+    uint64 newva_bak = newva;
+    for(va = oldva; va < oldva + sz; va += PGSIZE, newva += PGSIZE){
+        if((pte = walk(oldpt, va, 0)) == 0){
+            continue;
+            //panic("dup_vma: pte should exist");
+        }
+        if((*pte & PTE_V) == 0){
+            panic("dup_vma: page not present");
+        }
+        pa = PTE2PA(*pte);
+        flags = PTE_FLAGS(*pte);
+        if((mem = get_free_page()) == 0){
+            goto err;  
+        }
+        memcpy((void*)mem, (void *)pa, PGSIZE);
+        if(mappages(newpt, newva, PGSIZE, mem, flags) != 0){
+            free_page(mem);
+            goto err;
+        }
+    }
+    return 0;
+err:
+    unmap_validpages(newpt, newva_bak, (newva_bak + sz / PGSIZE));
+    return -1;
+}
+
+static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
+{
+    struct vm_area_struct *oldvma, *newvma;
+    mm->total_vm = oldmm->total_vm;
+    mm->stack_vm = oldmm->stack_vm;
+    mm->start_brk = oldmm->start_brk;
+    for(oldvma = mm->mmap; oldvma; oldvma = oldvma->vm_next){
+        newvma = vm_area_dup(oldvma);
+        insert_vm_struct(mm, newvma);
+        dup_vma_mmap(oldmm->pagetable, mm->pagetable, oldvma->vm_start, 
+            newvma->vm_start, oldvma->vm_end - oldvma->vm_start);
+    }
+    return 0;
+}
+
+struct mm_struct *dup_mm(struct task_struct *tsk, struct mm_struct *oldmm)
+{
+    struct mm_struct *mm;
+    int err;
+
+    mm = kmalloc(sizeof(*mm));
+    if(!mm){
+        return NULL;
+    }
+
+    memcpy(mm, oldmm, sizeof(*mm));
+    if(mm_init(mm, tsk) == NULL){
+        kfree(mm);
+        return NULL;
+    }
+    err = dup_mmap(mm, oldmm);
+    if(err != 0)
+        return NULL;
+    return mm;
+}
+
 
 static inline struct pt_regs *task_pt_regs(struct task_struct *tsk)
 {
@@ -50,12 +131,18 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
         /* Supervisor irqs on: */
         childregs->status = SSTATUS_SPP | SSTATUS_SPIE;
     } else {
-        printk("now , not implement user mode\n");
-        return -1;
+        *childregs = *(task_pt_regs(current));
+        childregs->a0 = 0;
+        p->thread.ra = (unsigned long)ret_from_fork;
+        p->flags = TASK_NORMAL;
+        p->state = TASK_RUNNING;
+        if(dup_mm(p, current->mm) == NULL){
+            panic("copy_process: dup_mm failed\n");
+        }
     }
     
     p->priority = current->priority;
-    p->counter = 1;
+    p->counter = DEF_COUNTER;
     p->preempt_count = 0;
     p->pid = pid;
     p->cpu = smp_processor_id();
@@ -69,7 +156,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
     p->sched_class->enqueue_task(cpu_rq(task_cpu(p)), p);
     spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
-    return 0;
+    return pid;
 }
 
 int move_to_user_mode(unsigned long start, unsigned long size, 
@@ -102,3 +189,10 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     return 0;
 }
 
+int do_fork(void)
+{
+    int pid = copy_process(TASK_NORMAL, 0, 0, current->name);
+    /*父进程返回值为子进程的pid*/
+    /*TODO:文件系统*/
+    return pid;
+}

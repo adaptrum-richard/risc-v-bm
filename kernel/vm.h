@@ -10,8 +10,9 @@ pagetable_t get_kpgtbl();
 pagetable_t copy_kernel_tbl(void);
 int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm);
 void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free);
-void uvunmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages);
+void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages);
 int space_data_copy_out(uint64 dst_va, void *src_data_addr, uint len);
 int spcae_data_copy_in(void *dst_data_addr, uint64 src_va, uint64 len);
 uint64 walkaddr(pagetable_t pagetable, uint64 va);
+pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);
 #endif

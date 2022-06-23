@@ -8,6 +8,7 @@
 #include "proc.h"
 #include "string.h"
 #include "vm.h"
+#include "mmap.h"
 
 static void zone_sizes_init(unsigned long min, unsigned long max)
 {
@@ -86,7 +87,7 @@ static inline int mm_alloc_pgd(struct mm_struct *mm)
     return 0;
 }
 
-static struct mm_struct *mm_init(struct mm_struct *mm, 
+struct mm_struct *mm_init(struct mm_struct *mm, 
     struct task_struct *p)
 {
     mm->mmap = NULL;
@@ -107,4 +108,3 @@ struct mm_struct *mm_alloc(void)
     memset(mm, 0, sizeof(*mm));
     return mm_init(mm, current);
 }
-

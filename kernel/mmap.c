@@ -151,7 +151,7 @@ static void unmap_region(struct mm_struct *mm, struct vm_area_struct *vma)
 {
     unsigned long va_start = vma->vm_start;
     unsigned long npages = (vma->vm_end - va_start)/PGSIZE;
-    uvunmap_validpages(current->mm->pagetable, va_start, npages);
+    unmap_validpages(current->mm->pagetable, va_start, npages);
 }
 
 /*断开映射*/

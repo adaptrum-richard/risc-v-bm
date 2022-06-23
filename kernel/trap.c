@@ -159,8 +159,8 @@ void hanlder_exception(struct pt_regs *regs)
         break;
     default:
         printk("don't support exception, code:%lu\n", exception_code);
-        printk("scause 0x%x\n", regs->cause);
-        printk("status = 0x%x badaddr= 0x%x\n", regs->status, regs->badaddr);
+        printk("cpu status register:0x%lx, badaddr:0x%lx\n", regs->status, regs->badaddr);
+        printk("task pid:%d, task name: %s, parent pid = %d\n", current->pid, current->name, current->parent ? current->parent->pid : -1);
         panic("kerneltrap");
         break;
     }

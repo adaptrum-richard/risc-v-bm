@@ -18,8 +18,11 @@
 #include "sleep.h"
 #include "preempt.h"
 #include "memlayout.h"
-#define TEST_FILE 0
-static volatile int init_done = 0;
+#include "testcode.h"
+#include "page.h"
+#include "exec.h"
+
+static volatile int fs_init_done = 0;
 static void delay()
 {
     int j = 0;
@@ -27,84 +30,6 @@ static void delay()
         j = i % 3;
         j++;
     }
-}
-
-void test_console()
-{
-    int fd, ret;
-    char buf[8];
-    if((fd = __sys_open("/console", O_RDWR)) < 0){
-        __sys_mknod("/console", CONSOLE, 0);
-        fd = __sys_open("/console", O_RDWR);
-    }
-    if(fd <  0){
-        panic("test_console\n");
-    }
-    __sys_close(fd);
-    int max = 100;
-    while(1){
-        fd = __sys_open("/console", O_RDWR);
-        if(fd <  0){
-            panic("test_console\n");
-        }   
-        memset(buf, 0x0, sizeof(buf));
-        int i = 0;
-        while(i < max){
-            char c;
-            ret = __sys_read(fd, &c, 1);
-            if(ret < 1)
-                break;
-            buf[i++] = c;
-            if(c == '\n' || c == '\r')
-                break;
-        }
-        buf[i] = '\0';
-        int j = 0;
-        while(buf[j] != '\0'){
-            __sys_write(fd, &buf[j], 1);
-            j++;
-        }
-        __sys_close(fd);
-    }
- 
-    __sys_close(fd);
-}
-
-void test_sysfile(uint64 arg)
-{
-    int ret;
-    char path[MAXPATH] = {0};
-    char buf[MAXPATH] = {0};
-    while(init_done == 0);
-
-    sprintf(path, "/tmp/%s", (char*)arg);
-    int fd = __sys_open("/test", O_CREATE| O_WRONLY);
-
-    if(fd < 0){
-        printk("%s:%d __sys_open %d failed\n", __func__, __LINE__, fd);
-        panic("open failed\n");
-    }
-    for(int i = 0; i < 3; ++i){
-        ret = __sys_write(fd, path, strlen(path));
-        if(ret < 0){
-            printk("%s:%d __sys_write failed\n", __func__, __LINE__);
-            panic("failed");
-        }
-        printk("%s:%d: write  %s , len = %d\n", __func__, __LINE__, path, ret);
-        //sleep(1);
-    }
-    __sys_close(fd);
-
-    fd = __sys_open("/test", O_RDONLY);
-    if(fd < 0){
-        printk("%s:%d __sys_open %d failed\n", __func__, __LINE__, fd);
-        panic("open failed\n");
-    }
-    
-    ret = __sys_read(fd, buf, sizeof(buf));
-    __sys_close(fd);
-    printk("read %s, len = %d\n", buf, ret);
-    test_console();
 }
 
 void kernel_process(uint64 arg)
@@ -118,14 +43,13 @@ void kernel_process(uint64 arg)
 
 void idle()
 {
-#if TEST_FILE
-    //idle可以用来做负载均衡
+    //文件系统初始化
     binit();
-    fsinit(ROOTINO);
+    iinit();
+    fsinit(ROOTINO);//这里需要中断
     fileinit();
- #endif  
-    init_done = 1;
-
+    fs_init_done = 1;
+    __smp_wmb();
     while(1){
         
         printk("current %s run pid:%d\n", current->name, current->pid);
@@ -133,18 +57,40 @@ void idle()
         //traversing_rq();
     }
 }
+
+#ifndef TEST_READ_INIT_CODE_AND_RUN
 extern char user_begin[], user_end[], user_process[];
+#endif
 extern void set_pgd(uint64);
+
 void copy_to_user_thread(uint64 arg)
 {
+#ifdef TEST_READ_INIT_CODE_AND_RUN
+    unsigned long pc = -1;
+    unsigned long size = -1;
+    unsigned long end;
+    unsigned long proccess;
+    unsigned long begin = get_free_page();
+    while(fs_init_done == 0);
+    int ret = read_initcode((unsigned long*)begin, &size, &pc);
+    if(ret < 0){
+        panic("copy_to_user_thread");
+    }
+    proccess = pc + begin;
+    end = begin + size;
+#else
     unsigned long begin = (unsigned long)&user_begin;
     unsigned long end = (unsigned long)&user_end;
     unsigned long proccess = (unsigned long)&user_process;
+#endif
     printk("user_beigin = 0x%lx, user_end = 0x%lx, pc = 0x%lx, process = 0x%lx\n",
         begin, end, proccess - begin, proccess);
     acquire(&current->lock);
     int err = move_to_user_mode(begin, end - begin, proccess - begin);
     release(&current->lock);
+#ifdef TEST_READ_INIT_CODE_AND_RUN
+    free_page(begin);
+#endif
     if(err < 0)
         panic("move_to_user_mode\n");
     preempt_disable(); //切换到第一个用户进程的时候，不能被抢占

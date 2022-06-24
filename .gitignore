@@ -10,3 +10,5 @@ user/_*
 user/*.d
 user/*.sym
 user/*.o
+user/initcode
+user/initcode.out

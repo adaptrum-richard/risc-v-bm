@@ -65,6 +65,7 @@ struct dirent {
 void fsinit(int dev);
 
 struct inode;
+void iinit(void);
 void ilock(struct inode *ip);
 void iunlock(struct inode *ip);
 struct inode *ialloc(int dev, short type);

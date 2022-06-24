@@ -11,7 +11,7 @@ USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean kernel.img mkdir_user_build fs.img
+all : clean kernel.img fs.img
 
 $(KERNEL_BUILD_DIR)/%_c.o: $(KERNEL_DIR)/%.c
 	mkdir -p $(@D)
@@ -35,14 +35,11 @@ kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 	$(RISCVGNU)-objdump -S $(KERNEL_BUILD_DIR)/kernel.elf > $(KERNEL_BUILD_DIR)/kernel.asm
 	$(RISCVGNU)-objdump -t $(KERNEL_BUILD_DIR)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BUILD_DIR)/kernel.sym
 
-mkdir_user_build: 
-	mkdir -p $(USER_BUILD_DIR)
-
-initcode: $(USER_DIR)/initcode.S 
-	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_BUILD_DIR)/initcode.o
-	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0 -o $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode.o
-	$(RISCVGNU)-objcopy -S -O binary $(USER_BUILD_DIR)/initcode.out $(USER_BUILD_DIR)/initcode
-	$(RISCVGNU)-objdump -S $(USER_BUILD_DIR)/initcode.o > $(USER_BUILD_DIR)/initcode.asm
+$(USER_DIR)/initcode.out: $(USER_DIR)/initcode.S 
+	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_DIR)/initcode.o
+	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0 -o $(USER_DIR)/initcode.out $(USER_DIR)/initcode.o
+	$(RISCVGNU)-objcopy -S -O binary $(USER_DIR)/initcode.out $(USER_DIR)/initcode
+	$(RISCVGNU)-objdump -S $(USER_DIR)/initcode.o > $(USER_DIR)/initcode.asm
 
 
 USER_CFLAGS=-Wall -Werror -O -fno-omit-frame-pointer \
@@ -70,10 +67,10 @@ $(USER_DIR)/_init: $(ULIB)
 mkfs/mkfs: mkfs/mkfs.c
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
-USER_PROGS= $(USER_DIR)/_init
+USER_PROGS= $(USER_DIR)/_init $(USER_DIR)/initcode.out
 
-fs.img: mkfs/mkfs README $(USER_PROGS) $(initcode)
-	mkfs/mkfs fs.img README 
+fs.img: mkfs/mkfs README $(USER_PROGS)
+	mkfs/mkfs fs.img README $(USER_PROGS)
 
 clean :
 	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)  \

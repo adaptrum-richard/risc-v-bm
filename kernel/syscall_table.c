@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "sysproc.h"
 #include "fork.h"
+#include "printk.h"
 
 long sys_ni_syscall(void)
 {
@@ -67,6 +68,7 @@ unsigned long sys_kill(void)
 
 unsigned long sys_exec(void)
 {
+    printk("run sys_exec\n");
     return 0;
 }
 

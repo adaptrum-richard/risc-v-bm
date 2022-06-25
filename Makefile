@@ -76,7 +76,8 @@ clean :
 	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)  \
 		$(USER_DIR)/*.o $(USER_DIR)/*.asm \
 		$(USER_DIR)/_* $(USER_DIR)/*.d \
-		 $(USER_DIR)/*.sym
+		$(USER_DIR)/*.sym \
+		$(USER_DIR)/initcode  $(USER_DIR)/initcode.out
 
 QEMU_FLAGS  += -nographic
 

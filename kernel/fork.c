@@ -177,8 +177,8 @@ int move_to_user_mode(unsigned long start, unsigned long size,
 
     mm = mm_alloc();
 
-    if(uvminit(mm->pagetable, (uchar*)start, size) < 0){
-        printk("%s %d: uvminit error\n", __func__, __LINE__);
+    if(vm_map_program(mm->pagetable, 0, (uchar*)start, size) < 0){
+        printk("%s %d: vm_map_program error\n", __func__, __LINE__);
         return -1;
     }
     vma = vm_area_alloc(mm);

@@ -183,8 +183,8 @@ pagetable_t copy_kernel_tbl(void)
     return new;
 }
 
-/*加载user的程序，并映射到0地址*/
-int uvminit(pagetable_t pagetable, uchar *src, uint size)
+/*加载user的程序，并映射到USER_CODE_VM地址*/
+int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
 {
     char *mem;
     int order = get_order(PGROUNDUP(size));
@@ -194,9 +194,10 @@ int uvminit(pagetable_t pagetable, uchar *src, uint size)
         return -ENOMEM;
     }
     memset(mem, 0, PGROUNDUP(size));
-    mappages(pagetable, USER_CODE_VM_START, PGROUNDUP(size), (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+    mappages(pagetable, USER_CODE_VM_START + PGROUNDDOWN(offset), PGROUNDUP(size), 
+            (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
     memmove(mem, src, size);
-    return 0;
+    return 0;    
 }
 
 /*根据虚拟地址找到对应的物理地址

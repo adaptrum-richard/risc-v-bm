@@ -161,6 +161,23 @@ pagetable_t get_kpgtbl()
     return kernel_pagetable;
 }
 
+void free_map_mem(pagetable_t pagetable)
+{
+    // there are 2^9 = 512 PTEs in a page table.
+    for(int i = 0; i < 512; i++){
+        pte_t pte = pagetable[i];
+        if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+            // this PTE points to a lower-level page table.
+            uint64 child = PTE2PA(pte);
+            free_map_mem((pagetable_t)child);
+            pagetable[i] = 0;
+        } else if(pte & PTE_V){
+            panic("free_map_mem: leaf");
+        }
+    }
+    free_page((unsigned long)pagetable);    
+}
+
 
 /*创建一个空的page table*/
 pagetable_t uvmcreate()
@@ -187,16 +204,65 @@ pagetable_t copy_kernel_tbl(void)
 int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
 {
     char *mem;
-    int order = get_order(PGROUNDUP(size));
-    mem = (char*)get_free_pages(order);
-    /*TODO: 处理内存不足的情况*/
-    if(!mem){
-        return -ENOMEM;
+    uint64 pa;
+    uint i, n;
+    uint64 vm_base = USER_CODE_VM_START;
+    for(i = 0; i < size; i+= PGSIZE){
+        if((size - i) < PGSIZE)
+            n = size - i;
+        else 
+            n = PGSIZE;
+
+        pa = walkaddr(pagetable, vm_base + PGROUNDDOWN(offset) + i);
+        if(pa == 0)
+            mem = (char*)get_free_page();
+        else{
+            mem = (char*)pa;
+            goto skip_mmap;
+        }
+        /*TODO: 处理内存不足的情况*/
+        if(!mem){
+            return -ENOMEM;
+        }
+        memset(mem, 0, PGSIZE);
+        mappages(pagetable, vm_base + PGROUNDDOWN(offset) + i, PGSIZE, 
+                (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+skip_mmap:
+        memmove(mem, src, n);
+        src += n;
     }
-    memset(mem, 0, PGROUNDUP(size));
-    mappages(pagetable, USER_CODE_VM_START + PGROUNDDOWN(offset), PGROUNDUP(size), 
-            (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
-    memmove(mem, src, size);
+    return 0;    
+}
+
+int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint size)
+{
+    char *mem;
+    uint64 pa;
+    uint i, n;
+    for(i = 0; i < size; i+= PGSIZE){
+        if((size - i) < PGSIZE)
+            n = size - i;
+        else 
+            n = PGSIZE;
+
+        pa = walkaddr(pagetable, vm_base  + i);
+        if(pa == 0)
+            mem = (char*)get_free_page();
+        else{
+            mem = (char*)pa;
+            goto skip_mmap;
+        }
+        /*TODO: 处理内存不足的情况*/
+        if(!mem){
+            return -ENOMEM;
+        }
+        memset(mem, 0, PGSIZE);
+        mappages(pagetable, vm_base + i, PGSIZE, 
+                (uint64)mem, PTE_W | PTE_R | PTE_U);
+skip_mmap:
+        memmove(mem, src, n);
+        src += n;
+    }
     return 0;    
 }
 
@@ -269,6 +335,27 @@ static int user_space_address(uint64 addr)
     return 0;
 }
 
+/*
+递归释放page-table的页面
+调用此函数前，已经将leaf mappings的页面全部释放。
+*/
+void freewalk(pagetable_t pagetable)
+{
+    // there are 2^9 = 512 PTEs in a page table.
+    for(int i = 0; i < 512; i++){
+        pte_t pte = pagetable[i];
+        if((pte & PTE_V) && (pte & (PTE_R|PTE_W|PTE_X)) == 0){
+            // this PTE points to a lower-level page table.
+            uint64 child = PTE2PA(pte);
+            freewalk((pagetable_t)child);
+            pagetable[i] = 0;
+        } else if(pte & PTE_V){
+            panic("freewalk: leaf");
+        }
+    }
+    free_page((unsigned long)pagetable);
+}
+
 /*如果user dst为1，表示将数据复制到用户空间内存中，否则是内核中的操作
 找到dst_va虚拟地址对应的物理地址，将数据src_data_addr复制到物理地址中，长度为len
 */
@@ -295,4 +382,21 @@ int spcae_data_copy_in(void *dst_data_addr, uint64 src_va, uint64 len)
         memmove(dst_data_addr, (char*)src_va, len);
         return 0;
     }
+}
+
+void free_page_leaf(pagetable_t pagetable, struct vm_area_struct *head)
+{
+    struct vm_area_struct *tmp, *vm;
+    for(vm = head; vm != NULL;){
+        unmap_validpages(pagetable, tmp->vm_start, PGROUNDUP(tmp->vm_end - tmp->vm_start));
+        tmp = vm;
+        vm = vm->vm_next;
+        kfree(tmp);
+    }
+}
+
+void free_pagtable_and_vma(pagetable_t pagetable, struct vm_area_struct *head)
+{
+    free_page_leaf(pagetable, head);
+    freewalk(pagetable);
 }

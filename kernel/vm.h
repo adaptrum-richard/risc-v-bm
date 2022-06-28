@@ -15,4 +15,6 @@ int space_data_copy_out(uint64 dst_va, void *src_data_addr, uint len);
 int spcae_data_copy_in(void *dst_data_addr, uint64 src_va, uint64 len);
 uint64 walkaddr(pagetable_t pagetable, uint64 va);
 pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);
+int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint size);
+void free_pagtable_and_vma(pagetable_t pagetable, struct vm_area_struct *head);
 #endif

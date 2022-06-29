@@ -18,4 +18,5 @@ uint64 walkaddr(pagetable_t pagetable, uint64 va);
 pte_t *walk(pagetable_t pagetable, uint64 va, int alloc);
 int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint size);
 void free_pagtable_and_vma(pagetable_t pagetable, struct vm_area_struct *head);
+void freewalk(pagetable_t pagetable);
 #endif

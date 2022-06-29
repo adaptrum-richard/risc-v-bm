@@ -10,6 +10,7 @@
 #include "page.h"
 #include "mmap.h"
 #include "string.h"
+#include "slab.h"
 
 /*
 prog_start: program的开始地址，
@@ -112,7 +113,7 @@ int exec(char *path, char **argv)
     struct proghdr ph;
     struct inode *ip;
     pagetable_t pagetable = 0, oldpagetable;
-    struct vm_area_struct *vma = NULL, *pg_vma = NULL, *stack_vm = NULL;
+    struct vm_area_struct *vma = NULL, *pg_vma = NULL, *stack_vma = NULL;
     uint64 pa, sp, stackbase, stack[MAXARG];
     uint64 program_size = 0;
 
@@ -190,13 +191,13 @@ int exec(char *path, char **argv)
     
 
     //分配一个stack的VMA
-    stack_vm = vm_area_alloc(current->mm);
+    stack_vma = vm_area_alloc(current->mm);
     //初始化vma
-    stack_vm->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
-    stack_vm->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
-    stack_vm->vm_flags = VM_STACK_FLAGS;
+    stack_vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
+    stack_vma->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
+    stack_vma->vm_flags = VM_STACK_FLAGS;
     
-    vma = stack_vm;
+    vma = stack_vma;
     memset((void *)pa, 0, PGSIZE);
     sp = pa;
     stackbase = sp - PGSIZE;
@@ -230,19 +231,27 @@ int exec(char *path, char **argv)
 
     current->thread.ra = elf.entry;
     current->user_sp = sp - stackbase + vma->vm_start;
-    //这里需要释放旧进程的代码段内存空间(vma释放)和栈空间(vma释放)，堆空间(vma释放)
 
+    //这里需要释放旧进程的代码段内存空间(vma释放)和栈空间(vma释放)，堆空间(vma释放)
     struct vm_area_struct *old_vma = current->mm->mmap;
     oldpagetable = current->mm->pagetable;
     current->mm->pagetable = pagetable;
     free_pagtable_and_vma(oldpagetable, old_vma);
-    insert_vm_struct(current->mm, stack_vm);
+    insert_vm_struct(current->mm, stack_vma);
     insert_vm_struct(current->mm, pg_vma);
 
     return 0;
 bad:
-    if(pagetable)
-        free_page((unsigned long)pagetable);
-    
+    if(pagetable){
+        if(pg_vma)
+            unmap_validpages(pagetable, pg_vma->vm_start, PGROUNDUP(pg_vma->vm_end-pg_vma->vm_start));
+        freewalk(pagetable);
+    }
+    if(pa)
+        free_page(pa);
+    if(stack_vma)
+        kfree(stack_vma);
+    if(pg_vma)
+        kfree(pg_vma);
     return -1;
 }

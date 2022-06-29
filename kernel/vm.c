@@ -7,6 +7,7 @@
 #include "page.h"
 #include "errorno.h"
 #include "proc.h"
+#include "slab.h"
 
 pagetable_t kernel_pagetable;
 extern char _etext[];

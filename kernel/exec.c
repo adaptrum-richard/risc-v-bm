@@ -9,6 +9,7 @@
 #include "log.h"
 #include "page.h"
 #include "mmap.h"
+#include "string.h"
 
 /*
 prog_start: program的开始地址，
@@ -101,19 +102,17 @@ load_binary函数：
 可以释放掉用户旧的代码，替换成新的代码
 2.
 */
-int exec(char *path, char *argv)
+int exec(char *path, char **argv)
 {
 
     char *s, *last;
     int i, off, j;
-    uint64 argc, sz = 0;
+    uint64 argc;
     struct elfhdr elf;
     struct proghdr ph;
     struct inode *ip;
     pagetable_t pagetable = 0, oldpagetable;
-    struct vm_area_struct *vma = NULL;
-    struct task_struct *p = current;
-    uint64 vm_addr, vm_size;
+    struct vm_area_struct *vma = NULL, *pg_vma = NULL, *stack_vm = NULL;
     uint64 pa, sp, stackbase, stack[MAXARG];
     uint64 program_size = 0;
 
@@ -137,15 +136,23 @@ int exec(char *path, char *argv)
     }
 
     /*第一个vma是用来存放代码段的*/
-    vma = p->mm->mmap;
-    vm_addr = vma->vm_start;
-    //vm_size = PAGE_ALIGN(vma->vm_end - vma->vm_start);
-    //Load program into memory.
+    pg_vma = vm_area_alloc(current->mm);
+    pg_vma->vm_start = USER_CODE_VM_START;
+    pg_vma->vm_flags = VM_READ| VM_EXEC;
+    //pg_vma->vm_end 当program的数据读完后在填写vm_end
 
-    pa = get_free_page();
+    vma = pg_vma;
+
+    /*
+    Load program into memory.
+    这里分配的一个page:
+    1. 在加载program时，暂时存放code，在vm_map_program函数中会将code复制到另外一个page
+    2. 在stack中会使用这个page存放栈上数据，做映射，成功的话，此page不需要被释放
+    */
+    pa = get_free_page(); 
     for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
         
-        if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
+        if(readi(ip, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
         if(ph.type != ELF_PROG_LOAD)
             continue;
@@ -169,24 +176,27 @@ int exec(char *path, char *argv)
             }
 
             /*覆盖旧进程的代码段，其实并没有真正覆盖，只是重新分配了基地址页表，重新建立了映射*/
-            if(vm_map_program(pagetable, ph.off + i, pa, n) < 0){
+            if(vm_map_program(pagetable, ph.off + i, (unsigned char *)pa, n) < 0){
                 printk("%s %d: vm_map_program failed\n", __func__, __LINE__);
                 goto bad;
             }
             program_size += PGSIZE;
         }
     }
-    elf.entry += vma->vm_start;
-    //update program vma->vm_end
+    //设置新程序的入口地址为虚拟地址
+    elf.entry += vma->vm_start; 
+    //更新program vma的vm_end地址
     vma->vm_end = program_size + vma->vm_start;
     
 
     //分配一个stack的VMA
-    vma = vm_area_alloc(current->mm);
-    vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
-    vma->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
-    vma->vm_flags = VM_STACK_FLAGS;
-
+    stack_vm = vm_area_alloc(current->mm);
+    //初始化vma
+    stack_vm->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
+    stack_vm->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
+    stack_vm->vm_flags = VM_STACK_FLAGS;
+    
+    vma = stack_vm;
     memset((void *)pa, 0, PGSIZE);
     sp = pa;
     stackbase = sp - PGSIZE;
@@ -198,7 +208,7 @@ int exec(char *path, char *argv)
         if(sp < stackbase)
             goto bad;
         //存放每个参数的数据到栈上
-        memcpy(sp, argv[argc], strlen(argv[argc]) + 1); 
+        memcpy((void *)sp, argv[argc], strlen(argv[argc]) + 1); 
         //将参数的虚拟地址暂时放在stack数组中
         stack[argc] = sp - stackbase + vma->vm_start;
     }
@@ -207,27 +217,32 @@ int exec(char *path, char *argv)
     // push the array of argv[] pointers.
     sp -= (argc+1) * sizeof(uint64);
     sp -= sp % 16;
-    memcpy(sp, (char *)stack, (argc+1)*sizeof(uint64));
+    memcpy((void *)sp, (char *)stack, (argc+1)*sizeof(uint64));
 
-    p->thread.sp  = sp - stackbase + vma->vm_start;
+    current->thread.sp  = sp - stackbase + vma->vm_start;
     for(last = s = path; *s; s++){
         if(*s == '/')
             last = s+1;
     }
-    safestrcpy(p->name, last, sizeof(p->name));
+    safestrcpy(current->name, last, sizeof(current->name));
     //map栈空间
-    vm_map_normal_mem(pagetable, vma->vm_start, (char *)pa, PGSIZE);
+    vm_map_normal_mem(pagetable, vma->vm_start, (unsigned char *)pa, PGSIZE);
 
-    p->thread.ra = elf.entry;
-    p->user_sp = sp - stackbase + vma->vm_start;
+    current->thread.ra = elf.entry;
+    current->user_sp = sp - stackbase + vma->vm_start;
     //这里需要释放旧进程的代码段内存空间(vma释放)和栈空间(vma释放)，堆空间(vma释放)
 
     struct vm_area_struct *old_vma = current->mm->mmap;
-    pagetable_t old_pagetable = current->mm->pagetable;
+    oldpagetable = current->mm->pagetable;
     current->mm->pagetable = pagetable;
-    free_pagtable_and_vma(old_pagetable, old_vma);
-    return 0;
-bad:
+    free_pagtable_and_vma(oldpagetable, old_vma);
+    insert_vm_struct(current->mm, stack_vm);
+    insert_vm_struct(current->mm, pg_vma);
 
     return 0;
+bad:
+    if(pagetable)
+        free_page((unsigned long)pagetable);
+    
+    return -1;
 }

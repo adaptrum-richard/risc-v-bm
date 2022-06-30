@@ -257,9 +257,5 @@ int exec(char *path, char **argv)
 bad:
     if(pa)
         free_page(pa);
-    if(stack_vma)
-        kfree(stack_vma);
-    if(pg_vma)
-        kfree(pg_vma);
     return -1;
 }

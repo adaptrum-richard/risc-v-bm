@@ -37,7 +37,7 @@ kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 
 $(USER_DIR)/initcode.out: $(USER_DIR)/initcode.S 
 	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_DIR)/initcode.o
-	$(RISCVGNU)-ld $(LDFLAGS) -T $(USER_DIR)/linker.ld -e start -o $(USER_DIR)/initcode.out $(USER_DIR)/initcode.o
+	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0x1000000000  -o $(USER_DIR)/initcode.out $(USER_DIR)/initcode.o
 	$(RISCVGNU)-objcopy -S -O binary $(USER_DIR)/initcode.out $(USER_DIR)/initcode
 	$(RISCVGNU)-objdump -S $(USER_DIR)/initcode.o > $(USER_DIR)/initcode.asm
 

@@ -76,7 +76,7 @@ void copy_to_user_thread(uint64 arg)
     if(ret < 0){
         panic("copy_to_user_thread");
     }
-    proccess = pc + begin;
+    proccess = pc + begin - USER_CODE_VM_START;
     end = begin + size;
 #else
     unsigned long begin = (unsigned long)&user_begin;
@@ -122,7 +122,7 @@ void run_proc()
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
 #endif
-    ret = copy_process(PF_KTHREAD, (uint64)&copy_to_user_thread, 0, "init");
+    ret = copy_process(PF_KTHREAD, (uint64)&copy_to_user_thread, 0, "kernel_init");
     if(ret < 0)
         panic("copy_process error init\n");
 

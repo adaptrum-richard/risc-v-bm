@@ -52,12 +52,14 @@ void do_trap(struct pt_regs *regs, int signo, int code, unsigned long addr)
 static inline void bad_area(struct pt_regs *regs, 
     struct mm_struct *mm, int code, unsigned long addr)
 {
+    printk_intr("%s %d: addr = 0x%lx,pid = %d, name = %s\n",
+         __func__, __LINE__, addr, current->pid, current->name);
     if (user_mode(regs)) {
         /*TODO: 不用panic，杀死进程*/
         do_trap(regs, SIGSEGV, code, addr);
         return;
     }
-    printk_intr("%s %d\n", __func__, __LINE__);
+
     panic("bad_area");
 }
 
@@ -112,6 +114,7 @@ void do_page_fault(struct pt_regs *regs)
 
     if(!user_mode(regs) && addr < USER_MEM_START 
             && !(regs->status & SSTATUS_SUM)){
+        printk("addr = 0x%lx\n", addr);
         panic("access to user memory without uaccess routines");
     }
 
@@ -158,9 +161,12 @@ void hanlder_exception(struct pt_regs *regs)
         do_page_fault(regs);
         break;
     default:
+
         printk("don't support exception, code:%lu\n", exception_code);
         printk("cpu status register:0x%lx, badaddr:0x%lx\n", regs->status, regs->badaddr);
         printk("task pid:%d, task name: %s, parent pid = %d\n", current->pid, current->name, current->parent ? current->parent->pid : -1);
+        printk("current pagetable:%lx\n", current->mm->pagetable);
+        print_all_vma(current->mm->pagetable, current->mm->mmap);
         panic("kerneltrap");
         break;
     }

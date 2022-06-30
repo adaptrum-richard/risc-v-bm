@@ -37,7 +37,7 @@ kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
 
 $(USER_DIR)/initcode.out: $(USER_DIR)/initcode.S 
 	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_DIR)/initcode.o
-	$(RISCVGNU)-ld $(LDFLAGS) -N -e start -Ttext 0 -o $(USER_DIR)/initcode.out $(USER_DIR)/initcode.o
+	$(RISCVGNU)-ld $(LDFLAGS) -T $(USER_DIR)/linker.ld -e start -o $(USER_DIR)/initcode.out $(USER_DIR)/initcode.o
 	$(RISCVGNU)-objcopy -S -O binary $(USER_DIR)/initcode.out $(USER_DIR)/initcode
 	$(RISCVGNU)-objdump -S $(USER_DIR)/initcode.o > $(USER_DIR)/initcode.asm
 
@@ -60,7 +60,7 @@ ULIB = $(USER_DIR)/string.o $(USER_DIR)/sys.o $(USER_DIR)/printf.o
 
 $(USER_DIR)/_init: $(ULIB) 
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/init.o $(USER_DIR)/init.c
-	$(RISCVGNU)-ld $(LDFLAGS) -N -e main -Ttext 0 -o $@ $^ $(USER_DIR)/init.o
+	$(RISCVGNU)-ld $(LDFLAGS)  -N -e main -Ttext 0x1000000000 -o $@  $(USER_DIR)/init.o $^
 	$(RISCVGNU)-objdump -S $@ > $@.asm
 	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 

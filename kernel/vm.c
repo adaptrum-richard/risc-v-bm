@@ -75,8 +75,10 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
     uint64 a;
     pte_t *pte;
 
-    if((va % PGSIZE) != 0)
+    if((va % PGSIZE) != 0){
+        printk(" va = 0x%lx\n", va);
         panic("uvmunmap: not aligned");
+    }
 
     for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
         if((pte = walk(pagetable, a, 0)) == 0)
@@ -88,6 +90,7 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
         
         uint64 pa = PTE2PA(*pte);
         free_page((unsigned long)pa);
+        printk("\t free page: 0x%lx\n", pa);
         *pte = 0;
     }
 }
@@ -226,10 +229,12 @@ int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
             return -ENOMEM;
         }
         memset(mem, 0, PGSIZE);
+        printk("vm_map_program: va %lx pa %lx\n", vm_base + PGROUNDDOWN(offset) + i, mem);
         mappages(pagetable, vm_base + PGROUNDDOWN(offset) + i, PGSIZE, 
                 (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
 skip_mmap:
         memmove(mem, src, n);
+        printk("first code: %lx, mem addr = 0x%lx\n", *(uint64 *)mem, (unsigned long )mem);
         src += n;
     }
     return 0;    
@@ -247,8 +252,10 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
             n = PGSIZE;
 
         pa = walkaddr(pagetable, vm_base  + i);
-        if(pa == 0)
+        printk("pa = %lx\n", pa);
+        if(pa == 0){
             mem = (char*)get_free_page();
+        }
         else{
             mem = (char*)pa;
             goto skip_mmap;
@@ -258,9 +265,10 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
             return -ENOMEM;
         }
         memset(mem, 0, PGSIZE);
-        mappages(pagetable, vm_base + i, PGSIZE, 
-                (uint64)mem, PTE_W | PTE_R | PTE_U);
+        printk("vm_base + i : %lx, mem:%lx\n",vm_base + i, mem);
+        mappages(pagetable, vm_base + i, PGSIZE, (uint64)mem, PTE_W | PTE_R | PTE_U);
 skip_mmap:
+        printk("mem = %lx, src = %lx, n = %lx\n", mem, (uint64)src, n);
         memmove(mem, src, n);
         src += n;
     }
@@ -389,7 +397,8 @@ void free_page_leaf(pagetable_t pagetable, struct vm_area_struct *head)
 {
     struct vm_area_struct *tmp, *vm;
     for(vm = head; vm != NULL;){
-        unmap_validpages(pagetable, tmp->vm_start, PGROUNDUP(tmp->vm_end - tmp->vm_start));
+        printk("unmap: [0x%lx -- 0x%lx]\n", vm->vm_start, vm->vm_end);
+        unmap_validpages(pagetable, vm->vm_start, PGROUNDUP(vm->vm_end - vm->vm_start));
         tmp = vm;
         vm = vm->vm_next;
         kfree(tmp);
@@ -398,6 +407,6 @@ void free_page_leaf(pagetable_t pagetable, struct vm_area_struct *head)
 
 void free_pagtable_and_vma(pagetable_t pagetable, struct vm_area_struct *head)
 {
-    free_page_leaf(pagetable, head);
-    freewalk(pagetable);
+    //free_page_leaf(pagetable, head);
+    //freewalk(pagetable);
 }

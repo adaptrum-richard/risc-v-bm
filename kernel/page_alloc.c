@@ -78,7 +78,7 @@ static int alloc_node_mem_map(struct pg_data *pgdat)
     }
     printk("mem_map:0x%lx, size:%d (%d pages), offset:%d\n",
                     (unsigned long)pgdat->node_mem_map,
-                    size, end - start, offset);
+                    size, (end - start) / sizeof(struct page), offset);
     mem_map = pgdat->node_mem_map;
     return 0;
 }

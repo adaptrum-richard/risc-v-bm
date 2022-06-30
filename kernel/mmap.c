@@ -262,3 +262,24 @@ unsigned long _free(unsigned long addr)
 {
     return do_brk(addr);
 }
+
+void print_all_vma(pagetable_t pagatable, struct vm_area_struct *vma)
+{
+    struct vm_area_struct *tmp;
+    uint64 pa;
+    //pte_t *walk(pagetable_t pagetable, uint64 va, int alloc)
+    if(!pagatable || !vma)
+        return;
+    printk("-------------show vma, mmap pages-----------------------------\n");
+    for(tmp = vma; tmp; tmp = tmp->vm_next){
+        printk("[0x%lx -- 0x%lx], flag 0x%lx, mapping pages:\n", tmp->vm_start, tmp->vm_end, tmp->vm_flags);
+        for(int i = 0; i < PGROUNDUP(tmp->vm_end - tmp->vm_start); i+= PGSIZE){
+            pa = walkaddr(pagatable, tmp->vm_start + i); 
+            if(pa){
+                printk("\tpage address: 0x%lx\n", pa);
+            }
+        }
+    }
+    printk("----------------------------------------------------------------\n");
+
+}

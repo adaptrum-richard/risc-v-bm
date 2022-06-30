@@ -3,4 +3,5 @@
 #include "types.h"
 
 int read_initcode(uint64 *prog_start, uint64 *prog_size, uint64 *pc);
+int exec(char *path, char **argv);
 #endif

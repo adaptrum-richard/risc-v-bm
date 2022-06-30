@@ -99,23 +99,57 @@ struct mm_struct *dup_mm(struct task_struct *tsk, struct mm_struct *oldmm)
     return mm;
 }
 
-
 static inline struct pt_regs *task_pt_regs(struct task_struct *tsk)
 {
-    unsigned long p = (uint64)tsk + THREAD_SIZE - sizeof(struct pt_regs);
+    unsigned long p = (uint64)tsk + THREAD_SIZE*2 - sizeof(struct pt_regs);
     return (struct pt_regs *)p;
+}
+
+void print_epc(struct task_struct *tsk)
+{
+    struct pt_regs *regs = task_pt_regs(tsk);
+    printk("epc = %lx\n", regs->epc); 
+}
+
+void print_regs_sp(struct task_struct *tsk)
+{
+    struct pt_regs *regs = task_pt_regs(tsk);
+    printk("regs->sp = %lx\n", regs->sp);     
+}
+
+void print_regs_tp(struct task_struct *tsk)
+{
+    struct pt_regs *regs = task_pt_regs(tsk);
+    printk("regs->tp = %lx\n", regs->tp);       
+}
+
+void set_user_mode_epc(struct task_struct *tsk, uint64 epc)
+{
+    //返回用户空间执行的address
+    struct pt_regs *regs = task_pt_regs(tsk);
+    regs->epc = epc; 
+}
+
+
+void set_user_mode_sp(struct task_struct *tsk, uint64 sp)
+{
+    //返回用户空间执行的address
+    struct pt_regs *regs = task_pt_regs(tsk);
+    regs->sp = sp;
+    
 }
 
 int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
 {
     int pid = -1;
     unsigned long flags;
-    struct task_struct *p = (struct task_struct *)get_free_page();
+    /*内核栈为8K*/
+    struct task_struct *p = (struct task_struct *)get_free_pages(1);
     if(!p)
         return -1;
     
     if((pid = get_free_pid()) == -1){
-        free_page((unsigned long)p);
+        free_pages(1, (unsigned long)p);
         return -1;
     }
     memset(p, 0, sizeof(*p));
@@ -194,7 +228,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     current->mm->stack_vm = current->mm->total_vm = 1;
     mm->brk = mm->start_brk = USER_MEM_START;
     insert_vm_struct(mm, vma);
-    
+    safestrcpy(current->name, "initcode", strlen("initcode") + 1);
     return 0;
 }
 

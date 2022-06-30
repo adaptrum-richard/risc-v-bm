@@ -10,6 +10,7 @@ struct vm_area_struct *vm_area_alloc(struct mm_struct *mm);
 int expand_stack(struct vm_area_struct *vma, unsigned long address);
 unsigned long brk(unsigned long size);
 unsigned long _free(unsigned long addr);
+void print_all_vma(pagetable_t pagatable, struct vm_area_struct *vma);
 static inline pgoff_t linear_page_index(struct vm_area_struct *vma,
                     unsigned long address)
 {

@@ -11,6 +11,8 @@
 #include "mmap.h"
 #include "string.h"
 #include "slab.h"
+#include "fork.h"
+#include "spinlock.h"
 
 /*
 prog_start: program的开始地址，
@@ -101,21 +103,67 @@ load_binary函数：
 1.在加载新程序的代码段到老进程的代码段后，切换页表后，为什么不会出现问题？
 不会出问题，原因是在执行exec函数时，处于内核空间，没有执行应用程序的代码，
 可以释放掉用户旧的代码，替换成新的代码
-2.
 */
-int exec(char *path, char **argv)
-{
 
-    char *s, *last;
+int exec(char *path, char **argv)
+{    
     int i, off, j;
-    uint64 argc;
+    
     struct elfhdr elf;
     struct proghdr ph;
     struct inode *ip;
-    pagetable_t pagetable = 0, oldpagetable;
-    struct vm_area_struct *vma = NULL, *pg_vma = NULL, *stack_vma = NULL;
-    uint64 pa, sp, stackbase, stack[MAXARG];
+    //pagetable_t pagetable = NULL, oldpagetable = NULL;
+    struct vm_area_struct *pg_vma = NULL, *stack_vma = NULL;
+    uint64 pa;
     uint64 program_size = 0;
+
+    uint64 argc = 0;
+    char *s, *last;
+    uint64 sp, stackbase, stack[MAXARG];
+    
+    stack_vma = find_vma(current->mm, STACK_TOP - 1);
+
+    if(!stack_vma){
+        //分配一个stack的VMA
+        stack_vma = vm_area_alloc(current->mm);
+        //初始化vma
+        stack_vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
+        stack_vma->vm_start = (stack_vma->vm_end - PGSIZE) & PAGE_MASK;
+        stack_vma->vm_flags = VM_STACK_FLAGS;
+    }
+    pa = walkaddr(current->mm->pagetable, STACK_TOP - 1);
+    if(!pa)
+        pa = get_free_page();
+    
+    sp = pa;
+    stackbase = sp - PGSIZE;
+    for( argc = 0; argv[argc] != NULL; argc++) {
+        if(argc >= MAXARG)
+            goto bad;
+        sp -= (strlen(argv[argc]) + 1);
+        sp -= sp % 16;// riscv sp必须16字节对齐
+        if(sp < stackbase)
+            goto bad;
+        //存放每个参数的数据到栈上
+        spcae_data_copy_in((void*)sp, (unsigned long)argv[argc], strlen(argv[argc]) + 1);
+       
+        //将参数的虚拟地址暂时放在stack数组中
+        stack[argc] = sp - stackbase + stack_vma->vm_start;
+    }
+    stack[argc] = 0;
+    // push the array of argv[] pointers.
+    sp -= (argc+1) * sizeof(uint64);
+    sp -= sp % 16;
+    memcpy((void *)sp, (char *)stack, (argc+1)*sizeof(uint64));
+
+    for(last = s = path; *s; s++){
+        if(*s == '/')
+            last = s+1;
+    }
+    safestrcpy(current->name, last, sizeof(current->name));
+    //map栈空间
+    vm_map_normal_mem(current->mm->pagetable, stack_vma->vm_start, (unsigned char *)pa, PGSIZE);
+    /*TODO:释放掉多余stack*/
 
     log_begin_op();
     if((ip = namei(path)) == 0){
@@ -129,20 +177,11 @@ int exec(char *path, char **argv)
         printk("%s %d: readi elf failed\n", __func__, __LINE__);
         goto bad;
     }
-    /*复制一份内核的页表*/
-    pagetable = copy_kernel_tbl();
-    if(!pagetable){
-        printk("%s %d: copy_kernel_tbl failed\n", __func__, __LINE__);
-        goto bad;
-    }
 
     /*第一个vma是用来存放代码段的*/
-    pg_vma = vm_area_alloc(current->mm);
-    pg_vma->vm_start = USER_CODE_VM_START;
-    pg_vma->vm_flags = VM_READ| VM_EXEC;
-    //pg_vma->vm_end 当program的数据读完后在填写vm_end
+    pg_vma = current->mm->mmap;
 
-    vma = pg_vma;
+    //pg_vma->vm_end 当program的数据读完后在填写vm_end
 
     /*
     Load program into memory.
@@ -150,7 +189,7 @@ int exec(char *path, char **argv)
     1. 在加载program时，暂时存放code，在vm_map_program函数中会将code复制到另外一个page
     2. 在stack中会使用这个page存放栈上数据，做映射，成功的话，此page不需要被释放
     */
-    pa = get_free_page(); 
+    pa = get_free_page();
     for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
         
         if(readi(ip, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
@@ -163,7 +202,7 @@ int exec(char *path, char **argv)
             goto bad;
         if((ph.vaddr % PGSIZE) != 0)
             goto bad;
-        program_size = ph.off;
+
         for(j = 0; j < ph.filesz; j += PGSIZE){
             uint n; 
             if(ph.filesz - j < PGSIZE)
@@ -175,78 +214,24 @@ int exec(char *path, char **argv)
                 printk("%s %d: readi program failed\n", __func__, __LINE__);
                 goto bad;
             }
-
-            /*覆盖旧进程的代码段，其实并没有真正覆盖，只是重新分配了基地址页表，重新建立了映射*/
-            if(vm_map_program(pagetable, ph.off + i, (unsigned char *)pa, n) < 0){
+            /*覆盖旧进程的代码段*/
+            if(vm_map_program(current->mm->pagetable, i, (unsigned char *)pa, n) < 0){
                 printk("%s %d: vm_map_program failed\n", __func__, __LINE__);
                 goto bad;
             }
             program_size += PGSIZE;
         }
-    }
-    //设置新程序的入口地址为虚拟地址
-    elf.entry += vma->vm_start; 
-    //更新program vma的vm_end地址
-    vma->vm_end = program_size + vma->vm_start;
-    
+    } 
 
-    //分配一个stack的VMA
-    stack_vma = vm_area_alloc(current->mm);
-    //初始化vma
-    stack_vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
-    stack_vma->vm_start = (vma->vm_end - PGSIZE) & PAGE_MASK;
-    stack_vma->vm_flags = VM_STACK_FLAGS;
-    
-    vma = stack_vma;
-    memset((void *)pa, 0, PGSIZE);
-    sp = pa;
-    stackbase = sp - PGSIZE;
-    for( argc = 0; argv[argc]; argc++) {
-        if(argc >= MAXARG)
-            goto bad;
-        sp -= strlen(argv[argc]) + 1;
-        sp -= sp % 16;// riscv sp必须16字节对齐
-        if(sp < stackbase)
-            goto bad;
-        //存放每个参数的数据到栈上
-        memcpy((void *)sp, argv[argc], strlen(argv[argc]) + 1); 
-        //将参数的虚拟地址暂时放在stack数组中
-        stack[argc] = sp - stackbase + vma->vm_start;
-    }
-    stack[argc] = 0;
+    pg_vma->vm_end = program_size + pg_vma->vm_start;
 
-    // push the array of argv[] pointers.
-    sp -= (argc+1) * sizeof(uint64);
-    sp -= sp % 16;
-    memcpy((void *)sp, (char *)stack, (argc+1)*sizeof(uint64));
+    set_user_mode_epc(current, elf.entry);
+    set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
 
-    current->thread.sp  = sp - stackbase + vma->vm_start;
-    for(last = s = path; *s; s++){
-        if(*s == '/')
-            last = s+1;
-    }
-    safestrcpy(current->name, last, sizeof(current->name));
-    //map栈空间
-    vm_map_normal_mem(pagetable, vma->vm_start, (unsigned char *)pa, PGSIZE);
-
-    current->thread.ra = elf.entry;
-    current->user_sp = sp - stackbase + vma->vm_start;
-
-    //这里需要释放旧进程的代码段内存空间(vma释放)和栈空间(vma释放)，堆空间(vma释放)
-    struct vm_area_struct *old_vma = current->mm->mmap;
-    oldpagetable = current->mm->pagetable;
-    current->mm->pagetable = pagetable;
-    free_pagtable_and_vma(oldpagetable, old_vma);
-    insert_vm_struct(current->mm, stack_vma);
-    insert_vm_struct(current->mm, pg_vma);
+    print_all_vma(current->mm->pagetable, current->mm->mmap);
 
     return 0;
 bad:
-    if(pagetable){
-        if(pg_vma)
-            unmap_validpages(pagetable, pg_vma->vm_start, PGROUNDUP(pg_vma->vm_end-pg_vma->vm_start));
-        freewalk(pagetable);
-    }
     if(pa)
         free_page(pa);
     if(stack_vma)

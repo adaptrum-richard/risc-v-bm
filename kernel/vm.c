@@ -204,12 +204,16 @@ pagetable_t copy_kernel_tbl(void)
     return new;
 }
 
-/*加载user的程序，并映射到USER_CODE_VM地址*/
+/*加载user的程序，并映射到USER_CODE_VM地址
+0: 正常，表示未分配内存
+1：表示新分配了内存
+*/
 int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
 {
     char *mem;
     uint64 pa;
     uint i, n;
+    int ret = 0;
     uint64 vm_base = USER_CODE_VM_START;
     for(i = 0; i < size; i+= PGSIZE){
         if((size - i) < PGSIZE)
@@ -218,8 +222,10 @@ int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
             n = PGSIZE;
 
         pa = walkaddr(pagetable, vm_base + PGROUNDDOWN(offset) + i);
-        if(pa == 0)
+        if(pa == 0){
             mem = (char*)get_free_page();
+            ret = 1;
+        }
         else{
             mem = (char*)pa;
             goto skip_mmap;
@@ -235,14 +241,18 @@ skip_mmap:
         memmove(mem, src, n);
         src += n;
     }
-    return 0;    
+    return ret;    
 }
-
+/*
+0: 正常，表示未分配内存
+1：表示新分配了内存
+*/
 int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint size)
 {
     char *mem;
     uint64 pa;
     uint i, n;
+    int ret = 0;
     for(i = 0; i < size; i+= PGSIZE){
         if((size - i) < PGSIZE)
             n = size - i;
@@ -252,6 +262,7 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
         pa = walkaddr(pagetable, vm_base  + i);
         if(pa == 0){
             mem = (char*)get_free_page();
+            ret = 1;
         }
         else{
             mem = (char*)pa;
@@ -267,7 +278,7 @@ skip_mmap:
         memmove(mem, src, n);
         src += n;
     }
-    return 0;    
+    return ret;    
 }
 
 /*根据虚拟地址找到对应的物理地址

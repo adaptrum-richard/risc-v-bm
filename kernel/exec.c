@@ -107,7 +107,7 @@ load_binary函数：
 
 int exec(char *path, char **argv)
 {    
-    int i, off, j;
+    int i, off, j, ret;
     
     struct elfhdr elf;
     struct proghdr ph;
@@ -115,7 +115,7 @@ int exec(char *path, char **argv)
     struct vm_area_struct *pg_vma = NULL, *stack_vma = NULL;
     uint64 pa;
     uint64 program_size = 0;
-
+    unsigned long start, end;
     uint64 argc = 0;
     char *s, *last;
     uint64 sp, stackbase, stack[MAXARG];
@@ -147,7 +147,7 @@ int exec(char *path, char **argv)
         spcae_data_copy_in((void*)sp, (unsigned long)argv[argc], strlen(argv[argc]) + 1);
        
         //将参数的虚拟地址暂时放在stack数组中
-        stack[argc] = sp - stackbase + stack_vma->vm_start;
+        stack[argc] = sp - stackbase + STACK_TOP - PGSIZE;
     }
     stack[argc] = 0;
     // push the array of argv[] pointers.
@@ -160,9 +160,22 @@ int exec(char *path, char **argv)
             last = s+1;
     }
     safestrcpy(current->name, last, sizeof(current->name));
+   
+    /*TODO:释放掉多余stack, 这里我们只使用了一个页面，在以前映射的多余的page需要被unmap，并释放掉*/
+    start = stack_vma->vm_start;
+    end = STACK_TOP - PGSIZE;
+    if(start < end){
+        unmap_validpages(current->mm->pagetable, start, (end - start) / PGSIZE);
+    }
+    //更新vm_start
+    stack_vma->vm_start = end;
     //map栈空间
-    vm_map_normal_mem(current->mm->pagetable, stack_vma->vm_start, (unsigned char *)pa, PGSIZE);
-    /*TODO:释放掉多余stack*/
+    ret = vm_map_normal_mem(current->mm->pagetable, stack_vma->vm_start, (unsigned char *)pa, PGSIZE);
+    if(ret < 0)
+        goto bad;
+    else if(ret == 1)
+        free_page(pa);
+    pa = 0;
 
     log_begin_op();
     if((ip = namei(path)) == 0){
@@ -188,9 +201,10 @@ int exec(char *path, char **argv)
     1. 在加载program时，暂时存放code，在vm_map_program函数中会将code复制到另外一个page
     2. 在stack中会使用这个page存放栈上数据，做映射，成功的话，此page不需要被释放
     */
-    pa = get_free_page();
+    
     for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
-        
+        if(pa == 0)
+            pa = get_free_page();
         if(readi(ip, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
         if(ph.type != ELF_PROG_LOAD)
@@ -214,13 +228,23 @@ int exec(char *path, char **argv)
                 goto bad;
             }
             /*覆盖旧进程的代码段*/
-            if(vm_map_program(current->mm->pagetable, i, (unsigned char *)pa, n) < 0){
+            ret = vm_map_program(current->mm->pagetable, i, (unsigned char *)pa, n);
+            if(ret < 0) {
                 printk("%s %d: vm_map_program failed\n", __func__, __LINE__);
                 goto bad;
+            } else if (ret == 1){
+                free_page(pa);
+                pa = 0;
             }
             program_size += PGSIZE;
         }
     } 
+    /*TODO: 释放掉多余的内存*/
+    end =  pg_vma->vm_end;
+    start = pg_vma->vm_start + program_size;
+    if(end > start){
+         unmap_validpages(current->mm->pagetable, start, (end - start) / PGSIZE);
+    }
 
     pg_vma->vm_end = program_size + pg_vma->vm_start;
 
@@ -228,7 +252,7 @@ int exec(char *path, char **argv)
     set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
 
     print_all_vma(current->mm->pagetable, current->mm->mmap);
-
+    /*TODO: 文件系统相关*/
     return 0;
 bad:
     if(pa)

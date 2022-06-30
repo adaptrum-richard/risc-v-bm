@@ -69,8 +69,7 @@ unsigned long sys_kill(void)
 
 unsigned long sys_exec(char *path, char **argv)
 {
-    exec(path, argv);
-    return 0;
+    return exec(path, argv);
 }
 
 unsigned long sys_fstat(void)

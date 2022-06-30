@@ -112,7 +112,6 @@ int exec(char *path, char **argv)
     struct elfhdr elf;
     struct proghdr ph;
     struct inode *ip;
-    //pagetable_t pagetable = NULL, oldpagetable = NULL;
     struct vm_area_struct *pg_vma = NULL, *stack_vma = NULL;
     uint64 pa;
     uint64 program_size = 0;

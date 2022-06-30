@@ -69,7 +69,6 @@ unsigned long sys_kill(void)
 
 unsigned long sys_exec(char *path, char **argv)
 {
-    printk("run sys_exec\n");
     exec(path, argv);
     return 0;
 }

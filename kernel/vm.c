@@ -229,12 +229,10 @@ int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
             return -ENOMEM;
         }
         memset(mem, 0, PGSIZE);
-        printk("vm_map_program: va %lx pa %lx\n", vm_base + PGROUNDDOWN(offset) + i, mem);
         mappages(pagetable, vm_base + PGROUNDDOWN(offset) + i, PGSIZE, 
                 (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
 skip_mmap:
         memmove(mem, src, n);
-        printk("first code: %lx, mem addr = 0x%lx\n", *(uint64 *)mem, (unsigned long )mem);
         src += n;
     }
     return 0;    
@@ -252,7 +250,6 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
             n = PGSIZE;
 
         pa = walkaddr(pagetable, vm_base  + i);
-        printk("pa = %lx\n", pa);
         if(pa == 0){
             mem = (char*)get_free_page();
         }
@@ -265,10 +262,8 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
             return -ENOMEM;
         }
         memset(mem, 0, PGSIZE);
-        printk("vm_base + i : %lx, mem:%lx\n",vm_base + i, mem);
         mappages(pagetable, vm_base + i, PGSIZE, (uint64)mem, PTE_W | PTE_R | PTE_U);
 skip_mmap:
-        printk("mem = %lx, src = %lx, n = %lx\n", mem, (uint64)src, n);
         memmove(mem, src, n);
         src += n;
     }

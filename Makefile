@@ -11,10 +11,12 @@ USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean kernel.img fs.img
+all : clean mkdir_kernel_build kernel.img fs.img
+
+mkdir_kernel_build:
+	mkdir -p $(KERNEL_BUILD_DIR)
 
 $(KERNEL_BUILD_DIR)/%_c.o: $(KERNEL_DIR)/%.c
-	mkdir -p $(@D)
 	$(RISCVGNU)-gcc $(COPS) -c $< -o $@
 
 $(KERNEL_BUILD_DIR)/%_s.o: $(KERNEL_DIR)/%.S

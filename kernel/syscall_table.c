@@ -9,6 +9,7 @@
 #include "fork.h"
 #include "printk.h"
 #include "exec.h"
+#include "exit.h"
 
 long sys_ni_syscall(void)
 {
@@ -42,14 +43,14 @@ unsigned long sys_fork(void)
     return do_fork();
 }
 
-unsigned long sys_exit(void)
+void sys_exit(int code)
 {
-    return 0;
+    do_exit(code);
 }
 
-unsigned long sys_wait(void)
+unsigned long sys_wait(int *status)
 {
-    return 0;
+    return do_wait(status);
 }
 
 unsigned long sys_pipe(void)

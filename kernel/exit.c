@@ -2,7 +2,7 @@
 #include "proc.h"
 #include "wait.h"
 #include "printk.h"
-
+#include "log.h"
 int do_wait(int *status)
 {
     struct task_struct *p = NULL, *child = NULL;
@@ -46,5 +46,28 @@ out:
 
 void do_exit(int code)
 {
+    if(current == &init_task){
+        panic("init_task can't exit\n");
+    }
 
+    for(int fd = 0; fd < NOFILE; fd++){
+        if(current->ofile[fd]){
+            struct file *f = current->ofile[fd];
+            fileclose(f);
+            current->ofile[fd] = 0;
+        }
+    }
+
+    log_begin_op();
+    if(current->cwd)
+        iput(current->cwd);
+    log_end_op();
+
+    acquire(&current->lock);
+    current->state = TASK_ZOMBIIE;
+    release(&current->lock);
+    wake_up(&current->wait_childexit);
+    
+    schedule();
+    panic("zombie exit");
 }

@@ -80,4 +80,5 @@ void iupdate(struct inode *ip);
 void iput(struct inode *ip);
 void itrunc(struct inode *ip);
 void stati(struct inode *ip, struct stat *st);
+struct inode *idup(struct inode *ip);
 #endif

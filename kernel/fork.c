@@ -174,6 +174,11 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
         if(dup_mm(p, current->mm) == NULL){
             panic("copy_process: dup_mm failed\n");
         }
+        for(int i = 0; i < NOFILE; i++){
+            if(p->ofile[i] )
+                p->ofile[i] = filedup(current->ofile[i]);
+            p->cwd = idup(current->cwd);
+        }
     }
     
     p->priority = current->priority;
@@ -229,6 +234,7 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     mm->brk = mm->start_brk = USER_MEM_START;
     insert_vm_struct(mm, vma);
     safestrcpy(current->name, "initcode", strlen("initcode") + 1);
+    current->cwd = namei("/");
     return 0;
 }
 

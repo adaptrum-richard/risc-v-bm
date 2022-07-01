@@ -49,6 +49,7 @@ struct task_struct {
     int on_rq;
     struct sched_class *sched_class;
     struct file *ofile[NOFILE]; //open file
+    struct inode *cwd; //当前的目录
     struct list_head run_list;
     struct task_struct *parent;
     struct task_struct *prev_task, *next_task;

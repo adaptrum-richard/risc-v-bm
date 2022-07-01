@@ -6,6 +6,7 @@
 #include "param.h"
 #include "list.h"
 #include "sched.h"
+#include "wait.h"
 
 #define THREAD_SIZE     (1<<12)
 #define PF_KTHREAD      (0x10000)
@@ -53,7 +54,7 @@ struct task_struct {
     struct list_head run_list;
     struct task_struct *parent;
     struct task_struct *prev_task, *next_task;
-    
+    wait_queue_head_t wait_childexit;
 };
 
 static inline unsigned int task_cpu(const struct task_struct *p)
@@ -78,8 +79,13 @@ static inline unsigned int task_cpu(const struct task_struct *p)
     .on_rq = 0, \
     .run_list = LIST_HEAD_INIT(task.run_list), \
     .parent = NULL, \
+    .cwd = NULL, \
     .next_task = (struct task_struct *)&task, \
     .prev_task = (struct task_struct *)&task, \
+    .wait_childexit = {  \
+        .lock = INIT_SPINLOCK("init_task"),  \
+        .head = LIST_HEAD_INIT(task.wait_childexit.head) \
+    }, \
 }
 
 extern struct task_struct *current;

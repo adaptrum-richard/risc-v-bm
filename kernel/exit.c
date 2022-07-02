@@ -3,6 +3,8 @@
 #include "wait.h"
 #include "printk.h"
 #include "log.h"
+#include "spinlock.h"
+
 int do_wait(int *status)
 {
     struct task_struct *p = NULL, *child = NULL;
@@ -28,6 +30,7 @@ repeat:
     if(child && free == 1){
         result = child->pid;
         //TODO:释放子进程资源
+
         printk("release child resource\n");
         release(&p->lock);
         goto out;
@@ -48,6 +51,7 @@ out:
 
 void do_exit(int code)
 {
+    unsigned long flags;
     if(current == &init_task){
         panic("init_task can't exit\n");
     }
@@ -68,6 +72,12 @@ void do_exit(int code)
     acquire(&current->lock);
     current->state = TASK_ZOMBIIE;
     release(&current->lock);
+
+    spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
+    current->sched_class->dequeue_task(cpu_rq(task_cpu(current)), current);
+    current->on_rq = 0;
+    spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
+
     wake_up(&current->wait_childexit);
 
     schedule();

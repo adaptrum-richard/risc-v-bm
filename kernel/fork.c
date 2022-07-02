@@ -101,7 +101,7 @@ struct mm_struct *dup_mm(struct task_struct *tsk, struct mm_struct *oldmm)
 
 static inline struct pt_regs *task_pt_regs(struct task_struct *tsk)
 {
-    unsigned long p = (uint64)tsk + THREAD_SIZE*2 - sizeof(struct pt_regs);
+    unsigned long p = (uint64)tsk + THREAD_SIZE - sizeof(struct pt_regs);
     return (struct pt_regs *)p;
 }
 
@@ -144,12 +144,12 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     int pid = -1;
     unsigned long flags;
     /*内核栈为8K*/
-    struct task_struct *p = (struct task_struct *)get_free_pages(1);
+    struct task_struct *p = (struct task_struct *)get_free_pages(get_order(THREAD_SIZE));
     if(!p)
         return -1;
     
     if((pid = get_free_pid()) == -1){
-        free_pages(1, (unsigned long)p);
+        free_pages(get_order(THREAD_SIZE), (unsigned long)p);
         return -1;
     }
     memset(p, 0, sizeof(*p));

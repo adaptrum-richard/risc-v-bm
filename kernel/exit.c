@@ -30,7 +30,7 @@ repeat:
     if(child && free == 1){
         result = child->pid;
         //TODO:释放子进程资源
-
+        
         printk("release child resource\n");
         release(&p->lock);
         goto out;

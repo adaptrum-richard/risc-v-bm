@@ -8,7 +8,7 @@
 #include "sched.h"
 #include "wait.h"
 
-#define THREAD_SIZE     (1<<12)
+#define THREAD_SIZE     ((1<<12)*2) //8K
 #define PF_KTHREAD      (0x10000)
 #define MAX_PID         (4096*8 -1)
 

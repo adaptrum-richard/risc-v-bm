@@ -44,6 +44,66 @@ pte_t *walk(pagetable_t pagetable, uint64 va, int alloc)
     return &pagetable[PX(0, va)];
 }
 
+void walk_pte(pagetable_t pagetable, int free)
+{
+    pte_t *pte;
+    pagetable_t pgt;
+    for (int i = 0; i < 512; i++){
+        //printk("\t\tlevel 0 i=%d\n", i);
+        pte = &pagetable[i];
+        if (*pte & PTE_V){
+            pgt = (pagetable_t)PTE2PA(*pte);
+            if(free == 1){
+                pagetable[i] = 0;
+                free_page((unsigned long)pgt);
+            }
+            else
+                printk("\t\tlevel 0 %lx\n", pgt);
+        }
+    }
+}
+
+void walk_pud(pagetable_t pagetable, int free)
+{
+    pte_t *pte;
+    pagetable_t pgt;
+
+    for (int i = 0; i < 512; i++){
+        pte = &pagetable[i];
+        if (*pte & PTE_V){
+            pgt = (pagetable_t)PTE2PA(*pte);
+            if(free == 0)
+                printk("\tlevel 1 %lx\n", pgt);
+            walk_pte(pgt, free); 
+            if(free == 1){
+                pagetable[i] = 0;
+                free_page((unsigned long)pgt);
+            }
+        }
+    }
+}
+
+void walk_user_page(pagetable_t pagetable, int free)
+{
+    unsigned long va_start = USER_CODE_VM_START;
+    unsigned long va_end  = STACK_TOP;
+    pte_t *pte;
+    pagetable_t pgt;
+    for (int i = PX(2, va_start); i < PX(2, va_end); i++){
+        pte = &pagetable[i];
+        if (*pte & PTE_V){
+            pgt = (pagetable_t)PTE2PA(*pte);
+            if(free == 0)
+                printk("level 2 %lx\n", pgt);
+            walk_pud(pgt, free); 
+            if(free == 1){
+                pagetable[i] = 0;
+                free_page((unsigned long)pgt);
+            }
+        }
+    }
+}
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -82,7 +142,7 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
 
     for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
         if((pte = walk(pagetable, a, 0)) == 0)
-            panic("uvmunmap: walk");
+            continue;
         if((*pte & PTE_V) == 0)
             continue;
         if(PTE_FLAGS(*pte) == PTE_V)
@@ -90,7 +150,7 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
         
         uint64 pa = PTE2PA(*pte);
         free_page((unsigned long)pa);
-        printk("\t free page: 0x%lx\n", pa);
+        printk("free page: 0x%lx\n", pa);
         *pte = 0;
     }
 }

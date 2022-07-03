@@ -102,5 +102,5 @@ void get_task_list_lock(void);
 void free_task_list_lock(void);
 #define LOCK_TASK_LIST() (get_task_list_lock())
 #define UNLOCK_TASK_LIST() (free_task_list_lock())
-
+void free_task(struct task_struct *p);
 #endif

@@ -83,6 +83,11 @@ void walk_pud(pagetable_t pagetable, int free)
     }
 }
 
+/*
+遍历用户进程的所有虚拟地址对应的物理地址，并打印页表地址。
+free为1,表示要释放leaf page和level 2和level 1页表。
+free为0,打印出leve 2 level 1和leaf page的物理地址。
+*/
 void walk_user_page(pagetable_t pagetable, int free)
 {
     unsigned long va_start = USER_CODE_VM_START;
@@ -150,7 +155,7 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
         
         uint64 pa = PTE2PA(*pte);
         free_page((unsigned long)pa);
-        printk("free page: 0x%lx\n", pa);
+        //printk("free page: 0x%lx\n", pa);
         *pte = 0;
     }
 }

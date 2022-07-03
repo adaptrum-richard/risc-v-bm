@@ -243,7 +243,7 @@ int exec(char *path, char **argv)
     end =  pg_vma->vm_end;
     start = pg_vma->vm_start + program_size;
     if(end > start){
-         unmap_validpages(current->mm->pagetable, start, (end - start) / PGSIZE);
+        unmap_validpages(current->mm->pagetable, start, (end - start) / PGSIZE);
     }
 
     pg_vma->vm_end = program_size + pg_vma->vm_start;

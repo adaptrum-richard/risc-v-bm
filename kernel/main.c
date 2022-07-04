@@ -23,15 +23,6 @@
 #include "exec.h"
 
 static volatile int fs_init_done = 0;
-static void delay()
-{
-    int j = 0;
-    for(int i ; i < 100000000; i++){
-        j = i % 3;
-        j++;
-    }
-}
-
 void kernel_process(uint64 arg)
 {
     while(1){
@@ -166,9 +157,9 @@ void main()
         run_proc();
         intr_on();
         while(1){
-            //sleep(3);
             //printk("current %s run pid:%d\n", current->name, current->pid);
-            delay();
+            schedule();
+            free_zombie_task();
         }
     }else{
         while(1);

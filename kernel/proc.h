@@ -15,7 +15,7 @@
 #define TASK_RUNNING			0x0000
 #define TASK_INTERRUPTIBLE		0x0001
 #define TASK_UNINTERRUPTIBLE	0x0002
-#define TASK_ZOMBIIE            0x0004
+#define TASK_ZOMBIE            0x0004
 #define TASK_STOPPED            0X0008
 #define TASK_NORMAL			(TASK_INTERRUPTIBLE | TASK_UNINTERRUPTIBLE)
 
@@ -103,4 +103,8 @@ void free_task_list_lock(void);
 #define LOCK_TASK_LIST() (get_task_list_lock())
 #define UNLOCK_TASK_LIST() (free_task_list_lock())
 void free_task(struct task_struct *p);
+struct task_struct *get_zombie_task(void);
+void free_zombie_task(void);
+struct task_struct *get_child_task(void);
+int is_zombie(struct task_struct *p);
 #endif

@@ -13,40 +13,24 @@
 
 int do_wait(int *status)
 {
-    struct task_struct *p = NULL, *child = NULL;
-    int free = 0;
+    struct task_struct *child = NULL;
     int result = -1;
     wait_queue_entry_t wq_entry;
     init_wait_entry(&wq_entry, 0);
-
-repeat:
-    get_task_list_lock();
-    for(p = init_task.next_task; p; p = p->next_task){
-        acquire(&p->lock);
-        if(p->parent == current){
-            if(p->state == TASK_ZOMBIIE)
-                free = 1;
-            child = p;
-            break;
-        }
-        release(&p->lock);
-    }
-    free_task_list_lock();
-
-    if(child && free == 1){
+    /*获取当前进程下的一个僵尸进程*/
+do_try:
+    child = get_child_task();
+    if(child && is_zombie(child)){
         result = child->pid;
-        release(&p->lock);
         free_task(child);
         goto out;
     } else {
         if(!child)
             panic("don't find child thread\n");
-
         prepare_to_wait_event(&child->wait_childexit, &wq_entry, TASK_UNINTERRUPTIBLE);
-        release(&p->lock);
         schedule();
         finish_wait(&child->wait_childexit, &wq_entry);
-        goto repeat;
+        goto do_try;
     }
 
 out:
@@ -74,7 +58,7 @@ void do_exit(int code)
     log_end_op();
 
     acquire(&current->lock);
-    current->state = TASK_ZOMBIIE;
+    current->state = TASK_ZOMBIE;
     release(&current->lock);
 
     spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
@@ -82,7 +66,10 @@ void do_exit(int code)
     current->on_rq = 0;
     spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
 
-    wake_up(&current->wait_childexit);
+    if(current->parent == NULL){
+        current->parent = &init_task;
+    }else 
+        wake_up(&current->wait_childexit);
 
     schedule();
     panic("zombie exit");

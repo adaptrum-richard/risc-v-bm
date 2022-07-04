@@ -75,7 +75,7 @@ void free_task(struct task_struct *p)
     7. kernel stack
     */
     acquire(&p->lock);
-    if(p->state == TASK_ZOMBIIE)
+    if(p->state == TASK_ZOMBIE)
         p->state = EXIT_ZOMBIE;
     else 
         goto out;
@@ -112,4 +112,54 @@ void free_task(struct task_struct *p)
     free_pages((unsigned long)p, get_order(THREAD_SIZE));
 out:
     return;
+}
+
+struct task_struct *get_zombie_task(void)
+{
+    struct task_struct *p = NULL;
+    get_task_list_lock();
+    for(p = init_task.next_task->next_task ; p && p != &init_task; 
+                    p = p->next_task){
+        acquire(&p->lock);
+        if(p->parent == current){
+            if(p->state == TASK_ZOMBIE){
+                release(&p->lock);
+                free_task_list_lock();
+                return p;
+            }
+        }
+        release(&p->lock);
+    }
+    free_task_list_lock();
+    return NULL;
+}
+
+/*在init_task中调用此函数，检测是否有僵尸进程*/
+void free_zombie_task(void)
+{
+    struct task_struct *p = get_zombie_task();
+    if(p)
+        free_task(p);
+}
+
+struct task_struct *get_child_task(void)
+{
+    struct task_struct *p = NULL;
+    get_task_list_lock();
+    for(p = init_task.next_task; p; p = p->next_task){
+        acquire(&p->lock);
+        if(p->parent == current){
+            release(&p->lock);
+            free_task_list_lock();
+            return p;
+        }
+        release(&p->lock);
+    }
+    free_task_list_lock();
+    return NULL;
+}
+
+int is_zombie(struct task_struct *p)
+{
+    return p->state == TASK_ZOMBIE;
 }

@@ -133,9 +133,9 @@ int exec(char *path, char **argv)
     pa = walkaddr(current->mm->pagetable, STACK_TOP - 1);
     if(!pa)
         pa = get_free_page();
-    
-    sp = pa;
-    stackbase = sp - PGSIZE;
+
+    sp = pa + PGSIZE;
+    stackbase = pa;
     for( argc = 0; argv[argc] != NULL; argc++) {
         if(argc >= MAXARG)
             goto bad;
@@ -145,10 +145,11 @@ int exec(char *path, char **argv)
             goto bad;
         //存放每个参数的数据到栈上
         spcae_data_copy_in((void*)sp, (unsigned long)argv[argc], strlen(argv[argc]) + 1);
-       
+
         //将参数的虚拟地址暂时放在stack数组中
         stack[argc] = sp - stackbase + STACK_TOP - PGSIZE;
     }
+
     stack[argc] = 0;
     // push the array of argv[] pointers.
     sp -= (argc+1) * sizeof(uint64);
@@ -189,7 +190,7 @@ int exec(char *path, char **argv)
         printk("%s %d: readi elf failed\n", __func__, __LINE__);
         goto bad;
     }
-
+    
     /*第一个vma是用来存放代码段的*/
     pg_vma = current->mm->mmap;
 
@@ -201,7 +202,7 @@ int exec(char *path, char **argv)
     1. 在加载program时，暂时存放code，在vm_map_program函数中会将code复制到另外一个page
     2. 在stack中会使用这个page存放栈上数据，做映射，成功的话，此page不需要被释放
     */
-    
+
     for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
         if(pa == 0)
             pa = get_free_page();
@@ -238,7 +239,8 @@ int exec(char *path, char **argv)
             }
             program_size += PGSIZE;
         }
-    } 
+    }
+
     /*TODO: 释放掉多余的内存*/
     end =  pg_vma->vm_end;
     start = pg_vma->vm_start + program_size;
@@ -251,11 +253,16 @@ int exec(char *path, char **argv)
     set_user_mode_epc(current, elf.entry);
     set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
 
-    print_all_vma(current->mm->pagetable, current->mm->mmap);
     /*TODO: 文件系统相关*/
+    iunlockput(ip); 
+    log_end_op();
     return 0;
 bad:
     if(pa)
         free_page(pa);
+    if(ip){
+        iunlockput(ip);
+        log_end_op();
+    }
     return -1;
 }

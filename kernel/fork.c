@@ -181,10 +181,10 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
             panic("copy_process: dup_mm failed\n");
         }
         for(int i = 0; i < NOFILE; i++){
-            if(p->ofile[i] )
+            if(current->ofile[i])
                 p->ofile[i] = filedup(current->ofile[i]);
-            p->cwd = idup(current->cwd);
         }
+        p->cwd = idup(current->cwd);
         //print_all_vma(p->mm->pagetable, p->mm->mmap);
     }
     
@@ -249,6 +249,5 @@ int do_fork(void)
 {
     int pid = copy_process(TASK_NORMAL, 0, 0, current->name);
     /*父进程返回值为子进程的pid*/
-    /*TODO:文件系统*/
     return pid;
 }

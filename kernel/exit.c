@@ -39,7 +39,7 @@ out:
 
 void do_exit(int code)
 {
-    unsigned long flags;
+    //unsigned long flags;
     if(current == &init_task){
         panic("init_task can't exit\n");
     }
@@ -61,10 +61,10 @@ void do_exit(int code)
     current->state = TASK_ZOMBIE;
     release(&current->lock);
 
-    spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
-    current->sched_class->dequeue_task(cpu_rq(task_cpu(current)), current);
-    current->on_rq = 0;
-    spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
+    //spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
+    //current->sched_class->dequeue_task(cpu_rq(task_cpu(current)), current);
+    //current->on_rq = 0;
+    //spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
 
     if(current->parent == NULL){
         current->parent = &init_task;

@@ -42,8 +42,7 @@ void idle()
     fs_init_done = 1;
     __smp_wmb();
     while(1){
-        
-        printk("current %s run pid:%d\n", current->name, current->pid);
+        //printk("current %s run pid:%d\n", current->name, current->pid);
         kernel_sleep(1);
         //traversing_rq();
     }

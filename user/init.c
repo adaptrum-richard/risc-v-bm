@@ -2,6 +2,7 @@
 #include "kernel/fcntl.h"
 #include "printf.h"
 
+char *argv[] = { "sh", 0 };
 int main(void)
 {
     int pid = 0;
@@ -24,12 +25,8 @@ int main(void)
     if(pid < 0){
         printf("fork failed\n");
     } else if(pid == 0){
-        printf("run child thread\n");
-        for(int i = 0; i < 10; i++){
-            sleep(1);
-            printf("child run %d\n", i);
-        }
-        exit(0);
+        exec("sh", argv);
+        printf("init: exec sh failed\n");
     } else {
         printf("run parent thread\n");
         result = wait(&status);

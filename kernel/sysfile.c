@@ -143,7 +143,7 @@ uint64 __sys_open(const char *pathname, int omode)
     }
     iunlock(ip);
     log_end_op();
-    return 0;
+    return fd;
 }
 
 uint64 __sys_read(int fd, void *buf, int count)

@@ -433,10 +433,9 @@ static struct inode *namex(char *path, int nameiparent, char *name)
     struct inode *ip, *next;
     if(*path == '/')
         ip = iget(ROOTDEV, ROOTINO);
-    else {
-        panic("Unimplemented function\n");
-        return 0;
-    }
+    else 
+        ip = idup(current->cwd);
+        
     /*
     一层一层遍历path，从path对开始遍历，比如目录为/a/b/c
     则在根目录下的dinode的addr中遍历，查找对应a的inode，

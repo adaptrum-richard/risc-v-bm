@@ -1,4 +1,5 @@
 #include "user/user.h"
+#include "kernel/fcntl.h"
 #include "printf.h"
 
 int main(void)
@@ -6,7 +7,16 @@ int main(void)
     int pid = 0;
     int result = 0;
     int status;
-    printf("user init run....\n");
+    if(open("console", O_RDWR) < 0){
+        /*参数1表示CONSOLE设备*/
+        mknod("console", 1, 0);
+        open("console", O_RDWR); //fd = 0.
+    }
+    /*将stdout stderr重定位到CONSOLE
+    将CONSOLE作为默认的输出，在printf中会使用
+    */
+    dup(0); //fd = 1 stdout
+    dup(0); //fd = 2 stderr
 
     printf("now, run fork\n");
     

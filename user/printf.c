@@ -11,6 +11,10 @@ static void simple_outputchar(char **str, char c)
         **str = c;
         ++(*str);
     }
+    else
+    {
+        write(1, &c, 1);
+    }
 }
 
 enum flags
@@ -480,13 +484,10 @@ int sprintf(char *str, const char *fmt, ...)
 
 int printf(const char *fmt, ...)
 {
-    char output[4096] = {0};
-    char *p = output;
     int c = 0;
     va_list va;
     va_start(va, fmt);
-    c = simple_vsprintf(&p, fmt, va);
+    c = simple_vsprintf(0, fmt, va);
     va_end(va);
-    kprintf(output);
     return c;
 }

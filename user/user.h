@@ -9,5 +9,9 @@ extern void *free(void *);
 extern int fork();
 extern int wait(int *status);
 extern void exit(int code);
-
+//file system
+extern unsigned long dup(int fd);
+extern int open(const char *pathname, int omode);
+extern unsigned long mknod(const char *pathname, short major, short minor);
+extern int write(int fd, const void *buf, int count);
 #endif

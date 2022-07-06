@@ -57,7 +57,8 @@ void fileclose(struct file *f)
         log_begin_op();
         iput(ff.ip);
         log_end_op();
-    }
+    } else if(ff.type == FD_PIPE)
+        pipeclose(ff.pipe, ff.writable);
 }
 
 struct file *filedup(struct file *f)
@@ -85,7 +86,10 @@ int fileread(struct file *f, uint64 addr, int n)
         if(f->major < 0 || f->major >= NDEV || !devsw[f->major].read)
             return -1;
         r = devsw[f->major].read(addr, n);
-    }
+    } else if( f->type == FD_PIPE) 
+        r = piperead(f->pipe, addr, n);
+    else 
+        panic("file read\n");
     
 
     return r;
@@ -124,7 +128,10 @@ int filewrite(struct file *f, uint64 addr, int n)
         if(f->major < 0 || f->major >= NDEV || !devsw[f->major].write)
             return -1;
         ret = devsw[f->major].write(addr, n);
-    }
+    } else if(f->type == FD_PIPE)
+        ret = pipewrite(f->pipe, addr, n);
+    else 
+        panic("file write\n");
 
     return ret;
 }

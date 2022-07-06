@@ -53,9 +53,9 @@ unsigned long sys_wait(int *status)
     return do_wait(status);
 }
 
-unsigned long sys_pipe(void)
+unsigned long sys_pipe(int *fd)
 {
-    return 0;
+    return __sys_pipe(fd);
 }
 
 unsigned long sys_read(int fd, void *buf, int count)

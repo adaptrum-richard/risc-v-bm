@@ -9,6 +9,7 @@
 #include "proc.h"
 #include "string.h"
 #include "errorno.h"
+#include "vm.h"
 
 static struct inode *create(char *path, short type, 
     short major, short minor)
@@ -252,5 +253,33 @@ uint64 __sys_chdir(const char *path)
     iput(current->cwd);
     log_end_op();
     current->cwd = ip;
+    return 0;
+}
+
+uint64 __sys_pipe(int *fd)
+{
+    /*TODO: 检测fd是否有效*/
+    struct file *rf, *wf;
+    int fd0, fd1;
+    if(pipealloc(&rf, &wf) < 0)
+        return -EIO;
+    fd0 = -1;
+    if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
+        if(fd0 >= 0)
+            current->ofile[fd0] = 0;
+        fileclose(rf);
+        fileclose(wf);
+        return -EIO;
+    }
+
+    if(space_data_copy_out((unsigned long)fd, (char*)&fd0, sizeof(fd0)) < 0 ||
+        space_data_copy_out((unsigned long)fd + sizeof(fd0), (char *)&fd1, sizeof(fd1)) < 0){
+        current->ofile[fd0] = 0;
+        current->ofile[fd1] = 0;
+        fileclose(rf);
+        fileclose(wf);
+        return -EPIPE;
+    }
+
     return 0;
 }

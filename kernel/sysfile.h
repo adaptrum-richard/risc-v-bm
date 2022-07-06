@@ -11,4 +11,5 @@ uint64 __sys_mknod(const char *pathname, short major, short minor);
 uint64 __sys_mkdir(const char *pt);
 uint64 __sys_fstat(int fd, struct stat *st);
 uint64 __sys_dup(int oldfd);
+uint64 __sys_chdir(const char *path);
 #endif

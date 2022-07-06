@@ -232,3 +232,25 @@ uint64 __sys_dup(int oldfd)
     filedup(f);
     return newfd;
 }
+
+uint64 __sys_chdir(const char *path)
+{
+    struct inode *ip;
+    if(!path)
+        return -EINVAL;
+
+    log_begin_op();
+    ip = namei((char*)path);
+    ilock(ip);
+    if(ip->type != T_DIR){
+        iunlock(ip);
+        log_end_op();
+        return -ENOENT;
+    }
+    /*TODO: 更新cwd是否需要加锁？*/
+    iunlock(ip);
+    iput(current->cwd);
+    log_end_op();
+    current->cwd = ip;
+    return 0;
+}

@@ -78,9 +78,9 @@ unsigned long sys_fstat(void)
     return 0;
 }
 
-unsigned long sys_chdir(void)
+unsigned long sys_chdir(const char *path)
 {
-    return 0;
+    return __sys_chdir(path);
 }
 
 unsigned long sys_dup(int fd)

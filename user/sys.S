@@ -133,8 +133,8 @@ uptime:
     ecall
     ret
 
-.global free
+.global sbrk
 free:
-    li a7, SYS_free
+    li a7, SYS_sbrk
     ecall
     ret

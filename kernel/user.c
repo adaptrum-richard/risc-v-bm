@@ -29,12 +29,12 @@ void user_process()
         printf("parent thread run\n");
         while(1){
             if(heap_space == NULL){
-                heap_space = (char *)malloc(sizeof(char)*BUF_SIZE);
+                heap_space = (char *)sbrk(sizeof(char)*BUF_SIZE);
                 printf("user space: malloc heap space\n");
             }
             if(i > (BUF_SIZE - 1)){
                 i = 0;
-                free((void*)heap_space);
+                brk((void*)heap_space);
                 heap_space = NULL;
                 sleep(1);
                 printf("user space: free heap space\n");

@@ -253,12 +253,15 @@ out:
     return origbrk;
 }
 
-unsigned long brk(unsigned long size)
+unsigned long sbrk(unsigned long size)
 {
-    return do_brk(current->mm->brk + PAGE_ALIGN(size)) - PAGE_ALIGN(size);
+    if(size == 0)
+        return current->mm->brk;
+    else 
+        return do_brk(current->mm->brk + PAGE_ALIGN(size)) - PAGE_ALIGN(size);
 }
 
-unsigned long _free(unsigned long addr)
+unsigned long brk(unsigned long addr)
 {
     return do_brk(addr);
 }

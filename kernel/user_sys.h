@@ -2,7 +2,7 @@
 #define __USER_SYS_H__
 extern void printf(char * buf);
 extern void sleep(unsigned long);
-extern unsigned long malloc(unsigned long);
-extern unsigned long free(void *);
+extern unsigned long sbrk(unsigned long);
+extern unsigned long brk(void *);
 extern int fork(void);
 #endif

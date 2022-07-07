@@ -24,7 +24,7 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
-#define SYS_free   22
+#define SYS_sbrk   22
 #define __NR_syscalls 24
 
 #endif

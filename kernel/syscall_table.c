@@ -27,15 +27,14 @@ void sys_sleep(unsigned long s)
     kernel_sleep(s);
 }
 
-unsigned long sys_brk(unsigned long size)
+unsigned long sys_sbrk(unsigned long size)
 {
-    unsigned long addr = brk(size);
-    return addr;
+    return sbrk(size);
 }
 
-unsigned long sys_free(void *addr)
+unsigned long sys_brk(unsigned long addr)
 {
-    return _free((unsigned long)addr);
+    return brk(addr);
 }
 
 unsigned long sys_fork(void)
@@ -156,6 +155,6 @@ void * const sys_call_table[__NR_syscalls] = {
     sys_link,   //19
     sys_mkdir,  //20
     sys_close,  //21
-    sys_free,   //22
+    sys_sbrk,   //22
     sys_ni_syscall, //23
 };

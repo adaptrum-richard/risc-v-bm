@@ -22,7 +22,7 @@
 .set SYS_link   ,19
 .set SYS_mkdir  ,20
 .set SYS_close  ,21
-.set SYS_free   ,22
+.set SYS_sbrk   ,22
 
 .global printf
 printf:
@@ -150,8 +150,8 @@ uptime:
     ecall
     ret
 
-.global free
+.global sbrk
 free:
-    li a7, SYS_free
+    li a7, SYS_sbrk
     ecall
     ret

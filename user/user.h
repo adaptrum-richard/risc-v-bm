@@ -4,8 +4,9 @@
 /*system call*/
 extern void kprintf(char * buf);
 extern void sleep(unsigned long);
-extern unsigned long malloc(unsigned long);
-extern void *free(void *);
+extern unsigned long sbrk(unsigned long);
+extern unsigned long brk(void *);
+extern void free(void *);
 extern int fork();
 extern int wait(int *status);
 extern void exit(int code);

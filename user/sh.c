@@ -1,7 +1,8 @@
-#include "user/user.h"
+#include "user.h"
 #include "printf.h"
 #include "kernel/fcntl.h"
 #include "string.h"
+#include "umalloc.h"
 
 char* gets(char *buf, int max)
 {
@@ -30,6 +31,21 @@ int getcmd(char *buf, int n)
     return 0;
 }
 
+void test_malloc()
+{
+    block_stats("malloc start");
+    int *p1 = malloc(1000);
+    int *p2 = malloc(2000);
+    int *p3 = malloc(3000);
+
+    block_stats("malloc end");
+    free(p1);
+    free(p3);
+    free(p2);
+    block_stats("free all");
+    cleanup();
+}
+
 int main(void)
 {
     int fd;
@@ -44,7 +60,7 @@ int main(void)
             break;
         }
     }
-
+    test_malloc();
     while(getcmd(buf, sizeof(buf)) >= 0){
         printf("cmd = %s", buf);
     }

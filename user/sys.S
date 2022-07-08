@@ -115,8 +115,8 @@ getpid:
     ecall
     ret
 
-.global malloc
-malloc:
+.global brk
+brk:
     li a7, SYS_brk
     ecall
     ret
@@ -134,7 +134,7 @@ uptime:
     ret
 
 .global sbrk
-free:
+sbrk:
     li a7, SYS_sbrk
     ecall
     ret

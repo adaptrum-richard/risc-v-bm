@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <unistd.h> //  brk and sbrk
 #else
+#include "printf.h"
+#include "user/user.h"
 #include "kernel/types.h"
 #endif
 /*
@@ -34,7 +36,7 @@ newb 指向地址addr3 , newb->size 为 addr4 - addr3 - BLOCK_META_SIZE
 b 指向 addr1，b->size 为 addr3-addr2即为参数size
 
 */
-block_metadata_t *split_block(block_metadata_t *b, 
+static block_metadata_t *split_block(block_metadata_t *b, 
     size_t size)
 {
     block_metadata_t *newb;
@@ -58,7 +60,7 @@ void block_stats(char *stage)
 }
 
 /*向block链表中添加一个free的block，注意链表是按顺序排列的*/
-void add_to_freelist(block_metadata_t *freeb)
+static void add_to_freelist(block_metadata_t *freeb)
 {
 #ifdef UMALLOCK_TEST
     printf( "Adding 0x%lx with size 0x%x to free list \n", (unsigned long)freeb,
@@ -95,7 +97,7 @@ void add_to_freelist(block_metadata_t *freeb)
     return;
 }
 
-void remove_from_freelist(block_metadata_t *b)
+static void remove_from_freelist(block_metadata_t *b)
 {
     if(!b->prev)
         if(b->next)
@@ -107,7 +109,6 @@ void remove_from_freelist(block_metadata_t *b)
     
     if(b->next)
         b->next->prev = b->prev;
-
 }
 
 #ifdef UMALLOCK_TEST
@@ -157,7 +158,7 @@ void *malloc(size_t size)
     return BLOCK_MEM(ptr);
 }
 
-void scan_and_merge()
+static void scan_and_merge()
 {
     unsigned long curr_addr, next_addr;
     unsigned long addr;
@@ -209,7 +210,7 @@ retry:
                 _block_head = NULL;
             }
             if(brk(curr) != 0)
-                printf("error free memory!");
+                printf("%s %d: error free memory!\n", __func__, __LINE__);
         } else {
             int count = (curr->size + BLOCK_META_SIZE) / MIN_DEALLOC;
             int remainder = (curr->size + BLOCK_META_SIZE) % MIN_DEALLOC;
@@ -223,12 +224,12 @@ retry:
                 /*保留一个页，其余释放掉,更新size*/
                 curr->size -= (count-1)*MIN_DEALLOC;
                 if(brk((void*)free_addr) != 0)
-                    printf("error free memory!");
+                    printf("%s %d: error free memory!\n", __func__, __LINE__);
             } else if( count > 1 && remainder > BLOCK_META_SIZE){
                 unsigned long free_addr = PAGE_UP(curr_addr);
                 curr->size -= count*MIN_DEALLOC;
                 if(brk((void *)free_addr) != 0)
-                    printf("error free memory!");
+                    printf("error free memory!\n");
             }
         }
     }
@@ -258,11 +259,11 @@ void free(void *addr)
     block_metadata_t *block_addr = BLOCK_HEADER(addr);
 
 #ifdef UMALLOCK_TEST
-    block_stats("free前:");
+    block_stats("free before:");
 #endif
     add_to_freelist(block_addr);
 #ifdef UMALLOCK_TEST
-    block_stats("free后:");
+    block_stats("free after:");
 #endif
     scan_and_merge();
 }

@@ -57,8 +57,10 @@ $(USER_DIR)/string.o : $(USER_DIR)/string.c
 $(USER_DIR)/printf.o : $(USER_DIR)/printf.c
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/printf.o $(USER_DIR)/printf.c
 
+$(USER_DIR)/umalloc.o : $(USER_DIR)/umalloc.c
+	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/umalloc.o $(USER_DIR)/umalloc.c
 
-ULIB = $(USER_DIR)/string.o $(USER_DIR)/sys.o $(USER_DIR)/printf.o 
+ULIB = $(USER_DIR)/string.o $(USER_DIR)/sys.o  $(USER_DIR)/printf.o $(USER_DIR)/umalloc.o 
 
 $(USER_DIR)/_init: $(ULIB) 
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/init.o $(USER_DIR)/init.c

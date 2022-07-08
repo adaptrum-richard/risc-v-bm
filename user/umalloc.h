@@ -6,11 +6,10 @@
 RISC_V_BM: 在内存释放的时候，需要找到block_head最后的block，
 确认block是按page对齐，并且block 的size需大于PAGE，才能调用
 brk回收内存
-UMALLOCK_TEST：在x86上测试定义此宏，可以执行使用gcc umalloc.c编译测试
+UMALLOCK_TEST：在x86上测试定义此宏，可以执行使用gcc -DUMALLOCK_TEST umalloc.c编译测试
 */
-//#define RISC_V_BM
-#define UMALLOCK_TEST 
-
+#define RISC_V_BM
+//#define UMALLOCK_TEST 
 /*
 在应用层序中实现自定义分配内存的算法，从系统中分配一个12K(24k ...)内存，
 然后在此程序中切分内存block给其他程序使用
@@ -45,4 +44,13 @@ typedef struct block_metadata{
 #define LT_ADDR(ptr1, ptr2) (!GE_ADDR(ptr1, ptr2))
 #define LE_ADDR(ptr1, ptr2) ((unsigned long)ptr1 <= (unsigned long)ptr2)
 #define GT_ADDR(ptr1, ptr2) ((unsigned long)ptr1 > (unsigned long)ptr2)
+
+#ifndef UMALLOCK_TEST
+#include "kernel/types.h"
+void free(void *addr);
+void *malloc(size_t size);
+void block_stats(char *stage);
+void cleanup();
+#endif
+
 #endif

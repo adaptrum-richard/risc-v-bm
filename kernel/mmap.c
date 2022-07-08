@@ -263,7 +263,8 @@ unsigned long sbrk(unsigned long size)
 
 unsigned long brk(unsigned long addr)
 {
-    return do_brk(addr);
+    unsigned long org_brk = current->mm->brk;
+    return org_brk == do_brk(addr);
 }
 
 void print_all_vma(pagetable_t pagatable, struct vm_area_struct *vma)

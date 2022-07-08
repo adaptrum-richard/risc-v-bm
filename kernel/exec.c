@@ -238,6 +238,7 @@ int exec(char *path, char **argv)
                 pa = 0;
             }
             program_size += PGSIZE;
+            i += n;
         }
     }
 

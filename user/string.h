@@ -5,5 +5,7 @@ char *strcpy(char *s, const char *t);
 int strcmp(const char *p, const char *q);
 unsigned int strlen(const char *s);
 void *memset(void *dst, int c, unsigned int n);
-
+int memcmp(const void *v1, const void *v2, unsigned int n);
+void* memmove(void *dst, const void *src, unsigned int n);
+void* memcpy(void *dst, const void *src, unsigned int n);
 #endif

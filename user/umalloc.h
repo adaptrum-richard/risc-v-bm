@@ -50,6 +50,8 @@ typedef struct block_metadata{
 void free(void *addr);
 void *malloc(size_t size);
 void block_stats(char *stage);
+void *realloc(void *ptr, size_t n);
+void *calloc(size_t n, size_t m);
 void cleanup();
 #endif
 

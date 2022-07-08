@@ -37,7 +37,9 @@ void test_malloc()
     int *p1 = malloc(1000);
     int *p2 = malloc(2000);
     int *p3 = malloc(3000);
-
+    memset(p1, 0x0, 1000);
+    memset(p2, 0x0, 1000);
+    memset(p3, 0x0, 1000);
     block_stats("malloc end");
     free(p1);
     free(p3);

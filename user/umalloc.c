@@ -2,10 +2,12 @@
 #ifdef UMALLOCK_TEST
 #include <stdio.h>
 #include <unistd.h> //  brk and sbrk
+#include <string.h>
 #else
 #include "printf.h"
 #include "user/user.h"
 #include "kernel/types.h"
+#include "user/string.h"
 #endif
 /*
 maybe sbrk和brk原理参考https://www.jianshu.com/p/4ddf472226cc
@@ -282,6 +284,67 @@ void cleanup()
     _block_head = NULL;
 }
 
+/*
+alloc在申请空间时会将该空间初始为0。
+而它需要的参数为：
+n要被分配的元素个数，
+m元素的大小。
+*/
+#ifdef UMALLOCK_TEST
+void *_calloc(size_t n, size_t m)
+#else
+void *calloc(size_t n, size_t m)
+#endif
+{
+    void *ptr;
+    if(!m || !n)
+        return NULL;
+#ifdef UMALLOCK_TEST
+    ptr = _malloc(n*m);
+#else
+    ptr = malloc(n*m);
+#endif
+    if(ptr){
+        memset(ptr, 0, n*m);
+    }
+    return ptr;
+}
+
+/*
+realloc的描述为Reallocate memory blocks.
+它的作用就是重新调整之前调用 malloc 或 
+calloc 所分配的 ptr 所指向的内存块的大小。
+n为内存块的新的大小（可以调大也可以调小），
+以字节为单位。如果大小为 0，且 ptr 指向一
+个存在的内存块，则 ptr 所指向的内存块会被
+释放，并返回一个空指针
+
+*/
+#ifdef UMALLOCK_TEST
+void *_realloc(void *ptr, size_t n)
+#else
+void *realloc(void *ptr, size_t n)
+#endif
+{
+    void *p;
+    block_metadata_t *pbm;
+    if(!n)
+        return ptr;
+    pbm = BLOCK_HEADER(ptr);
+#ifdef UMALLOCK_TEST
+    p = _malloc(n);
+#else
+    p = malloc(n);
+#endif
+    memcpy(p, ptr, n > pbm->size ? pbm->size: n);
+#ifdef UMALLOCK_TEST
+    _free(ptr);
+#else
+    free(ptr);
+#endif
+    return p;
+}
+
 #ifdef UMALLOCK_TEST
 int main()
 {
@@ -295,6 +358,7 @@ int main()
     _free(p3);
     _free(p2);
     block_stats("free all");
+    
     cleanup();
     return 0;
 }

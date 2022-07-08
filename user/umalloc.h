@@ -1,5 +1,16 @@
 #ifndef __UMALLOC_H__
 #define __UMALLOC_H__
+
+
+/*
+RISC_V_BM: 在内存释放的时候，需要找到block_head最后的block，
+确认block是按page对齐，并且block 的size需大于PAGE，才能调用
+brk回收内存
+UMALLOCK_TEST：在x86上测试定义此宏，可以执行使用gcc umalloc.c编译测试
+*/
+//#define RISC_V_BM
+#define UMALLOCK_TEST 
+
 /*
 在应用层序中实现自定义分配内存的算法，从系统中分配一个12K(24k ...)内存，
 然后在此程序中切分内存block给其他程序使用
@@ -9,12 +20,8 @@ typedef struct block_metadata{
     struct block_metadata *prev, *next;
     int size;
 }block_metadata_t;
-#define RISC_V_BM
-#define UMALLOCK_TEST 
 
-
-
-#ifdef UMALLOCK_TEST1
+#ifdef UMALLOCK_TEST
 #ifndef ALLOC_UNIT
 #define ALLOC_UNIT (3*sysconf(_SC_PAGESIZE))
 #endif
@@ -22,7 +29,6 @@ typedef struct block_metadata{
 #ifndef MIN_DEALLOC
 #define MIN_DEALLOC (sysconf(_SC_PAGESIZE))
 #endif
-
 
 #else 
 #define ALLOC_UNIT  (4096 * 3) // 12KB

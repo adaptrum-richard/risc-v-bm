@@ -65,18 +65,6 @@ void add_to_freelist(block_metadata_t *freeb)
             freeb->size);
 #endif
     freeb->next = freeb->prev = NULL;
-
-    /*block head为空，或freeb地址小于block头*/
-#if 0
-    if(!_block_head || GE_ADDR(_block_head, freeb)){
-        if(_block_head)
-            _block_head->prev = freeb;
-        freeb->next = _block_head;
-        _block_head = freeb;
-        return;
-    }
-#else
-   int found = 0;
     if(!_block_head)
         _block_head = freeb;
     else {
@@ -84,45 +72,26 @@ void add_to_freelist(block_metadata_t *freeb)
             freeb->next = _block_head;
             _block_head->prev = freeb;
             _block_head = freeb;
-            printf("%s %d\n", __func__, __LINE__);
         }else {
             block_metadata_t *ptr;
             for(ptr = _block_head; ptr; ptr = ptr->next){
                 if(ptr->next){
-                    printf("ptr->next = 0x%lx, freeb = 0x%lx\n", (unsigned long)ptr->next, (unsigned long)freeb);
                     if(GT_ADDR(ptr->next, freeb)){
                         ptr->next->prev = freeb;
                         freeb->next = ptr->next;
                         freeb->prev = ptr;
                         ptr->next = freeb;
-                        printf("%s %d\n", __func__, __LINE__);
                         break;
                     }
                 }
                 if(ptr->next == NULL){
                     ptr->next = freeb;
                     freeb->prev = ptr;
-                    printf("%s %d\n", __func__, __LINE__);
                     break;
                 }
             }
         }
     }
-#endif
-    block_stats("遍历");
-#if 0
-    block_metadata_t *ptr = _block_head;
-
-    while(ptr->next && LE_ADDR(ptr->next, freeb))
-        ptr = ptr->next;
-    /*注意这里ptr->next可能为空*/
-    freeb->next = ptr->next;
-    freeb->prev = ptr;
-    if(ptr->next != NULL){
-        (ptr->next)->prev = freeb;
-        ptr->next = freeb;
-    }
-#endif
     return;
 }
 
@@ -155,12 +124,10 @@ void *malloc(size_t size)
         if(ptr->size >= size){
             remove_from_freelist(ptr);
             if(ptr->size == size){
-                printf("malloc block:0x%lx, size:0x%lx\n", (unsigned long)(ptr), size);
                 return BLOCK_MEM(ptr);
             }
             block_metadata_t *newb = split_block(ptr, size);
             add_to_freelist(newb);
-            printf("malloc block:0x%lx, size:0x%lx\n", (unsigned long)(ptr), size);
             return BLOCK_MEM(ptr);
         }
         ptr = ptr->next;
@@ -178,23 +145,15 @@ void *malloc(size_t size)
         printf("failed to alloc 0x%lx\n", alloc_size);
         return NULL;
     }
-#ifdef UMALLOCK_TEST
-    //printf("alloc addr 0x%lx, size = 0x%lx, end addr = 0x%lx\n", (unsigned long)ptr, alloc_size, (unsigned long)ptr + alloc_size);
-
-#endif
 
     ptr->next = ptr->prev = NULL;
     /*剩余的可用内存空间记录在size中。不包括block_metadata的大小*/
     ptr->size = alloc_size - BLOCK_META_SIZE;
 
     if(alloc_size > size + BLOCK_META_SIZE){
-         
         block_metadata_t *newb = split_block(ptr, size);
-         
         add_to_freelist(newb);
-         
     }
-    printf("malloc block:0x%lx, size:0x%lx\n", (unsigned long)(ptr), size);
     return BLOCK_MEM(ptr);
 }
 
@@ -216,7 +175,6 @@ retry:
         
         if(addr == next_addr){
             curr->size += curr->next->size + BLOCK_META_SIZE;
-            //curr->next = curr->next->next;
             tb = curr->next->next;
             if(tb){
                 //删除block:curr->next
@@ -242,18 +200,12 @@ retry:
     while(curr->next){
         curr = curr->next;
     }
-    
     curr_addr = (unsigned long)curr;
-    printf("%s %d: curraddr = 0x%lx, size = 0x%lx, MIN_DEALLOC = 0x%lx, end = 0x%lx, program_break = 0x%lx\n", 
-        __func__, __LINE__, 
-        curr_addr, curr->size,MIN_DEALLOC ,curr_addr + curr->size + BLOCK_META_SIZE, program_break);
+
     if(((curr_addr + curr->size + BLOCK_META_SIZE) == program_break) && (curr->size+ BLOCK_META_SIZE)>= MIN_DEALLOC){
-         printf("%s %d\n", __func__, __LINE__);
         if((curr_addr & (MIN_DEALLOC - 1)) == 0) {//PAGE对齐
-            printf("%s %d\n", __func__, __LINE__);
             remove_from_freelist(curr);
             if(curr == _block_head){
-                
                 _block_head = NULL;
             }
             if(brk(curr) != 0)
@@ -266,18 +218,15 @@ retry:
                 /*do nothing
                 此情况不需要做任何事
                 */
-                
             } else if( count > 1 && remainder <= BLOCK_META_SIZE){
                 unsigned long free_addr = PAGE_UP(curr_addr);
                 /*保留一个页，其余释放掉,更新size*/
                 curr->size -= (count-1)*MIN_DEALLOC;
-                printf("1+++++++++++free addr = %lx, size = %lx\n", free_addr, (count-1)*MIN_DEALLOC);
                 if(brk((void*)free_addr) != 0)
                     printf("error free memory!");
             } else if( count > 1 && remainder > BLOCK_META_SIZE){
                 unsigned long free_addr = PAGE_UP(curr_addr);
                 curr->size -= count*MIN_DEALLOC;
-                printf("2+++++++++++free addr = %lx, size = %lx\n", free_addr, (count-1)*MIN_DEALLOC);
                 if(brk((void *)free_addr) != 0)
                     printf("error free memory!");
             }
@@ -306,8 +255,6 @@ void _free(void *addr)
 void free(void *addr)
 #endif
 {
-
-
     block_metadata_t *block_addr = BLOCK_HEADER(addr);
 
 #ifdef UMALLOCK_TEST
@@ -317,18 +264,15 @@ void free(void *addr)
 #ifdef UMALLOCK_TEST
     block_stats("free后:");
 #endif
-
-
     scan_and_merge();
-  #ifdef UMALLOCK_TEST
-    //block_stats("merge 后:");
-#endif  
-
 }
 
 void cleanup()
 {
     printf("Cleaning up memory ...\n");
+    if(_block_head != NULL ){
+        printf("memory leak\n");
+    }
     if( _block_head != NULL ) {
         if(brk(_block_head) != 0 ) {
             printf("Failed to cleanup memory");
@@ -340,27 +284,17 @@ void cleanup()
 #ifdef UMALLOCK_TEST
 int main()
 {
-    printf("block metadata size: 0x%x\n", (unsigned int)BLOCK_META_SIZE);
-    block_stats("malloc start ========================");
+    block_stats("malloc start");
     int *p1 =_malloc(1000);
     int *p2 = _malloc(2000);
     int *p3 = _malloc(3000);
 
-    block_stats("111111=========================");
-    printf("mallco end ================================\n");
-
-    printf("p1 free =============================\n");
+    block_stats("malloc end");
     _free(p1);
-    printf("p2 free =============================\n");
     _free(p3);
-     printf("p3 free =============================\n");
     _free(p2);
-    printf("clean =============================\n");
-
-
-    //block_stats("clean befre");
+    block_stats("free all");
     cleanup();
-
     return 0;
 }
 #endif

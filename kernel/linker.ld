@@ -9,14 +9,6 @@ SECTIONS
 	_etext_boot = .;
 	. = ALIGN(4096);
 	
-	user_begin = .;
-	.text.user : { kernel_build/user* (.text) }
-	.rodata.user : { kernel_build/user* (.rodata) }
-	.data.user : { kernel_build/user* (.data) }
-	.bss.user : { kernel_build/user* (.bss) }
-	user_end = .;
-
-	. = ALIGN(4096);
 	_text = .;
 	.text :
 	{ 

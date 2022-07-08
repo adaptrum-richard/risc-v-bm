@@ -18,7 +18,6 @@
 #include "sleep.h"
 #include "preempt.h"
 #include "memlayout.h"
-#include "testcode.h"
 #include "page.h"
 #include "exec.h"
 
@@ -48,14 +47,11 @@ void idle()
     }
 }
 
-#ifndef TEST_READ_INIT_CODE_AND_RUN
-extern char user_begin[], user_end[], user_process[];
-#endif
+
 extern void set_pgd(uint64);
 
 void copy_to_user_thread(uint64 arg)
 {
-#ifdef TEST_READ_INIT_CODE_AND_RUN
     unsigned long pc = -1;
     unsigned long size = -1;
     unsigned long end;
@@ -68,19 +64,15 @@ void copy_to_user_thread(uint64 arg)
     }
     proccess = pc + begin - USER_CODE_VM_START;
     end = begin + size;
-#else
-    unsigned long begin = (unsigned long)&user_begin;
-    unsigned long end = (unsigned long)&user_end;
-    unsigned long proccess = (unsigned long)&user_process;
-#endif
+
     printk("user_beigin = 0x%lx, user_end = 0x%lx, pc = 0x%lx, process = 0x%lx\n",
         begin, end, proccess - begin, proccess);
     acquire(&current->lock);
     int err = move_to_user_mode(begin, end - begin, proccess - begin);
     release(&current->lock);
-#ifdef TEST_READ_INIT_CODE_AND_RUN
+
     free_page(begin);
-#endif
+
     if(err < 0)
         panic("move_to_user_mode\n");
     preempt_disable(); //切换到第一个用户进程的时候，不能被抢占

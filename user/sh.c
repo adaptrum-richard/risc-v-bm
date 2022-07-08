@@ -3,6 +3,50 @@
 #include "kernel/fcntl.h"
 #include "string.h"
 #include "umalloc.h"
+#include "kernel/types.h"
+
+int fputs(const char *s, int stream)
+{
+    return fprintf(stream, "%s", s);
+}
+
+int getline(char **lineptr, size_t *n, int stream)
+{
+#define GETLINE_BUFSIZE 8
+    char *ptr = NULL;
+    int size = GETLINE_BUFSIZE;
+    int i, cc;
+    char c;
+    if(!*n || !**lineptr)
+        return 0;
+    ptr = (char *)malloc(sizeof(char)*size);
+    if(ptr)
+        return 0;
+    i = 0;
+    for(;;){
+        cc = read(0, &c, stream);
+        if(cc < 1)
+            break;
+        if(i > size)
+            ptr = realloc(ptr, size * 2);
+        ptr[i++] = c;
+        if(c == '\n' || c == '\r')
+            break;
+    }
+    if(i == 0)
+        free(ptr);
+    *n = i;
+    *lineptr = ptr;
+    return i;
+}
+
+int prompt_and_get_input(const char* prompt,
+                char **line, size_t *len) 
+{
+    fputs(prompt, stderr);
+    return getline(line, len, stdin);
+}
+
 
 char* gets(char *buf, int max)
 {

@@ -17,24 +17,31 @@ int getline(char **lineptr, size_t *n, int stream)
     int size = GETLINE_BUFSIZE;
     int i, cc;
     char c;
-    if(!*n || !**lineptr)
+    if(!n || !lineptr)
         return 0;
     ptr = (char *)malloc(sizeof(char)*size);
-    if(ptr)
+    if(!ptr)
         return 0;
     i = 0;
     for(;;){
-        cc = read(0, &c, stream);
+        cc = read(stream, &c, 1);
         if(cc < 1)
             break;
-        if(i > size)
-            ptr = realloc(ptr, size * 2);
+        if(i > (size - 1)){
+            size <<= 1;
+            ptr = realloc(ptr, size);
+        }
         ptr[i++] = c;
         if(c == '\n' || c == '\r')
             break;
     }
-    if(i == 0)
+
+    if(i == 0 || ptr[0] == 0){
         free(ptr);
+        return 0;
+    }
+
+    ptr[i] = '\0';
     *n = i;
     *lineptr = ptr;
     return i;
@@ -47,34 +54,6 @@ int prompt_and_get_input(const char* prompt,
     return getline(line, len, stdin);
 }
 
-
-char* gets(char *buf, int max)
-{
-    int i, cc;
-    char c;
-
-    for(i=0; i+1 < max; ){
-        cc = read(0, &c, 1);
-        if(cc < 1)
-            break;
-        buf[i++] = c;
-        if(c == '\n' || c == '\r')
-            break;
-    }
-    buf[i] = '\0';
-    return buf;
-}
-
-int getcmd(char *buf, int n)
-{
-    fprintf(2, "$ ");
-    memset(buf, 0, n);
-    gets(buf, n);
-    if(buf[0] == 0) // EOF
-        return -1;
-    return 0;
-}
-
 void test_malloc()
 {
     block_stats("malloc start");
@@ -84,6 +63,8 @@ void test_malloc()
     memset(p1, 0x0, 1000);
     memset(p2, 0x0, 1000);
     memset(p3, 0x0, 1000);
+    p1 = realloc(p1, 10);
+    
     block_stats("malloc end");
     free(p1);
     free(p3);
@@ -95,7 +76,8 @@ void test_malloc()
 int main(void)
 {
     int fd;
-    char buf[200] = {0};
+    char *line = NULL;
+    size_t len = 0;
     /*
     在父进程里面执行dup后，fd会自动增加。linux中fd 0/1/2
     分别对应STDIN，STDOUT，STDERR。这里执行fd应该返回的是3
@@ -106,9 +88,11 @@ int main(void)
             break;
         }
     }
-    test_malloc();
-    while(getcmd(buf, sizeof(buf)) >= 0){
-        printf("cmd = %s", buf);
+    //test_malloc();
+
+    while(prompt_and_get_input("$ ", &line, &len) > 0){
+        printf("cmd = %s", line);
+        free(line);
     }
 
     printf("exit sh\n");

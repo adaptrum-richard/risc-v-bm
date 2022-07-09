@@ -373,6 +373,11 @@ static inline void sfence_vma()
     asm volatile("sfence.vma zero, zero");
 }
 
+static inline void local_flush_tlb_page(unsigned long addr)
+{
+    asm volatile("sfence.vma %0" : : "r" (addr) : "memory");
+}
+
 // use riscv's sv39 page table scheme.
 #define SATP_SV39 (8L << 60)
 

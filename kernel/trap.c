@@ -16,6 +16,7 @@
 #include "errorno.h"
 #include "string.h"
 #include "vm.h"
+#include "debug.h"
 
 void kernelvec();
 
@@ -83,7 +84,8 @@ vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
         return -ENOMEM;
     }
     memset((void *)mem, 0, PGSIZE);
-    mappages(current->mm->pagetable, address & PAGE_MASK, PGSIZE, mem, perm);    
+    mappages(current->mm->pagetable, address & PAGE_MASK, PGSIZE, mem, perm);
+    pr_debug("mmap: va %lx, pa %lx\n", address & PAGE_MASK, mem);  
     return 0;
 }
 

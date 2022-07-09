@@ -8,6 +8,7 @@
 #include "errorno.h"
 #include "proc.h"
 #include "slab.h"
+#include "debug.h"
 
 pagetable_t kernel_pagetable;
 extern char _etext[];
@@ -139,23 +140,27 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
 {
     uint64 a;
     pte_t *pte;
-
+    uint64 end = va + npages*PGSIZE;
     if((va % PGSIZE) != 0){
         printk(" va = 0x%lx\n", va);
         panic("uvmunmap: not aligned");
     }
 
-    for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
-        if((pte = walk(pagetable, a, 0)) == 0)
+    for(a = va; a < end; a += PGSIZE){
+        if((pte = walk(pagetable, a, 0)) == 0){
             continue;
-        if((*pte & PTE_V) == 0)
+        }
+        if((*pte & PTE_V) == 0){
+            printk("pte = %lx\n", *pte);
             continue;
+        }
         if(PTE_FLAGS(*pte) == PTE_V)
             continue;
         
         uint64 pa = PTE2PA(*pte);
         free_page((unsigned long)pa);
-        //printk("free page: 0x%lx\n", pa);
+        pr_debug("unmap va:0x%lx, free pa = %lx\n", a, pa);
+        local_flush_tlb_page(a);
         *pte = 0;
     }
 }
@@ -170,15 +175,19 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     a = PGROUNDDOWN(va);
     last = PGROUNDDOWN(va + size - 1);
     for (;;) {
-        if ((pte = walk(pagetable, a, 1)) == 0)
+        if ((pte = walk(pagetable, a, 1)) == 0){
             return -1;
-        if (*pte & PTE_V)
-            panic("mappages: remap");
+        }
+        if (*pte & PTE_V){
+            return -1;
+        }
         *pte = PA2PTE(pa) | perm | PTE_V;
         if (a == last)
             break;
+        local_flush_tlb_page(a);
         a += PGSIZE;
         pa += PGSIZE;
+        
     }
     return 0;
 }
@@ -379,7 +388,8 @@ static int copy_data_kernel_to_user(pagetable_t pagetable, uint64 dstva, char *s
             return -1;
         n = PGSIZE - (dstva - va0);
         if(n > len)
-            memmove((void*)(pa0 + (dstva - va0)), src, n);
+            n = len;
+        memmove((void*)(pa0 + (dstva - va0)), src, n);
         len -= n;
         src += n;
         dstva = va0 + PGSIZE; 

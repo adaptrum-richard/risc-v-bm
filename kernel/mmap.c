@@ -8,6 +8,7 @@
 #include "proc.h"
 #include "vm.h"
 #include "printk.h"
+#include "debug.h"
 /*
 满足启动一个即可
 1.addr在VMA空间范围内，即vma->vm_start <= addr < vma->vm_end。[vma->vm_start, vma->vm_end)
@@ -120,6 +121,11 @@ struct vm_area_struct *vm_area_alloc(struct mm_struct *mm)
 struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
 {
     struct vm_area_struct *next = vma->vm_next;
+    if(!vma->vm_prev)
+        current->mm->mmap = vma->vm_next;
+    else{
+        vma->vm_prev->vm_next = vma->vm_next;
+    }
     vm_area_free(vma);
     return next;
 }
@@ -134,7 +140,8 @@ int expand_downwards(struct vm_area_struct *vma, unsigned long address)
         //unsigned long grow;
         //grow = (vma->vm_start - address) / PGSIZE;/*计算需要增长的页面数量*/
         //if(grow <= vma->vm_pgoff){
-            vma->vm_start = address;//扩充栈
+            vma->vm_start = PGROUNDDOWN(address);//扩充栈
+            pr_debug("grow stack = 0x%lx\n", vma->vm_start);
         //    vma->vm_pgoff -= grow;
         //}
     }
@@ -154,12 +161,17 @@ static void unmap_region(struct mm_struct *mm, struct vm_area_struct *vma)
     unmap_validpages(current->mm->pagetable, va_start, npages);
 }
 
-/*断开映射*/
+/*断开映射
+start为新的brk地址
+len需要释放的内存大小
+*/
 int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool downgrade)
 {
     unsigned long end;
-    struct vm_area_struct *vma, *prev, *next;
-    if(start > USER_MEM_END || len > (USER_MEM_END - start))
+    struct vm_area_struct *vma;
+    struct vm_area_struct tmp;
+    if(start > USER_MEM_END || len > (USER_MEM_END - start) 
+        || USER_MEM_START > start)
         return -EINVAL;
     len = PAGE_ALIGN(len);
     end = start + len;
@@ -167,24 +179,42 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool down
     if(len == 0)
         return -EINVAL;
     vma = find_vma_intersection(mm, start, end);
-    if(!vma) /*没有找到[start, end)虚拟内存对应的vma，什么都不做*/
+    if(!vma){ /*没有找到[start, end)虚拟内存对应的vma，什么都不做*/
         return 0;
+    }
 
-    if(mm->mmap == vma)
-        mm->mmap = vma->vm_next;
-    /*TODO:不用切分。没有实现此功能*/
-    prev = vma->vm_prev;
-    next = vma->vm_next;
-    if(prev)
-        prev->vm_next = next;
-    if(next)
-        next->vm_prev = prev;
-    unmap_region(mm, vma);
-    mm->total_vm -= ((vma->vm_end - vma->vm_start) >> PGSHIFT);
-    remove_vma(vma);
+    /*用户传入的参数有错误*/
+    if(vma->vm_start > start){
+        pr_err("args error\n");
+        return -EINVAL;
+    }
+    pr_debug("%s, %d: unmap start = 0x%lx, end = 0x%lx\n", __func__ , __LINE__,
+            start, end);
+    tmp.vm_start = start;
+    tmp.vm_end = end;
+    unmap_region(mm, &tmp);
+    if(mm->start_brk == start ){
+        pr_debug("%s, %d: remove start = 0x%lx, end = 0x%lx\n", __func__ , __LINE__,
+            vma->vm_start, vma->vm_end);
+        remove_vma(vma);
+    }
+    else{
+        pr_debug("%s, %d: update end, start = 0x%lx, oldend = 0x%lx, new_end = %lx\n", __func__ , __LINE__,
+            vma->vm_start, vma->vm_end, end);
+        if(vma->vm_end < start){
+            pr_err("%s %d: bug\n", __func__, __LINE__);
+        }
+        vma->vm_end = start;
+
+    }
     return 0;
 }
 
+
+/*
+addr: 旧的brk地址
+len:需要分配的内存大小
+*/
 static int do_brk_flags(unsigned long addr, unsigned long len, unsigned long flags)
 {
     struct mm_struct *mm = current->mm;
@@ -192,17 +222,36 @@ static int do_brk_flags(unsigned long addr, unsigned long len, unsigned long fla
     pgoff_t pgoff = addr >> PGSHIFT;
     unsigned long end = addr + PAGE_ALIGN(len);
     vma = find_vma(mm, addr);
-    if(end <= vma->vm_start){
+    
+    /*1.当vma为空，则需要新增一个，当找到的vma->vm_start大于等于end地址时，也需要新增一个*/
+    if(!vma || end <= vma->vm_start){
         newvma = vm_area_alloc(mm);
         /*TODO:检查返回值*/
         newvma->vm_start = addr,
         newvma->vm_end = end;
         newvma->vm_pgoff = pgoff;
+        pr_debug("%s %d: new vm start = %lx, vm end = %lx\n", __func__, __LINE__,
+            addr, end);
         newvma->vm_flags = VM_DATA_FLAGS_NON_EXEC;
         insert_vm_struct(mm, newvma);
+    }else{
+        /*对vma进行扩容*/
+        if(vma->vm_end <= end){
+            pr_debug("%s %d: brk grow vm start = %lx, old end = %lx, new end: %lx\n", 
+                __func__, __LINE__,
+                addr, vma->vm_end, end);
+            vma->vm_end = end;
+        }
+        else{
+            //此时vma已经有了，不需要设置
+            pr_debug("%s %d: vm start = %lx,vma end:%lx, oldbrk = %lx, size: %lx\n", 
+                __func__, __LINE__,
+                vma->vm_start, vma->vm_end, addr, len);
+            pr_err("%s %d: dothing\n", __func__, __LINE__);
+        }
     }
 
-    return newvma==NULL ? -1 : 0;
+    return 0;
 }
 
 /*free和malloc均会调用do_brk
@@ -255,10 +304,17 @@ out:
 
 unsigned long sbrk(unsigned long size)
 {
+    unsigned long new_brk = 0;
+    unsigned long old_brk = current->mm->brk;
     if(size == 0)
-        return current->mm->brk;
-    else 
-        return do_brk(current->mm->brk + PAGE_ALIGN(size)) - PAGE_ALIGN(size);
+        return old_brk;
+    else {
+        new_brk = do_brk(current->mm->brk + PGROUNDUP(size));
+        if(old_brk == new_brk)
+            return 0;
+        else 
+            return new_brk - PGROUNDUP(size);
+    }
 }
 
 unsigned long brk(unsigned long addr)

@@ -7,6 +7,7 @@
 #include "string.h"
 #include "printk.h"
 #include "wait.h"
+#include "vm.h"
 
 DECLARE_WAIT_QUEUE_HEAD(console_wait_queue);
 static int console_wait_condition = 0;
@@ -18,7 +19,8 @@ int consolewrite(uint64 src, int n)
     char c;
     int i;
     for(i = 0; i < n; i++){
-        memmove(&c, (char*)src, 1);
+        if(spcae_data_copy_in((void*)&c, src + i, 1) == -1)
+            break;
         uartpuc(c);
     }
     return i;
@@ -55,7 +57,10 @@ int consoleread(uint64 dst, int n)
         }
 
         cbuf = c;
-        memmove((char *)dst, &cbuf, 1);
+        if(space_data_copy_out(dst, (void*)&cbuf, 1) == -1){
+            break;
+        }
+
         dst++;
         n--;
         if(c == '\n')

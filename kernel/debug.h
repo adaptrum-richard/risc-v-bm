@@ -11,7 +11,7 @@
 #define pr_fmt(fmt) fmt
 #endif
 
-#define _DEBUG_LELVE 0
+#define _DEBUG_LELVE 2
 
 #define eprintf(level, fmt, ...) \
 do{ \

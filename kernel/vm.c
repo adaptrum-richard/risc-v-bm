@@ -151,7 +151,6 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
             continue;
         }
         if((*pte & PTE_V) == 0){
-            printk("pte = %lx\n", *pte);
             continue;
         }
         if(PTE_FLAGS(*pte) == PTE_V)

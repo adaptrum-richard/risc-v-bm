@@ -16,9 +16,12 @@ int getline(char **lineptr, size_t *n, int stream)
     int size = GETLINE_BUFSIZE;
     int i, cc;
     char c;
+
     if(!n || !lineptr)
         return 0;
+
     ptr = (char *)malloc(sizeof(char)*size);
+
     if(!ptr)
         return 0;
     i = 0;
@@ -44,4 +47,11 @@ int getline(char **lineptr, size_t *n, int stream)
     *n = i;
     *lineptr = ptr;
     return i;
+}
+
+int prompt_and_get_input(const char* prompt,
+                char **line, size_t *len) 
+{
+    fputs(prompt, stderr);
+    return getline(line, len, stdin);
 }

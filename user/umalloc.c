@@ -13,7 +13,8 @@
 maybe sbrk和brk原理参考https://www.jianshu.com/p/4ddf472226cc
 */
 
-block_metadata_t *_block_head = NULL;
+
+static block_metadata_t *_block_head = NULL;
 
 /*从b中切割一个size下来，newb指向剩余的空间的起始地址，
 b则是新分配的内存的描述符，b->size存放新分配的内存大小。
@@ -119,7 +120,9 @@ void *_malloc(size_t size)
 void *malloc(size_t size)
 #endif
 {
+
     block_metadata_t *ptr = _block_head;
+
     while(ptr){
         /*查找一个和想分配内存size一样大的block
         如果没有一样大的block就分配一个
@@ -135,6 +138,7 @@ void *malloc(size_t size)
         }
         ptr = ptr->next;
     }
+    
     //printf("%s %d: ALLOC_UNIT = 0x%lx, size = %d\n", __func__, __LINE__, ALLOC_UNIT, size);
     size_t alloc_size;
     if(size >= ALLOC_UNIT)

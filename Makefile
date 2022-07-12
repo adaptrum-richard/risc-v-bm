@@ -60,7 +60,7 @@ $(USER_DIR)/printf.o : $(USER_DIR)/printf.c
 $(USER_DIR)/umalloc.o : $(USER_DIR)/umalloc.c
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/umalloc.o $(USER_DIR)/umalloc.c
 
-$(USER_DIR)/ulib.o : $(USER_DIR)/ulib.c
+$(USER_DIR)/ulib.o : $(USER_DIR)/ulib.c $(USER_DIR)/umalloc.o $(USER_DIR)/printf.o  $(USER_DIR)/string.o $(USER_DIR)/sys.o 
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/ulib.o $(USER_DIR)/ulib.c
 
 
@@ -75,7 +75,7 @@ $(USER_DIR)/_init: $(ULIB)
 
 $(USER_DIR)/_sh: $(ULIB) 
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/sh.o $(USER_DIR)/sh.c
-	$(RISCVGNU)-ld $(LDFLAGS)  -N -e main -Ttext 0x1000000000 -o $@  $(USER_DIR)/sh.o $^
+	$(RISCVGNU)-ld $(LDFLAGS)  -T $(USER_DIR)/linker.ld -o $@  $(USER_DIR)/sh.o $^
 	$(RISCVGNU)-objdump -S $@ > $@.asm
 	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 

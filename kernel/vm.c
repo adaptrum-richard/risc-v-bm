@@ -9,6 +9,7 @@
 #include "proc.h"
 #include "slab.h"
 #include "debug.h"
+#include "elf.h"
 
 pagetable_t kernel_pagetable;
 extern char _etext[];
@@ -158,7 +159,9 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
         
         uint64 pa = PTE2PA(*pte);
         free_page((unsigned long)pa);
-        pr_debug("unmap va:0x%lx, free pa = %lx\n", a, pa);
+        pr_debug("%s %d: unmap va:0x%lx, free pa = %lx, size: 0x%lx\n", 
+            __func__, __LINE__, 
+            a, pa, PGSIZE);
         local_flush_tlb_page(a);
         *pte = 0;
     }
@@ -185,8 +188,7 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
             break;
         local_flush_tlb_page(a);
         a += PGSIZE;
-        pa += PGSIZE;
-        
+        pa += PGSIZE;        
     }
     return 0;
 }
@@ -277,24 +279,25 @@ pagetable_t copy_kernel_tbl(void)
     return new;
 }
 
+
 /*加载user的程序，并映射到USER_CODE_VM地址
 0: 正常，表示未分配内存
 1：表示新分配了内存
 */
-int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
+int vm_map_program(pagetable_t pagetable, uint64 va, uchar *src, uint size, int perm)
 {
     char *mem;
     uint64 pa;
     uint i, n;
     int ret = 0;
-    uint64 vm_base = USER_CODE_VM_START;
+
     for(i = 0; i < size; i+= PGSIZE){
         if((size - i) < PGSIZE)
             n = size - i;
         else 
             n = PGSIZE;
 
-        pa = walkaddr(pagetable, vm_base + PGROUNDDOWN(offset) + i);
+        pa = walkaddr(pagetable, va);
         if(pa == 0){
             mem = (char*)get_free_page();
             ret = 1;
@@ -307,15 +310,34 @@ int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size)
         if(!mem){
             return -ENOMEM;
         }
+
         memset(mem, 0, PGSIZE);
-        mappages(pagetable, vm_base + PGROUNDDOWN(offset) + i, PGSIZE, 
-                (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+        mappages(pagetable, va, PGSIZE, (uint64)mem, PTE_U | PTE_R | PTE_W | PTE_X);
+        pr_debug("%s %d: map va: 0x%lx to pa: 0x%lx, size: 0x%lx\n", 
+            __func__, __LINE__, va,
+            (uint64)mem, PGSIZE);
 skip_mmap:
-        memmove(mem, src, n);
-        src += n;
+        if(src){
+            memmove(mem, src, n);
+            src += n;
+        }
+        else 
+            memset(mem, 0, n);
+
     }
     return ret;    
 }
+
+int map_program_code(pagetable_t pagetable, uint64 va, uchar *src, uint size)
+{
+    return vm_map_program(pagetable, va, src, size, PTE_R | PTE_U | PTE_X);
+}
+
+int map_program_bss(pagetable_t pagetable, uint64 va, uchar *src, uint size)
+{
+    return vm_map_program(pagetable, va, src, size, PTE_R | PTE_U | PTE_W);
+}
+
 /*
 0: 正常，表示未分配内存
 1：表示新分配了内存
@@ -347,6 +369,9 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
         }
         memset(mem, 0, PGSIZE);
         mappages(pagetable, vm_base + i, PGSIZE, (uint64)mem, PTE_W | PTE_R | PTE_U);
+        pr_debug("%s %d: map va: 0x%lx to pa: 0x%lx, size: 0x%lx\n", 
+            __func__, __LINE__, vm_base + i,
+            (uint64)mem, PGSIZE);
 skip_mmap:
         memmove(mem, src, n);
         src += n;

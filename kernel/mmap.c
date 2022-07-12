@@ -306,6 +306,7 @@ unsigned long sbrk(unsigned long size)
 {
     unsigned long new_brk = 0;
     unsigned long old_brk = current->mm->brk;
+    pr_debug("%s %d\n", __func__, __LINE__);
     if(size == 0)
         return old_brk;
     else {
@@ -320,6 +321,7 @@ unsigned long sbrk(unsigned long size)
 unsigned long brk(unsigned long addr)
 {
     unsigned long org_brk = current->mm->brk;
+    pr_debug("%s %d\n", __func__, __LINE__);
     return org_brk == do_brk(addr);
 }
 
@@ -330,16 +332,16 @@ void print_all_vma(pagetable_t pagatable, struct vm_area_struct *vma)
     //pte_t *walk(pagetable_t pagetable, uint64 va, int alloc)
     if(!pagatable || !vma)
         return;
-    printk("-------------show vma, mmap pages-----------------------------\n");
+    pr_debug("-------------show vma, mmap pages-----------------------------\n");
     for(tmp = vma; tmp; tmp = tmp->vm_next){
-        printk("[0x%lx -- 0x%lx], flag 0x%lx, mapping pages:\n", tmp->vm_start, tmp->vm_end, tmp->vm_flags);
+        pr_debug("[0x%lx -- 0x%lx], flag 0x%lx, mapping pages:\n", tmp->vm_start, tmp->vm_end, tmp->vm_flags);
         for(int i = 0; i < PGROUNDUP(tmp->vm_end - tmp->vm_start); i+= PGSIZE){
             pa = walkaddr(pagatable, tmp->vm_start + i); 
             if(pa){
-                printk("\tpage address: 0x%lx\n", pa);
+                pr_debug("\tpage address: 0x%lx\n", pa);
             }
         }
     }
-    printk("----------------------------------------------------------------\n");
+    pr_debug("----------------------------------------------------------------\n");
 
 }

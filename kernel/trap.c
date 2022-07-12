@@ -128,6 +128,7 @@ void do_page_fault(struct pt_regs *regs)
 
     vma = find_vma(mm, addr);
     if(!vma){
+        pr_err("don't find vma\n");
         bad_area(regs, mm, code, addr);
         return;
     }
@@ -135,6 +136,8 @@ void do_page_fault(struct pt_regs *regs)
         goto good_area;
 
     if (!(vma->vm_flags & VM_GROWSDOWN)) {
+        pr_err("don't grow stack down: vm_start: %lx, vm_end:%lx\n", 
+            vma->vm_start, vma->vm_end);
         bad_area(regs, mm, code, addr);
         return;
     }

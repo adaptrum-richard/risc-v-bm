@@ -10,6 +10,7 @@
 #include "string.h"
 #include "errorno.h"
 #include "vm.h"
+#include "debug.h"
 
 static struct inode *create(char *path, short type, 
     short major, short minor)
@@ -144,6 +145,7 @@ uint64 __sys_open(const char *pathname, int omode)
     }
     iunlock(ip);
     log_end_op();
+    pr_debug("%s %d: fd = %d\n", __func__, __LINE__, fd);
     return fd;
 }
 

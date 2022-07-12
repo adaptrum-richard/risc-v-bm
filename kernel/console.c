@@ -8,6 +8,7 @@
 #include "printk.h"
 #include "wait.h"
 #include "vm.h"
+#include "debug.h"
 
 DECLARE_WAIT_QUEUE_HEAD(console_wait_queue);
 static int console_wait_condition = 0;
@@ -16,13 +17,19 @@ struct console cons;
 //user使用
 int consolewrite(uint64 src, int n)
 {
-    char c;
     int i;
+    if(current->name[0] == 's' && current->name[1] == 'h' )
+        pr_debug("\n%s %d\n enter: src addr: 0x%lx, len = %d", __func__, __LINE__, src, n);
+
     for(i = 0; i < n; i++){
+        char c;
         if(spcae_data_copy_in((void*)&c, src + i, 1) == -1)
             break;
         uartpuc(c);
     }
+    
+    if(current->name[0] == 's' && current->name[1] == 'h' )
+        pr_debug("\n%s %d\n exit: src addr: 0x%lx, len = %d", __func__, __LINE__, src, n);
     return i;
 }
 

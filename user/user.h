@@ -1,10 +1,6 @@
 #ifndef __USER_H__
 #define __USER_H__
 
-#define stdin 0
-#define stdout 1
-#define stderr 2
-
 /*system call*/
 extern void kprintf(char * buf);
 extern void sleep(unsigned long);

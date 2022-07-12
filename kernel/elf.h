@@ -25,6 +25,19 @@ struct elfhdr
     ushort shstrndx;
 };
 
+struct elfshdr {
+  uint sh_name;       /* Section name, index in string tbl */
+  uint sh_type;       /* Type of section */
+  uint64 sh_flags;     /* Miscellaneous section attributes */
+  uint64 sh_addr;       /* Section virtual addr at execution */
+  uint64 sh_offset;      /* Section file offset */
+  uint64 sh_size;      /* Size of section in bytes */
+  uint sh_link;       /* Index of another section */
+  uint sh_info;       /* Additional section information */
+  uint64 sh_addralign; /* Section alignment */
+  uint64 sh_entsize;   /* Entry size if section holds table */
+};
+
 // Program section header
 struct proghdr
 {
@@ -41,10 +54,23 @@ struct proghdr
 // Values for Proghdr type
 #define ELF_PROG_LOAD 1
 
+
+// Values for bss type
+#define ELF_BSS_TYPE 8
+
 // Flag bits for Proghdr flags
 #define ELF_PROG_FLAG_EXEC 1
 #define ELF_PROG_FLAG_WRITE 2
 #define ELF_PROG_FLAG_READ 4
+
+/* sh_flags */
+#define SHF_WRITE		0x1
+#define SHF_ALLOC		0x2
+#define SHF_EXECINSTR		0x4
+#define SHF_RELA_LIVEPATCH	0x00100000
+#define SHF_RO_AFTER_INIT	0x00200000
+#define SHF_MASKPROC		0xf0000000
+
 /*
 参考：https://www.cnblogs.com/jiqingwu/p/elf_format_research_01.html
 http://www.skyfree.org/linux/references/ELF_Format.pdf

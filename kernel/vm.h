@@ -6,7 +6,7 @@
 void kvminit(void);
 void kvminithart();
 pagetable_t uvmcreate();
-int vm_map_program(pagetable_t pagetable, uint64 offset, uchar *src, uint size);
+int vm_map_program(pagetable_t pagetable, uint64 va, uchar *src, uint size, int perm_flags);
 pagetable_t get_kpgtbl();
 pagetable_t copy_kernel_tbl(void);
 int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm);
@@ -20,4 +20,6 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
 void free_pagtable_and_vma(pagetable_t pagetable, struct vm_area_struct *head);
 void freewalk(pagetable_t pagetable);
 void walk_user_page(pagetable_t pagetable, int free);
+int map_program_code(pagetable_t pagetable, uint64 va, uchar *src, uint size);
+int map_program_bss(pagetable_t pagetable, uint64 va, uchar *src, uint size);
 #endif

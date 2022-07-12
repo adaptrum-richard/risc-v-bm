@@ -7,7 +7,7 @@
 #include "proc.h"
 #include "vm.h"
 #include "mm.h"
-
+#include "debug.h"
 struct devsw devsw[NDEV];
 
 struct ftable {
@@ -132,7 +132,6 @@ int filewrite(struct file *f, uint64 addr, int n)
         ret = pipewrite(f->pipe, addr, n);
     else 
         panic("file write\n");
-
     return ret;
 }
 

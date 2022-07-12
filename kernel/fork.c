@@ -16,6 +16,7 @@
 #include "memlayout.h"
 #include "mmap.h"
 #include "mm.h"
+#include "debug.h"
 
 extern void ret_from_kernel_thread(void);
 extern void ret_from_fork(void);
@@ -43,6 +44,7 @@ static int dup_vma_mmap(pagetable_t oldpt, pagetable_t newpt, uint64 oldva, uint
             //panic("dup_vma: pte should exist");
         }
         if((*pte & PTE_V) == 0){
+            pr_err("va = %lx\n", va);
             panic("dup_vma: page not present");
         }
         pa = PTE2PA(*pte);
@@ -222,8 +224,8 @@ int move_to_user_mode(unsigned long start, unsigned long size,
     regs->sp = STACK_TOP_MAX;
 
     mm = mm_alloc();
-
-    if(vm_map_program(mm->pagetable, 0, (uchar*)start, size) < 0){
+    
+    if(map_program_code(mm->pagetable, USER_CODE_VM_START, (uchar*)start, size) < 0){
         printk("%s %d: vm_map_program error\n", __func__, __LINE__);
         return -1;
     }

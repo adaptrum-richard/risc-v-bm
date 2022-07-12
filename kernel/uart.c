@@ -4,6 +4,7 @@
 #include "console.h"
 #include "sched.h"
 #include "wait.h"
+#include "debug.h"
 
 struct spinlock uart_tx_lock;
 #define UART_TX_BUF_SIZE 32
@@ -54,10 +55,13 @@ void uartstart()
         }
         int c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];
         uart_tx_r += 1;
+        if(current->name[0] == 's' && current->name[1] == 'h' )
+            pr_debug("\n%s %d\n c = %c\n", __func__, __LINE__, (char)c);
         /*注意: uart写不能在关闭外部中断的情况下执行*/
-        UartWriteReg(THR, c);
         smp_store_release(&uart_wait_condition, 1);
         wake_up(&uart_wait_queue);
+        
+        UartWriteReg(THR, c);
         //wake((uint64)&uart_tx_r);
     }
 }

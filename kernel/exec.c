@@ -13,6 +13,7 @@
 #include "slab.h"
 #include "fork.h"
 #include "spinlock.h"
+#include "debug.h"
 
 /*
 prog_start: program的开始地址，
@@ -108,20 +109,22 @@ load_binary函数：
 int exec(char *path, char **argv)
 {    
     int i, off, j, ret;
-    
+
     struct elfhdr elf;
     struct proghdr ph;
+    struct elfshdr shdr;
+    
     struct inode *ip;
     struct vm_area_struct *pg_vma = NULL, *stack_vma = NULL;
     uint64 pa;
-    uint64 program_size = 0;
+    uint64 vm_prg_end = 0;
     unsigned long start, end;
     uint64 argc = 0;
     char *s, *last;
     uint64 sp, stackbase, stack[MAXARG];
     
     stack_vma = find_vma(current->mm, STACK_TOP - 1);
-
+    pr_debug("%s %d: exec name: %s, current name = %s\n", __func__, __LINE__, path, current->name);
     if(!stack_vma){
         //分配一个stack的VMA
         stack_vma = vm_area_alloc(current->mm);
@@ -202,34 +205,43 @@ int exec(char *path, char **argv)
     1. 在加载program时，暂时存放code，在vm_map_program函数中会将code复制到另外一个page
     2. 在stack中会使用这个page存放栈上数据，做映射，成功的话，此page不需要被释放
     */
-
+   //(((sizeof(ph)) + ph.align - 1) & ~(ph.align - 1))
     for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
         if(pa == 0)
             pa = get_free_page();
+        pr_debug("%s %d: i = %d\n", __func__, __LINE__, i);
         if(readi(ip, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
+        pr_debug("ph size:%d, align:%d, off = %d\n", sizeof(ph), ph.align, off);
+        pr_debug("%s %d:ph.type: 0x%x, ph vaddr:0x%lx, memsz 0x%lx, filesz = 0x%lx flags = 0x%lx, elf.phnum = %lu\n", 
+            __func__, __LINE__,ph.type,  ph.vaddr, ph.memsz, ph.filesz, ph.flags, elf.phnum);
         if(ph.type != ELF_PROG_LOAD)
             continue;
+
         if(ph.memsz < ph.filesz)
             goto bad;
+
         if(ph.vaddr + ph.memsz < ph.vaddr)
             goto bad;
         if((ph.vaddr % PGSIZE) != 0)
             goto bad;
-
         for(j = 0; j < ph.filesz; j += PGSIZE){
             uint n; 
             if(ph.filesz - j < PGSIZE)
                 n = ph.filesz - j;
             else 
                 n = PGSIZE;
-
+            
             if(readi(ip, pa, ph.off + j, n) != n){
                 printk("%s %d: readi program failed\n", __func__, __LINE__);
                 goto bad;
             }
-            /*覆盖旧进程的代码段*/
-            ret = vm_map_program(current->mm->pagetable, i, (unsigned char *)pa, n);
+            /*覆盖旧进程的代码段, */
+            pr_debug("%s %d: va = 0x%lx\n", __func__, __LINE__, ph.vaddr + j);
+            ret = map_program_code(current->mm->pagetable, ph.vaddr + j, 
+                (unsigned char *)pa, n);
+            //ret = vm_map_program(current->mm->pagetable, ph.vaddr + j, 
+            //    (unsigned char *)pa, n, perm_elf_prg_to_table(ph.flags));
             if(ret < 0) {
                 printk("%s %d: vm_map_program failed\n", __func__, __LINE__);
                 goto bad;
@@ -237,26 +249,75 @@ int exec(char *path, char **argv)
                 free_page(pa);
                 pa = 0;
             }
-            program_size += PGSIZE;
-            i += n;
+            //j += n;
+
+            pr_debug("ph off = 0x%lx\n", ph.off + j);
         }
+        vm_prg_end = PGROUNDUP(ph.vaddr);
     }
 
+
+    
+    //memset bss to zero
+    for(i = 0, off = elf.shoff; i < elf.shnum; i++, off += sizeof(shdr)){
+        if(readi(ip, (uint64)&shdr, off, sizeof(shdr)) != sizeof(shdr)){
+            goto bad;
+        }
+        pr_debug("%s %d: sh_type = 0x%x, sh_size = 0x%lx, sh_addr = 0x%lx, flags = 0x%lx\n", 
+                    __func__, __LINE__, 
+                    shdr.sh_type, 
+                    shdr.sh_size,
+                    shdr.sh_addr,
+                    shdr.sh_flags);
+           
+        if(shdr.sh_type != ELF_BSS_TYPE)
+            continue;
+         for(j = 0; j < shdr.sh_size; j += PGSIZE){
+                   uint n; 
+            if(shdr.sh_size - j < PGSIZE)
+                n = shdr.sh_size - j;
+            else 
+                n = PGSIZE;
+            map_program_bss(current->mm->pagetable, shdr.sh_addr + j, NULL, n);
+            //vm_map_program(current->mm->pagetable, shdr.sh_addr + j, NULL, n, 
+            //    perm_elf_sh_to_table(shdr.sh_flags));
+            pr_debug("sh_type = 0x%x, sh_size = 0x%lx, sh_addr = 0x%lx, flags = 0x%lx\n", shdr.sh_type, 
+                    shdr.sh_size,
+                    shdr.sh_addr,
+                    shdr.sh_flags);
+           
+            //i += n;
+        }
+        vm_prg_end = PGROUNDUP(shdr.sh_addr);
+    }
+    
     /*TODO: 释放掉多余的内存*/
-    end =  pg_vma->vm_end;
-    start = pg_vma->vm_start + program_size;
+    end =  pg_vma->vm_end ;
+    start = vm_prg_end;
+    pr_debug("%s %d: old -> start: 0x%lx, end: 0x%lx, vm_prg_end = 0x%lx\n", __func__, __LINE__,
+        pg_vma->vm_start, pg_vma->vm_end, vm_prg_end);
     if(end > start){
         unmap_validpages(current->mm->pagetable, start, (end - start) / PGSIZE);
     }
 
-    pg_vma->vm_end = program_size + pg_vma->vm_start;
+    pg_vma->vm_end = vm_prg_end ;
+
+    pr_debug("%s %d: new-> start: 0x%lx, end: 0x%lx\n", __func__, __LINE__,
+        pg_vma->vm_start, pg_vma->vm_end);
+
+    pr_debug("%s %d: start: 0x%lx, end: 0x%lx\n", __func__, __LINE__,
+        start, end);
 
     set_user_mode_epc(current, elf.entry);
     set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
-
+    print_all_vma(current->mm->pagetable, current->mm->mmap);
+    pr_debug("%s %d, name:%s, elf.entry = 0x%lx\n", 
+        __func__, __LINE__,
+        current->name, elf.entry);
     /*TODO: 文件系统相关*/
     iunlockput(ip); 
     log_end_op();
+    pr_err("exec:end\n");
     return 0;
 bad:
     if(pa)

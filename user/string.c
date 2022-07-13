@@ -141,4 +141,5 @@ char *strsep(char **stringp, const char *delim)
             }
         } while (sc != 0);
     }
+    return NULL;
 }

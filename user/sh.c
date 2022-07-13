@@ -6,6 +6,14 @@
 #include "kernel/types.h"
 #include "ulib.h"
 
+int prompt_and_get_input(const char* prompt,
+                char **line, size_t *len) 
+{
+    fputs(prompt, stderr);
+    return getline(line, len, stdin);
+}
+
+
 int main(void)
 {
     int fd;

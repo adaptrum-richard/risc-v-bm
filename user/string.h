@@ -8,4 +8,8 @@ void *memset(void *dst, int c, unsigned int n);
 int memcmp(const void *v1, const void *v2, unsigned int n);
 void* memmove(void *dst, const void *src, unsigned int n);
 void* memcpy(void *dst, const void *src, unsigned int n);
+char *strndup(const char *src, unsigned int n);
+char *strdup(const char *src);
+char *strsep(char **stringp, const char *delim);
+
 #endif

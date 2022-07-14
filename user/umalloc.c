@@ -49,7 +49,7 @@ static block_metadata_t *split_block(block_metadata_t *b,
                     BLOCK_META_SIZE + size);
     /*当剩余的空间不够存放block meta数据时，直接将现在的空间都分配出去*/
     fsize = b->size - size - BLOCK_META_SIZE;
-    if(fsize <= 0){
+    if(fsize <= 0)
         return NULL;
     newb->size = fsize;
     newb->next = newb->prev = NULL;
@@ -59,14 +59,12 @@ static block_metadata_t *split_block(block_metadata_t *b,
 
 void block_stats(char *stage)
 {
-
     printf("\t%s program break: 0x%lx\n", stage, (unsigned long)sbrk(0));
     block_metadata_t *ptr = _block_head;
     while(ptr){
         printf("\t\tblock addr:0x%lx, size: 0x%x\n", (unsigned long)ptr, ptr->size);
         ptr = ptr->next;
     }
-
 }
 
 /*向block链表中添加一个free的block，注意链表是按顺序排列的*/
@@ -273,7 +271,7 @@ void free(void *addr)
 #endif
 {
     block_metadata_t *block_addr = BLOCK_HEADER(addr);
-    
+
 #ifdef UMALLOCK_TEST
     block_stats("free before:");
 #endif

@@ -43,9 +43,16 @@ static block_metadata_t *split_block(block_metadata_t *b,
     size_t size)
 {
     block_metadata_t *newb;
+    int fsize = 0;
+
     newb = (block_metadata_t *)((unsigned long)b + 
                     BLOCK_META_SIZE + size);
-    newb->size = b->size - (BLOCK_META_SIZE + size);
+    /*当剩余的空间不够存放block meta数据时，直接将现在的空间都分配出去*/
+    fsize = b->size - size - BLOCK_META_SIZE;
+    if(fsize <= 0){
+        return NULL;
+    newb->size = fsize;
+    newb->next = newb->prev = NULL;
     b->size = size;
     return newb;
 }
@@ -133,7 +140,9 @@ void *malloc(size_t size)
                 return BLOCK_MEM(ptr);
             }
             block_metadata_t *newb = split_block(ptr, size);
-            add_to_freelist(newb);
+            if(newb)
+                add_to_freelist(newb);
+            
             return BLOCK_MEM(ptr);
         }
         ptr = ptr->next;
@@ -157,9 +166,10 @@ void *malloc(size_t size)
     /*剩余的可用内存空间记录在size中。不包括block_metadata的大小*/
     ptr->size = alloc_size - BLOCK_META_SIZE;
 
-    if(alloc_size > size + BLOCK_META_SIZE){
+    if(alloc_size > (size + BLOCK_META_SIZE)){
         block_metadata_t *newb = split_block(ptr, size);
-        add_to_freelist(newb);
+        if(newb)
+            add_to_freelist(newb);
     }
     return BLOCK_MEM(ptr);
 }
@@ -263,7 +273,7 @@ void free(void *addr)
 #endif
 {
     block_metadata_t *block_addr = BLOCK_HEADER(addr);
-
+    
 #ifdef UMALLOCK_TEST
     block_stats("free before:");
 #endif

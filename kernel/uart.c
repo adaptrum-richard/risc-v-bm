@@ -55,8 +55,6 @@ void uartstart()
         }
         int c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];
         uart_tx_r += 1;
-        if(current->name[0] == 's' && current->name[1] == 'h' )
-            pr_debug("\n%s %d\n c = %c\n", __func__, __LINE__, (char)c);
         /*注意: uart写不能在关闭外部中断的情况下执行*/
         smp_store_release(&uart_wait_condition, 1);
         wake_up(&uart_wait_queue);

@@ -100,19 +100,12 @@ unsigned long sys_uptime(void)
 
 unsigned long sys_open(const char *pathname, int omode)
 {
-    pr_debug("%s %d: pathname = %s\n", __func__, __LINE__, pathname);
     return __sys_open(pathname, omode);
 }
 
 unsigned long sys_write(int fd, const void *buf, int count)
 {
-    unsigned long ret;
-    if(current->name[0] == 's' && current->name[1] == 'h' )
-        pr_debug("\n%s %d:enter\n", __func__, __LINE__);
-    ret = __sys_write(fd, buf, count);
-    if(current->name[0] == 's' && current->name[1] == 'h' )
-        pr_debug("\n%s %d:exit\n", __func__, __LINE__);
-    return ret;
+    return __sys_write(fd, buf, count);
 }
 
 unsigned long sys_mknod(const char *pathname, short major, short minor)

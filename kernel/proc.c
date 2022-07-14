@@ -104,6 +104,7 @@ void free_task(struct task_struct *p)
         /*从全局task链表中剔除要释放的进程*/
     get_task_list_lock();
     p->prev_task->next_task = p->next_task;
+    p->prev_task->next_task->prev_task = p->prev_task;
     free_task_list_lock();
 
     /*释放pid*/
@@ -146,7 +147,8 @@ struct task_struct *get_child_task(void)
 {
     struct task_struct *p = NULL;
     get_task_list_lock();
-    for(p = init_task.next_task; p; p = p->next_task){
+    for_each_task(p)
+    {
         acquire(&p->lock);
         if(p->parent == current){
             release(&p->lock);

@@ -18,18 +18,12 @@ struct console cons;
 int consolewrite(uint64 src, int n)
 {
     int i;
-    if(current->name[0] == 's' && current->name[1] == 'h' )
-        pr_debug("\n%s %d\n enter: src addr: 0x%lx, len = %d", __func__, __LINE__, src, n);
-
     for(i = 0; i < n; i++){
         char c;
         if(spcae_data_copy_in((void*)&c, src + i, 1) == -1)
             break;
         uartpuc(c);
     }
-    
-    if(current->name[0] == 's' && current->name[1] == 'h' )
-        pr_debug("\n%s %d\n exit: src addr: 0x%lx, len = %d", __func__, __LINE__, src, n);
     return i;
 }
 

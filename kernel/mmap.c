@@ -190,17 +190,20 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool down
     }
     pr_debug("%s, %d: unmap start = 0x%lx, end = 0x%lx\n", __func__ , __LINE__,
             start, end);
-    tmp.vm_start = start;
-    tmp.vm_end = end;
-    unmap_region(mm, &tmp);
+    //释放掉多余的内存
+    //if(vma->vm_end > end){
+        tmp.vm_start = start;
+        tmp.vm_end = end;
+        unmap_region(mm, &tmp);
+    //}
     if(mm->start_brk == start ){
         pr_debug("%s, %d: remove start = 0x%lx, end = 0x%lx\n", __func__ , __LINE__,
             vma->vm_start, vma->vm_end);
         remove_vma(vma);
     }
     else{
-        pr_debug("%s, %d: update end, start = 0x%lx, oldend = 0x%lx, new_end = %lx\n", __func__ , __LINE__,
-            vma->vm_start, vma->vm_end, end);
+        pr_debug("%s, %d: update end, start = 0x%lx, oldend = 0x%lx, new_end = %lx， new_brk= 0x%lx\n", __func__ , __LINE__,
+            vma->vm_start, vma->vm_end, end, start);
         if(vma->vm_end < start){
             pr_err("%s %d: bug\n", __func__, __LINE__);
         }
@@ -220,11 +223,13 @@ static int do_brk_flags(unsigned long addr, unsigned long len, unsigned long fla
     struct mm_struct *mm = current->mm;
     struct vm_area_struct *vma, *newvma = NULL;
     pgoff_t pgoff = addr >> PGSHIFT;
-    unsigned long end = addr + PAGE_ALIGN(len);
-    vma = find_vma(mm, addr);
+    unsigned long end = addr + PGROUNDUP(len);
+    
+    //找到brk对应的vma
+    vma = find_vma(mm, mm->start_brk);
     
     /*1.当vma为空，则需要新增一个，当找到的vma->vm_start大于等于end地址时，也需要新增一个*/
-    if(!vma || end <= vma->vm_start){
+    if(!vma || vma->vm_start > end){
         newvma = vm_area_alloc(mm);
         /*TODO:检查返回值*/
         newvma->vm_start = addr,
@@ -272,17 +277,18 @@ static unsigned long do_brk(unsigned long brk)
     if(brk < min_brk)
         goto out;
 
-    newbrk = PAGE_ALIGN(brk);
-    oldbrk = PAGE_ALIGN(mm->brk);
+    newbrk = PGROUNDDOWN(brk);
+    oldbrk = mm->brk;
     if(oldbrk == newbrk){
         mm->brk = brk;
         goto success;
     }
-
-    if(brk <= mm->brk){
+    /*当参数brk地址小于当前brk时，需要释放内存*/
+    if(brk < mm->brk){
         int ret;
-        mm->brk = brk;
+        mm->brk = newbrk; //至少要释放一个page的内存
         /*释放内存*/
+        pr_debug("%s %d: arg brk = 0x%lx\n", __func__, __LINE__, brk);
         ret = __do_munmap(mm, newbrk, oldbrk-newbrk, true);
         if(ret < 0){
             mm->brk = origbrk;
@@ -291,7 +297,7 @@ static unsigned long do_brk(unsigned long brk)
         goto success;
     }
     
-    if(do_brk_flags(oldbrk, newbrk-oldbrk, 0) < 0)
+    if(do_brk_flags(oldbrk, PGROUNDUP(brk) - oldbrk, 0) < 0)
         goto out;
 
     mm->brk = brk;

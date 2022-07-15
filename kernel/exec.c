@@ -132,6 +132,11 @@ int exec(char *path, char **argv)
         stack_vma->vm_end = PAGE_ALIGN(STACK_TOP_MAX);
         stack_vma->vm_start = (stack_vma->vm_end - PGSIZE) & PAGE_MASK;
         stack_vma->vm_flags = VM_STACK_FLAGS;
+    }else {
+        unmap_validpages(current->mm->pagetable, stack_vma->vm_start, 
+            (stack_vma->vm_end - stack_vma->vm_start) / PGSIZE);
+        stack_vma->vm_start = STACK_TOP - PGSIZE;
+        stack_vma->vm_end = STACK_TOP;
     }
     pa = walkaddr(current->mm->pagetable, STACK_TOP - 1);
     if(!pa)
@@ -142,6 +147,7 @@ int exec(char *path, char **argv)
     for( argc = 0; argv[argc] != NULL; argc++) {
         if(argc >= MAXARG)
             goto bad;
+        
         sp -= (strlen(argv[argc]) + 1);
         sp -= sp % 16;// riscv sp必须16字节对齐
         if(sp < stackbase)
@@ -151,6 +157,7 @@ int exec(char *path, char **argv)
 
         //将参数的虚拟地址暂时放在stack数组中
         stack[argc] = sp - stackbase + STACK_TOP - PGSIZE;
+        pr_debug("%s %d: argv[%d]: %s, addr:0x%lx\n", __func__, __LINE__, argc, argv[argc],stack[argc]);
     }
 
     stack[argc] = 0;
@@ -164,7 +171,10 @@ int exec(char *path, char **argv)
             last = s+1;
     }
     safestrcpy(current->name, last, sizeof(current->name));
-   
+    set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
+    set_user_mode_a1(current, sp - stackbase + stack_vma->vm_start);
+    pr_debug("%s %d: set a1: 0x%lx\n", __func__, __LINE__, 
+        sp - stackbase + stack_vma->vm_start);
     /*TODO:释放掉多余stack, 这里我们只使用了一个页面，在以前映射的多余的page需要被unmap，并释放掉*/
     start = stack_vma->vm_start;
     end = STACK_TOP - PGSIZE;
@@ -174,13 +184,13 @@ int exec(char *path, char **argv)
     //更新vm_start
     stack_vma->vm_start = end;
     //map栈空间
-    ret = vm_map_normal_mem(current->mm->pagetable, stack_vma->vm_start, (unsigned char *)pa, PGSIZE);
+    ret = vm_map_normal_mem(current->mm->pagetable, stack_vma->vm_start, (unsigned char *)stackbase, PGSIZE);
     if(ret < 0)
         goto bad;
-    else if(ret == 1)
+    else if(ret == 1){
         free_page(pa);
-    pa = 0;
-
+        pa = 0;
+    }
     log_begin_op();
     if((ip = namei(path)) == 0){
         log_end_op();
@@ -196,12 +206,12 @@ int exec(char *path, char **argv)
     
     /*第一个vma是用来存放代码段的*/
     pg_vma = current->mm->mmap;
-    if(pg_vma){
+    if(pg_vma && pg_vma->vm_end < USER_MEM_START){
          unmap_validpages(current->mm->pagetable, pg_vma->vm_start, 
             (pg_vma->vm_end - pg_vma->vm_start) / PGSIZE);
     }
     if(pg_vma->vm_next){
-        if(pg_vma->vm_next->vm_start < USER_MEM_START){
+        if(pg_vma->vm_next->vm_end < USER_MEM_START){
             bss_vma = pg_vma->vm_next;
             unmap_validpages(current->mm->pagetable, bss_vma->vm_start, 
                 (bss_vma->vm_end - bss_vma->vm_start) / PGSIZE);   
@@ -231,12 +241,12 @@ int exec(char *path, char **argv)
         pr_debug("%s %d: i = %d\n", __func__, __LINE__, i);
         if(readi(ip, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
+       
+        if(ph.type != ELF_PROG_LOAD)
+            continue;
         pr_debug("ph size:%d, align:%d, off = %d\n", sizeof(ph), ph.align, off);
         pr_debug("%s %d:ph.type: 0x%x, ph vaddr:0x%lx, memsz 0x%lx, filesz = 0x%lx flags = 0x%lx, elf.phnum = %lu\n", 
             __func__, __LINE__,ph.type,  ph.vaddr, ph.memsz, ph.filesz, ph.flags, elf.phnum);
-        if(ph.type != ELF_PROG_LOAD)
-            continue;
-
         if(ph.memsz < ph.filesz)
             goto bad;
 
@@ -282,6 +292,8 @@ int exec(char *path, char **argv)
         if(readi(ip, (uint64)&shdr, off, sizeof(shdr)) != sizeof(shdr)){
             goto bad;
         }
+        if(shdr.sh_type != ELF_BSS_TYPE)
+            continue;
         pr_debug("%s %d: sh_type = 0x%x, sh_size = 0x%lx, sh_addr = 0x%lx, flags = 0x%lx\n", 
                     __func__, __LINE__, 
                     shdr.sh_type, 
@@ -289,8 +301,7 @@ int exec(char *path, char **argv)
                     shdr.sh_addr,
                     shdr.sh_flags);
            
-        if(shdr.sh_type != ELF_BSS_TYPE)
-            continue;
+
         bss_flags = 1;
         for(j = 0; j < shdr.sh_size; j += PGSIZE){
                    uint n; 
@@ -318,7 +329,7 @@ int exec(char *path, char **argv)
     }
         
     set_user_mode_epc(current, elf.entry);
-    set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
+
     //print_all_vma(current->mm->pagetable, current->mm->mmap);
     pr_debug("%s %d, name:%s, elf.entry = 0x%lx\n", 
         __func__, __LINE__,
@@ -326,7 +337,7 @@ int exec(char *path, char **argv)
     /*TODO: 需要释放malloc分配的内存*/
     iunlockput(ip); 
     log_end_op();
-    return 0;
+    return argc;
 bad:
     if(pa)
         free_page(pa);

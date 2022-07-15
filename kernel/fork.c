@@ -133,12 +133,18 @@ void set_user_mode_epc(struct task_struct *tsk, uint64 epc)
 }
 
 
+void set_user_mode_a1(struct task_struct *tsk, uint64 a1)
+{
+    //返回用户空间执行的address
+    struct pt_regs *regs = task_pt_regs(tsk);
+    regs->a1 = a1;
+}
+
 void set_user_mode_sp(struct task_struct *tsk, uint64 sp)
 {
     //返回用户空间执行的address
     struct pt_regs *regs = task_pt_regs(tsk);
     regs->sp = sp;
-    
 }
 
 int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)

@@ -53,6 +53,7 @@ void free_pipeline(pipeline_t *pipeline)
     for (i = 0; i < pipeline->n_cmds; ++i) {
         free(cmd[i]->orig_cmd);
         free(cmd[i]);
+
     }
     free(pipeline->orig_cmd);
     free(pipeline);
@@ -103,7 +104,7 @@ pipeline_t *parse_pipeline(char *str)
     while((cmd_str = strsep(&copy, "|"))){
         ret->cmds[i++] = parse_command(cmd_str);
     }
-    
+
     return ret;
 }
 
@@ -118,6 +119,7 @@ int prompt_and_get_input(const char* prompt,
 int main(void)
 {
     int fd;
+    int pid;
     char *line = NULL;
     size_t len = 0;
     /*
@@ -133,9 +135,21 @@ int main(void)
     }
 
     while(prompt_and_get_input("$ ", &line, &len) > 0){
+
         pipeline_t *pipeline = parse_pipeline(line);
+
         //int n_pipes = pipeline->n_cmds = 1;
 
+        pid = fork();
+        if(pid == 0){
+            //child thread
+            print_pipeline(pipeline);
+            free_pipeline(pipeline);
+            free(line);
+            exit(0);
+        }
+        wait(0);
+ 
         print_pipeline(pipeline);
         free_pipeline(pipeline);
         free(line);

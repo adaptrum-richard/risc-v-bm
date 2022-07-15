@@ -115,7 +115,7 @@ int exec(char *path, char **argv)
     struct elfshdr shdr;
     
     struct inode *ip;
-    struct vm_area_struct *pg_vma = NULL, *stack_vma = NULL;
+    struct vm_area_struct *pg_vma = NULL, *stack_vma = NULL, *bss_vma = NULL;
     uint64 pa;
     uint64 vm_prg_end = 0;
     unsigned long start, end;
@@ -196,6 +196,25 @@ int exec(char *path, char **argv)
     
     /*第一个vma是用来存放代码段的*/
     pg_vma = current->mm->mmap;
+    if(pg_vma){
+         unmap_validpages(current->mm->pagetable, pg_vma->vm_start, 
+            (pg_vma->vm_end - pg_vma->vm_start) / PGSIZE);
+    }
+    if(pg_vma->vm_next){
+        if(pg_vma->vm_next->vm_start < USER_MEM_START){
+            bss_vma = pg_vma->vm_next;
+            unmap_validpages(current->mm->pagetable, bss_vma->vm_start, 
+                (bss_vma->vm_end - bss_vma->vm_start) / PGSIZE);   
+        }
+    }
+    if(!bss_vma)
+    {
+        bss_vma = vm_area_alloc(current->mm);
+        insert_vm_struct(current->mm, bss_vma);
+        bss_vma->vm_flags = VM_WRITE | VM_READ;
+        bss_vma->vm_start = pg_vma->vm_start;
+        bss_vma->vm_end = pg_vma->vm_end;
+    }
 
     //pg_vma->vm_end 当program的数据读完后在填写vm_end
 
@@ -205,7 +224,7 @@ int exec(char *path, char **argv)
     1. 在加载program时，暂时存放code，在vm_map_program函数中会将code复制到另外一个page
     2. 在stack中会使用这个page存放栈上数据，做映射，成功的话，此page不需要被释放
     */
-   //(((sizeof(ph)) + ph.align - 1) & ~(ph.align - 1))
+    pg_vma->vm_start = USER_CODE_VM_START;
     for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
         if(pa == 0)
             pa = get_free_page();
@@ -227,6 +246,8 @@ int exec(char *path, char **argv)
             goto bad;
         for(j = 0; j < ph.filesz; j += PGSIZE){
             uint n; 
+            if(pa == 0)
+                pa = get_free_page();
             if(ph.filesz - j < PGSIZE)
                 n = ph.filesz - j;
             else 
@@ -249,16 +270,14 @@ int exec(char *path, char **argv)
                 free_page(pa);
                 pa = 0;
             }
-            //j += n;
-
-            pr_debug("ph off = 0x%lx\n", ph.off + j);
+            
+            vm_prg_end = PGROUNDUP(ph.vaddr + ph.filesz);
         }
-        vm_prg_end = PGROUNDUP(ph.vaddr);
     }
-
-
+    pg_vma->vm_end = vm_prg_end;
     
-    //memset bss to zero
+    int bss_flags = 0;
+   
     for(i = 0, off = elf.shoff; i < elf.shnum; i++, off += sizeof(shdr)){
         if(readi(ip, (uint64)&shdr, off, sizeof(shdr)) != sizeof(shdr)){
             goto bad;
@@ -272,52 +291,41 @@ int exec(char *path, char **argv)
            
         if(shdr.sh_type != ELF_BSS_TYPE)
             continue;
-         for(j = 0; j < shdr.sh_size; j += PGSIZE){
+        bss_flags = 1;
+        for(j = 0; j < shdr.sh_size; j += PGSIZE){
                    uint n; 
             if(shdr.sh_size - j < PGSIZE)
                 n = shdr.sh_size - j;
             else 
                 n = PGSIZE;
             map_program_bss(current->mm->pagetable, shdr.sh_addr + j, NULL, n);
-            //vm_map_program(current->mm->pagetable, shdr.sh_addr + j, NULL, n, 
-            //    perm_elf_sh_to_table(shdr.sh_flags));
+
             pr_debug("sh_type = 0x%x, sh_size = 0x%lx, sh_addr = 0x%lx, flags = 0x%lx\n", shdr.sh_type, 
                     shdr.sh_size,
                     shdr.sh_addr,
                     shdr.sh_flags);
-           
-            //i += n;
+
+            vm_prg_end = PGROUNDUP(shdr.sh_addr + shdr.sh_size);
         }
-        vm_prg_end = PGROUNDUP(shdr.sh_addr);
-    }
-    
-    /*TODO: 释放掉多余的内存*/
-    end =  pg_vma->vm_end ;
-    start = vm_prg_end;
-    pr_debug("%s %d: old -> start: 0x%lx, end: 0x%lx, vm_prg_end = 0x%lx\n", __func__, __LINE__,
-        pg_vma->vm_start, pg_vma->vm_end, vm_prg_end);
-    if(end > start){
-        unmap_validpages(current->mm->pagetable, start, (end - start) / PGSIZE);
+        
     }
 
-    pg_vma->vm_end = vm_prg_end ;
-
-    pr_debug("%s %d: new-> start: 0x%lx, end: 0x%lx\n", __func__, __LINE__,
-        pg_vma->vm_start, pg_vma->vm_end);
-
-    pr_debug("%s %d: start: 0x%lx, end: 0x%lx\n", __func__, __LINE__,
-        start, end);
-
+    if(bss_flags == 1){
+        bss_vma->vm_start = pg_vma->vm_end;
+        bss_vma->vm_end = vm_prg_end;
+    }else {
+        remove_vma(bss_vma);
+    }
+        
     set_user_mode_epc(current, elf.entry);
     set_user_mode_sp(current, sp - stackbase + stack_vma->vm_start);
-    print_all_vma(current->mm->pagetable, current->mm->mmap);
+    //print_all_vma(current->mm->pagetable, current->mm->mmap);
     pr_debug("%s %d, name:%s, elf.entry = 0x%lx\n", 
         __func__, __LINE__,
         current->name, elf.entry);
-    /*TODO: 文件系统相关*/
+    /*TODO: 需要释放malloc分配的内存*/
     iunlockput(ip); 
     log_end_op();
-    pr_err("exec:end\n");
     return 0;
 bad:
     if(pa)

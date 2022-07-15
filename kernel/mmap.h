@@ -7,6 +7,7 @@
 struct vm_area_struct *find_vma(struct mm_struct *mm, unsigned long addr);
 int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma);
 struct vm_area_struct *vm_area_alloc(struct mm_struct *mm);
+struct vm_area_struct *remove_vma(struct vm_area_struct *vma);
 int expand_stack(struct vm_area_struct *vma, unsigned long address);
 unsigned long brk(unsigned long size);
 unsigned long sbrk(unsigned long size);

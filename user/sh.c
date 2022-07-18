@@ -143,14 +143,15 @@ int main(void)
         pid = fork();
         if(pid == 0){
             //child thread
+            printf("run child pid = %d\n", getpid());
             print_pipeline(pipeline);
             free_pipeline(pipeline);
             free(line);
             exit(0);
         }
+        printf("run parent pid = %d\n", getpid());
         wait(0);
  
-        print_pipeline(pipeline);
         free_pipeline(pipeline);
         free(line);
     }

@@ -11,6 +11,7 @@ extern int fork();
 extern int wait(int *status);
 extern void exit(int code);
 extern int exec(char *path, char **argv);
+extern int getpid();
 //file system
 extern unsigned long dup(int fd);
 extern int open(const char *pathname, int omode);

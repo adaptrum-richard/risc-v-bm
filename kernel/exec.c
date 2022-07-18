@@ -123,6 +123,18 @@ int exec(char *path, char **argv)
     char *s, *last;
     uint64 sp, stackbase, stack[MAXARG];
     
+    //首先判断文件是否存在
+    if(path == NULL)
+        return -1;
+
+    log_begin_op();
+    if((ip = namei(path)) == 0){
+        log_end_op();
+        return -1;
+    }
+    log_end_op();
+    iput(ip);
+
     stack_vma = find_vma(current->mm, STACK_TOP - 1);
     pr_debug("%s %d: exec name: %s, current name = %s\n", __func__, __LINE__, path, current->name);
     if(!stack_vma){

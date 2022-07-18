@@ -115,13 +115,87 @@ int prompt_and_get_input(const char* prompt,
     return getline(line, len, stdin);
 }
 
+void close_all_the_pipes(int n_pipes, int (*pipes)[2])
+{
+    for (int i = 0; i < n_pipes && n_pipes > 1; ++i) {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+}
+
+int exec_with_redir(cmd_t* command, int n_pipes, int (*pipes)[2])
+{
+
+    int fd = -1;
+    if(n_pipes > 1) {
+        if ((fd = command->redirect[0]) != -1) {
+            dup(fd);
+        }
+        if ((fd = command->redirect[1]) != -1) {
+            dup(fd);
+        }
+        close_all_the_pipes(n_pipes, pipes);
+    }
+    return exec(command->progname, command->args);
+}
+
+int run_with_redir(cmd_t* command, int n_pipes, int (*pipes)[2]) {
+    int child_pid = fork();
+    if (child_pid != 0) {  /* We are the parent. */
+        switch(child_pid) {
+            case -1:
+                fprintf(stderr, "Oh dear.\n");
+            return -1;
+
+            default:
+            return child_pid;
+        }
+    } else {  // We are the child. */
+        exec_with_redir(command, n_pipes, pipes);
+        exit(0);
+        return 0;
+    }
+}
+
+int exec_with_redir1(cmd_t* command)
+{
+#if 0
+    int fd = -1;
+    if ((fd = command->redirect[0]) != -1) {
+        dup(fd);
+    }
+    if ((fd = command->redirect[1]) != -1) {
+        dup(fd);
+    }
+#endif
+    //close_all_the_pipes(n_pipes, pipes);
+    return exec(command->progname, command->args);
+}
+
+int run_with_redir1(cmd_t* command) {
+    int child_pid = fork();
+    if (child_pid != 0) {  /* We are the parent. */
+        switch(child_pid) {
+            case -1:
+                fprintf(stderr, "Oh dear.\n");
+            return -1;
+
+            default:
+            return child_pid;
+        }
+    } else {  // We are the child. */
+        exec_with_redir1(command);
+        printf("OH DEAR");
+        return 0;
+    }
+}
 
 int main(void)
 {
     int fd;
-    int pid;
     char *line = NULL;
     size_t len = 0;
+    int (*pipes)[2] = NULL;
     /*
     在父进程里面执行dup后，fd会自动增加。linux中fd 0/1/2
     分别对应STDIN，STDOUT，STDERR。这里执行fd应该返回的是3
@@ -135,28 +209,27 @@ int main(void)
     }
 
     while(prompt_and_get_input("$ ", &line, &len) > 0){
-
         pipeline_t *pipeline = parse_pipeline(line);
 
-        //int n_pipes = pipeline->n_cmds = 1;
-
-        pid = fork();
-        if(pid == 0){
-            //child thread
-            printf("run child pid = %d\n", getpid());
-            print_pipeline(pipeline);
-            free_pipeline(pipeline);
-            free(line);
-            exit(0);
+        int n_pipes = pipeline->n_cmds;
+        if(n_pipes > 1)
+            pipes = calloc(sizeof(int[2]), n_pipes);
+        for(int i = 1; i< pipeline->n_cmds; i++){
+            pipe(pipes[i-1]);
+            pipeline->cmds[i]->redirect[STDIN_FILENO] = pipes[i-1][0];
+            pipeline->cmds[i]->redirect[STDOUT_FILENO] = pipes[i-1][1];
         }
-        printf("run parent pid = %d\n", getpid());
-        wait(0);
- 
+
+        for(int i = 0; i < pipeline->n_cmds; i++){
+            run_with_redir(pipeline->cmds[i], n_pipes, pipes);
+        }
+        wait(NULL);
+        close_all_the_pipes(n_pipes, pipes);
         free_pipeline(pipeline);
         free(line);
     }
-
-    printf("exit sh\n");
+    
+    printf("\nexit sh\n");
     exit(1);
     return 0;
 }

@@ -3,6 +3,7 @@
 #include "umalloc.h"
 #include "kernel/types.h"
 #include "user.h"
+#include "kernel/fcntl.h"
 
 int fputs(const char *s, int stream)
 {
@@ -47,4 +48,17 @@ int getline(char **lineptr, size_t *n, int stream)
     *n = i;
     *lineptr = ptr;
     return i;
+}
+
+int stat(const char *n, struct stat *st)
+{
+    int fd;
+    int r;
+
+    fd = open(n, O_RDONLY);
+    if(fd < 0)
+        return -1;
+    r = fstat(fd, st);
+    close(fd);
+    return r;
 }

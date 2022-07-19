@@ -1,6 +1,6 @@
 #ifndef __USER_H__
 #define __USER_H__
-
+#include "kernel/stat.h"
 /*system call*/
 extern void kprintf(char * buf);
 extern void sleep(unsigned long);
@@ -20,4 +20,5 @@ extern int write(int fd, const void *buf, int count);
 extern int close(int fd);
 extern int read(int fd, void *buf, int count);
 extern int pipe(int *fd);
+extern int fstat(int fd, struct stat*);
 #endif

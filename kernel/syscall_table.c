@@ -73,9 +73,9 @@ unsigned long sys_exec(char *path, char **argv)
     return exec(path, argv);
 }
 
-unsigned long sys_fstat(void)
+unsigned long sys_fstat(int fd, struct stat *st)
 {
-    return 0;
+    return __sys_fstat(fd, st);
 }
 
 unsigned long sys_chdir(const char *path)

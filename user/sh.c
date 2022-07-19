@@ -188,6 +188,14 @@ int main(void)
         int n_pipes = pipeline->n_cmds;
         if(cmd_empty(n_pipes, pipeline->orig_cmd))
             goto try;
+        if(pipeline->orig_cmd[0] == 'c' && pipeline->orig_cmd[1] == 'd' &&
+                pipeline->orig_cmd[2] == ' '){
+            pipeline->orig_cmd[strlen(pipeline->orig_cmd) - 1] = 0;
+            if(chdir(pipeline->orig_cmd + 3) < 0){
+                fprintf(2, "cannot cd %s\n", pipeline->orig_cmd + 3);
+            }
+            goto try;
+        }
 
         if(n_pipes > 1)
             pipes = calloc(sizeof(int[2]), n_pipes);

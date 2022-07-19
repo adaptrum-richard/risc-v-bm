@@ -97,11 +97,17 @@ $(USER_DIR)/_echo: $(ULIB)
 	$(RISCVGNU)-objdump -S $@ > $@.asm
 	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 
+$(USER_DIR)/_mkdir: $(ULIB) 
+	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/mkdir.o $(USER_DIR)/mkdir.c
+	$(RISCVGNU)-ld $(LDFLAGS)  -T $(USER_DIR)/linker.ld -o $@  $(USER_DIR)/mkdir.o $^
+	$(RISCVGNU)-objdump -S $@ > $@.asm
+	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
+
 mkfs/mkfs: mkfs/mkfs.c
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
 USER_PROGS= $(USER_DIR)/_init $(USER_DIR)/initcode.out $(USER_DIR)/_sh $(USER_DIR)/_cat \
-	$(USER_DIR)/_ls $(USER_DIR)/_echo
+	$(USER_DIR)/_ls $(USER_DIR)/_echo $(USER_DIR)/_mkdir
 
 fs.img: mkfs/mkfs README $(USER_PROGS)
 	mkfs/mkfs fs.img README $(USER_PROGS)

@@ -21,4 +21,5 @@ extern int close(int fd);
 extern int read(int fd, void *buf, int count);
 extern int pipe(int *fd);
 extern int fstat(int fd, struct stat*);
+extern int mkdir(const char*);
 #endif

@@ -33,7 +33,6 @@ void print_command(cmd_t *command) {
     }
 }
 
-
 void print_pipeline(pipeline_t* pipeline) {
     cmd_t **cmd = pipeline->cmds;
     int i = 0;
@@ -151,43 +150,18 @@ int run_with_redir(cmd_t* command, int n_pipes, int (*pipes)[2]) {
             return child_pid;
         }
     } else {  // We are the child. */
-        exec_with_redir(command, n_pipes, pipes);
+        if(exec_with_redir(command, n_pipes, pipes) < 0)
+            printf("%s: command not found\n", command->progname);
         exit(0);
         return 0;
     }
 }
 
-int exec_with_redir1(cmd_t* command)
+static int cmd_empty(int cmds, char *cmd)
 {
-#if 0
-    int fd = -1;
-    if ((fd = command->redirect[0]) != -1) {
-        dup(fd);
-    }
-    if ((fd = command->redirect[1]) != -1) {
-        dup(fd);
-    }
-#endif
-    //close_all_the_pipes(n_pipes, pipes);
-    return exec(command->progname, command->args);
-}
-
-int run_with_redir1(cmd_t* command) {
-    int child_pid = fork();
-    if (child_pid != 0) {  /* We are the parent. */
-        switch(child_pid) {
-            case -1:
-                fprintf(stderr, "Oh dear.\n");
-            return -1;
-
-            default:
-            return child_pid;
-        }
-    } else {  // We are the child. */
-        exec_with_redir1(command);
-        printf("OH DEAR");
-        return 0;
-    }
+    if(cmds == 1 && cmd && (cmd[0] == '\r' || cmd[0] == '\n'))
+        return 1;
+    return 0;
 }
 
 int main(void)
@@ -212,6 +186,9 @@ int main(void)
         pipeline_t *pipeline = parse_pipeline(line);
 
         int n_pipes = pipeline->n_cmds;
+        if(cmd_empty(n_pipes, pipeline->orig_cmd))
+            goto try;
+
         if(n_pipes > 1)
             pipes = calloc(sizeof(int[2]), n_pipes);
         for(int i = 1; i< pipeline->n_cmds; i++){
@@ -225,6 +202,7 @@ int main(void)
         }
         wait(NULL);
         close_all_the_pipes(n_pipes, pipes);
+try:
         free_pipeline(pipeline);
         free(line);
     }

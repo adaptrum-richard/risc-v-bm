@@ -23,4 +23,7 @@ extern int pipe(int *fd);
 extern int fstat(int fd, struct stat*);
 extern int mkdir(const char*);
 extern int chdir(const char*);
+extern int unlink(const char *path);
+extern int link(const char *old, const char *new);
+
 #endif

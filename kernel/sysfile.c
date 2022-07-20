@@ -285,3 +285,119 @@ uint64 __sys_pipe(int *fd)
 
     return 0;
 }
+
+// Is the directory dp empty except for "." and ".." ?
+static int isdirempty(struct inode *dp)
+{
+    int off;
+    struct dirent de;
+
+    for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
+        if(readi(dp, (uint64)&de, off, sizeof(de)) != sizeof(de))
+            panic("isdirempty: readi");
+        if(de.inum != 0)
+        return 0;
+    }
+    return 1;
+}
+
+uint64 __sys_unlink(const char *path)
+{
+    struct inode *ip = NULL, *dp = NULL;
+    struct dirent de;
+    uint off;
+    char name[DIRSIZ];
+    if(!path)
+        return -EINVAL;
+    log_begin_op();
+
+    if((dp = nameiparent((char *)path, name)) == NULL){
+        log_end_op();
+        return -1;
+    }
+
+    ilock(dp);
+    if(namecmp(name,".") == 0 || namecmp(name, "..") == 0)
+        goto bad;
+    
+    if((ip = dirlookup(dp, name, &off)) == NULL)
+        goto bad;
+    ilock(ip);
+
+    if(ip->nlink < 1)
+        panic("unlink: nlink < 1");
+    if(ip->type == T_DIR && !isdirempty(ip)){
+        iunlockput(ip);
+        goto bad;
+    }
+
+    memset(&de, 0, sizeof(de));
+    if(writei(dp, (uint64)&de, off, sizeof(de)) != sizeof(de)){
+        panic("unlink: writei");
+    }
+
+    if(ip->type == T_DIR){
+        dp->nlink--;
+        iupdate(dp);
+    }
+    iunlock(dp);
+
+    ip->nlink--;
+    iupdate(ip);
+    iunlockput(ip);
+
+    log_end_op();
+    return 0;
+bad:
+    if(dp)
+        iunlockput(dp);
+    log_end_op();
+    return -1;
+}
+
+// Create the path new as a link to the same inode as old.
+uint64 __sys_link(const char *old, const char *new)
+{
+    struct inode *dp, *ip;
+    char name[DIRSIZ];
+    if(!old || !new)
+        return -EINVAL;
+    
+    log_begin_op();
+    if((ip = namei((char *)old)) == 0){
+        log_end_op();
+        return -1;
+    }
+
+    ilock(ip);
+    if(ip->type == T_DIR){
+        iunlockput(ip);
+        log_end_op();
+        return -1;
+    }
+
+    ip->nlink++;
+    iupdate(ip);
+    iunlock(ip);
+
+    if((dp = nameiparent((char *)new, name)) == 0)
+        goto bad;
+    ilock(dp);
+    if(dp->dev != ip->dev || dirlink(dp, name, ip->inum) < 0){
+        iunlockput(dp);
+        goto bad;
+    }
+    iunlockput(dp);
+    iput(ip);
+
+    log_end_op();
+    return 0;
+
+bad:
+    ilock(ip);
+    ip->nlink--;
+    iupdate(ip);
+    iunlockput(ip);
+    log_end_op();
+    return -1;
+}

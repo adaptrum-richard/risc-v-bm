@@ -113,14 +113,14 @@ unsigned long sys_mknod(const char *pathname, short major, short minor)
     return __sys_mknod(pathname, major, minor);
 }
 
-unsigned long sys_unlink(void)
+unsigned long sys_unlink(const char *path)
 {
-    return 0;
+    return __sys_unlink(path);
 }
 
-unsigned long sys_link(void)
+unsigned long sys_link(const char *old, const char *new)
 {
-    return 0;
+    return __sys_link(old, new);
 }
 
 unsigned long sys_mkdir(const char *path)

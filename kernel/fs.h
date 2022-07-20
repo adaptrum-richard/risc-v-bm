@@ -81,4 +81,5 @@ void iput(struct inode *ip);
 void itrunc(struct inode *ip);
 void stati(struct inode *ip, struct stat *st);
 struct inode *idup(struct inode *ip);
+int namecmp(const char *s, const char *t);
 #endif

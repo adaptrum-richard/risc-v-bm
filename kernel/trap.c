@@ -35,6 +35,8 @@ void devintr()
     } else if (irq == VIRTIO0_IRQ){
         virtio_disk_intr();
         //printk("rcv virtio0 irq\n");
+    }else if (irq == VIRTIO1_IRQ){
+        printk("rcv virtio1 irq\n");
     } else {
         printk("unexpected interrupt irq = %d\n", irq);
     }

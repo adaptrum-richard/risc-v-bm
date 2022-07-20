@@ -20,6 +20,7 @@
 #include "memlayout.h"
 #include "page.h"
 #include "exec.h"
+#include "virtio_net.h"
 
 static volatile int fs_init_done = 0;
 void kernel_process(uint64 arg)
@@ -39,6 +40,8 @@ void idle()
     fsinit(ROOTINO);//这里需要中断
     fileinit();
     fs_init_done = 1;
+
+    virtio_net_init();
     __smp_wmb();
     while(1){
         //printk("current %s run pid:%d\n", current->name, current->pid);

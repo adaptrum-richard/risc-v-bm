@@ -1,6 +1,6 @@
 RISCVGNU ?= riscv64-linux-gnu
 
-COPS += -Wall -Werror -O0 -fno-omit-frame-pointer -ggdb -MD 
+COPS += -Wall -O0 -fno-omit-frame-pointer -ggdb -MD 
 COPS += -mcmodel=medany -ffreestanding -fno-common -nostdlib -mno-relax -I. 
 COPS += -fno-stack-protector -fno-pie -no-pie
 ASMOPS = -g
@@ -130,7 +130,7 @@ QEMU_FLAGS  += -nographic
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMUOPTS += -netdev user,id=usernet
-QEMUOPTS += -device virtio-net-device,netdev=usernet,bus=virtio-mmio-bus.1
+QEMUOPTS += -device virtio-net-device,netdev=usernet,bus=virtio-mmio-bus.1,
 run:
 	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel $(KERNEL_BUILD_DIR)/kernel.elf  $(QEMU_FLAGS) $(QEMUOPTS)
 debug:

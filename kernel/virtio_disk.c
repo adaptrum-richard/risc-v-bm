@@ -140,6 +140,10 @@ void virtio_disk_init(void)
         // all NUM descriptors start out unused.
     for(int i = 0; i < NUM; i++)
         disk.free[i] = 1; //free用来记录哪些disc queue没有使用
+
+    // all NUM descriptors start out unused.
+    for(int i = 0; i < NUM; i++)
+        disk.free[i] = 1; //free用来记录哪些disc queue没有使用
 }
 
 static void free_desc(int i)

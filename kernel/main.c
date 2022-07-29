@@ -20,7 +20,7 @@
 #include "memlayout.h"
 #include "page.h"
 #include "exec.h"
-
+#include "pci.h"
 static volatile int fs_init_done = 0;
 void kernel_process(uint64 arg)
 {
@@ -145,6 +145,7 @@ void main()
         init_process();
         __sync_synchronize();
         virtio_disk_init();
+        pci_init();
         run_proc();
         intr_on();
         while(1){

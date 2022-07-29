@@ -133,6 +133,11 @@ unsigned long sys_close(int fd)
     return __sys_close(fd);
 }
 
+int sys_connect(uint32 raddr, uint16 lport, uint16 rport)
+{
+    return __sys_connect(raddr, lport, rport);
+}
+
 void * const sys_call_table[__NR_syscalls] = {
     sys_printf, //0
     sys_fork,   //1
@@ -157,5 +162,6 @@ void * const sys_call_table[__NR_syscalls] = {
     sys_mkdir,  //20
     sys_close,  //21
     sys_sbrk,   //22
-    sys_ni_syscall, //23
+    sys_connect,   //23
+    sys_ni_syscall, //24
 };

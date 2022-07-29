@@ -17,6 +17,7 @@
 #include "string.h"
 #include "vm.h"
 #include "debug.h"
+#include "e1000.h"
 
 void kernelvec();
 
@@ -30,14 +31,14 @@ void devintr()
 {
     /*supervisor mode extension interrupt*/
     int irq = plic_claim();
-    if(irq == UART0_IRQ){
+    if(irq == UART0_IRQ)
         uartintr();
-    } else if (irq == VIRTIO0_IRQ){
+    else if (irq == VIRTIO0_IRQ)
         virtio_disk_intr();
-        //printk("rcv virtio0 irq\n");
-    } else {
+    else if (irq == E1000_IRQ)
+        e1000_intr();
+    else
         printk("unexpected interrupt irq = %d\n", irq);
-    }
 
     if(irq)
         plic_complete(irq);

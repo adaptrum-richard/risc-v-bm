@@ -34,4 +34,9 @@ void plicinit(void)
     // set desired IRQ priorities non-zero (otherwise disabled).
     *(uint32 *)(PLIC + UART0_IRQ * 4) = 1;
     *(uint32 *)(PLIC + VIRTIO0_IRQ * 4) = 1;
+
+    // PCIE IRQs are 32 to 35
+    for(int irq = 1; irq < 0x35; irq++){
+        *(uint32*)(PLIC + irq*4) = 1;
+    }
 }

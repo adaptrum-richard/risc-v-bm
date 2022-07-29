@@ -59,6 +59,8 @@ void fileclose(struct file *f)
         log_end_op();
     } else if(ff.type == FD_PIPE)
         pipeclose(ff.pipe, ff.writable);
+    else if(ff.type == FD_SOCK)
+        sockclose(ff.sock);
 }
 
 struct file *filedup(struct file *f)
@@ -88,6 +90,8 @@ int fileread(struct file *f, uint64 addr, int n)
         r = devsw[f->major].read(addr, n);
     } else if( f->type == FD_PIPE) 
         r = piperead(f->pipe, addr, n);
+    else if( f->type == FD_SOCK)
+        r = sockread(f->sock, addr, n);
     else 
         panic("file read\n");
     
@@ -130,6 +134,8 @@ int filewrite(struct file *f, uint64 addr, int n)
         ret = devsw[f->major].write(addr, n);
     } else if(f->type == FD_PIPE)
         ret = pipewrite(f->pipe, addr, n);
+    else if (f->type == FD_SOCK)
+        ret = sockwrite(f->sock, addr, n);
     else 
         panic("file write\n");
     return ret;

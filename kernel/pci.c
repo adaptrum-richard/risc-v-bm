@@ -1,6 +1,6 @@
 #include "pci.h"
 #include "printk.h"
-
+#include "e1000.h"
 
 void pci_init(void)
 {
@@ -23,7 +23,6 @@ void pci_init(void)
         */
         unsigned int id = base[0];
         // 100e:8086 is  e1000
-        printk("dev id : 0x%x\n", id);
         if(id == 0x100e8086){
             /*
                 command and status register.
@@ -48,6 +47,7 @@ void pci_init(void)
                 base[4+i] = old;
             }
             base[4] = e1000_regs;//通过此地址来访问e1000
+            e1000_init((unsigned int *)e1000_regs);
         }
     }
 }

@@ -67,7 +67,7 @@ static struct inode *create(char *path, short type,
     return ip;
 }
 
-static int fdalloc(struct file *f)
+int fdalloc(struct file *f)
 {
     int fd;
     struct task_struct *p = current;

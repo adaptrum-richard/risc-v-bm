@@ -514,15 +514,15 @@ int sprintf(char *str, const char *fmt, ...)
 
 void printk(const char *fmt, ...)
 {
-    va_list va;
     int locking;
     locking = pr.locking;
-    if (locking)
+    if(locking)
         acquire(&pr.lock);
+    va_list va;
 	va_start(va, fmt);
 	simple_vsprintf(0, fmt, va);
 	va_end(va);    
-    if (locking)
+    if(locking)
         release(&pr.lock);
 }
 

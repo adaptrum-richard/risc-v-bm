@@ -6,7 +6,7 @@
 #include "e1000.h"
 #include "sysnet.h"
 
-static uint32 local_ip = MAKE_IP_ADDR(10, 0, 2, 15); // qemu's idea of the guest IP
+static uint32 local_ip = MAKE_IP_ADDR(10, 8, 3, 244); // qemu's idea of the guest IP
 static uint8 local_mac[ETHADDR_LEN] = {0x52, 0x54, 0x00, 0x12, 0x34, 0x56};
 static uint8 broadcast_mac[ETHADDR_LEN] = {0xFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF};
 
@@ -38,6 +38,7 @@ char *mbufpush(struct mbuf *m, unsigned int len)
 
 /*
 将数据追加到缓冲区的末尾，并返回指向该缓冲区的指针。
+数据长度需要累加。
 */
 char *mbufput(struct mbuf *m, unsigned int len)
 {
@@ -66,11 +67,11 @@ struct mbuf *mbufalloc(unsigned int headroom)
     struct mbuf *m;
 
     if (headroom > MBUF_SIZE)
-        return 0;
+        return NULL;
     m = kmalloc(sizeof(struct mbuf));
-    if (m == 0)
-        return 0;
-    m->next = 0;
+    if (m == NULL)
+        return NULL;
+    m->next = NULL;
     m->head = (char *)m->buf + headroom;
     m->len = 0;
     memset(m->buf, 0, sizeof(m->buf));
@@ -166,9 +167,7 @@ static void net_tx_eth(struct mbuf *m, uint16 ethtype)
     memmove(ethhdr->dhost, broadcast_mac, ETHADDR_LEN);
     ethhdr->type = htons(ethtype);
     if (e1000_transmit(m))
-    {
         mbuffree(m);
-    }
 }
 
 // sends an IP packet

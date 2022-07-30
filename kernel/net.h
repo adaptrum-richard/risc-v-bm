@@ -83,6 +83,7 @@ struct eth
 // an IP packet header (comes after an Ethernet header).
 struct ip
 {
+    /*4：表示为IPV4；首部长度，如果不带Option字段，则为20，最长为60，该值限制了记录路由选项。以4字节为一个单位。*/
     uint8 ip_vhl;  // version << 4 | header length >> 2
     uint8 ip_tos;  // type of service
     uint16 ip_len; // total length

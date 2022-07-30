@@ -14,7 +14,7 @@ typedef unsigned char bool;
 typedef uint64 pte_t;
 typedef unsigned int vm_fault_t;
 typedef unsigned long pgoff_t;
-
+typedef int pid_t;
 
 typedef enum{
     GFP_KERNEL,

@@ -54,7 +54,7 @@ void memblock_init(void)
 
     /*TODO:需要实现__pa_symbol*/
     kernel_start =(unsigned long)_text_boot;
-    kernel_end = (unsigned long)_end;
+    kernel_end = (unsigned long)_end + PGSIZE;
 
     memblock_add_region(start_mem, free);
 

@@ -2,6 +2,12 @@
 #include "printf.h"
 #include "string.h"
 #include "kernel/types.h"
+/*
+测试方法：在一个终端中运行
+$ python3 server.py 26099
+另外一个终端运行make run 然后执行udptest
+*/
+
 
 static void send_udp(unsigned short sport, unsigned short dport)
 {

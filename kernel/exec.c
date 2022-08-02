@@ -23,10 +23,10 @@ initcode.out代码只有1KB左右,此函数只能读取program大小小于4KB的
 */
 int read_initcode(uint64 *prog_start, uint64 *prog_size, uint64 *pc)
 {
-
     struct inode *ip;
     struct elfhdr elf;
     struct proghdr ph;
+    int i, off;
     char *path = "/initcode.out";
     if (!path)
         return -1;
@@ -39,43 +39,56 @@ int read_initcode(uint64 *prog_start, uint64 *prog_size, uint64 *pc)
     ilock(ip);
     if (readi(ip, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
         goto bad;
-    
+
     if (elf.magic != ELF_MAGIC)
         goto bad;
 
-    // Load program into memory.
-    if (readi(ip, (uint64)&ph, elf.phoff, sizeof(ph)) != sizeof(ph)){
-        printk("%s %d: read program header failed\n", __func__, __LINE__);
-        goto bad;
-    }
+    for(i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph)){
 
-    if (ph.type != ELF_PROG_LOAD){
-        printk("%s %d: read program header type error\n", __func__, __LINE__);
-        goto bad;
-    }
+        if (readi(ip, (uint64)&ph, off, sizeof(ph)) != sizeof(ph)){
+            printk("%s %d: read program header failed\n", __func__, __LINE__);
+            goto bad;
+        }
+        /*riscv64-linux-gnu-gcc 11.2.0或riscv64-unknown-linux-gnu 11.1.0 在编译initcode时，
+        会多出一个RISCV_ATTRIBUT段
+        $ riscv64-linux-gnu-readelf -l ./user/initcode.out 
 
-    if (ph.memsz < ph.filesz){
-        printk("%s %d: read program header, memsz: 0x%llx, filesz:0x%llx\n", 
-            __func__, __LINE__, ph.memsz, ph.filesz);
-        goto bad;
-    }
+        Elf 文件类型为 EXEC (可执行文件)
+        Entry point 0x1000000000
+        There are 2 program headers, starting at offset 64
 
-    if (ph.vaddr + ph.memsz < ph.vaddr){
-        printk("%s %d: read program header, memsz: 0x%llx, vaddr:0x%llx\n", 
-            __func__, __LINE__, ph.memsz, ph.vaddr);
-        goto bad;
-    }
+        程序头：
+        Type           Offset             VirtAddr           PhysAddr
+                        FileSiz            MemSiz              Flags  Align
+        RISCV_ATTRIBUT 0x00000000000000f9 0x0000000000000000 0x0000000000000000
+                        0x000000000000002e 0x0000000000000000  R      0x1
+        LOAD           0x00000000000000b0 0x0000001000000000 0x0000001000000000
+                        0x0000000000000049 0x0000000000000049  RWE    0x10
 
-    if(readi(ip, (uint64)prog_start, ph.off, ph.filesz) != ph.filesz){
-        printk("%s %d: read program header, memsz: 0x%llx, vaddr:0x%llx\n", 
-            __func__, __LINE__, ph.memsz, ph.vaddr);
-        goto bad;
+        Section to Segment mapping:
+        段节...
+        00     .riscv.attributes 
+        01     .text 
+        */
+        if(ph.type != ELF_PROG_LOAD)
+            continue;
+        if (ph.vaddr + ph.memsz < ph.vaddr){
+            printk("%s %d: read program header, memsz: 0x%llx, vaddr:0x%llx\n", 
+                __func__, __LINE__, ph.memsz, ph.vaddr);
+            goto bad;
+        }
+        //这里只有一个program段，所以读取到后直接返回
+        if(readi(ip, (uint64)prog_start, ph.off, ph.filesz) != ph.filesz){
+            printk("%s %d: read program header, memsz: 0x%llx, vaddr:0x%llx\n", 
+                __func__, __LINE__, ph.memsz, ph.vaddr);
+            goto bad;
+        }
+        iunlockput(ip);
+        log_end_op();
+        *prog_size = ph.filesz;
+        *pc = elf.entry;
+        return 0;
     }
-    iunlockput(ip);
-    log_end_op();
-    *prog_size = ph.filesz;
-    *pc = elf.entry;
-    return 0;
 bad:
     if(ip){
         iunlock(ip);

@@ -38,4 +38,5 @@ void main(void)
     unsigned short dport = NET_TESTS_PORT;
     printf("testing udp sport:2000, dport:%d\n", dport);
     send_udp(2000, dport);
+    exit(0);
 }

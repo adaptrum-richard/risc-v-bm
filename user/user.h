@@ -25,5 +25,5 @@ extern int mkdir(const char*);
 extern int chdir(const char*);
 extern int unlink(const char *path);
 extern int link(const char *old, const char *new);
-extern int connect(unsigned short, unsigned short, int);
+extern int connect(unsigned int, unsigned short, int);
 #endif

@@ -115,6 +115,7 @@ $(USER_DIR)/_pipetest: $(ULIB)
 	$(RISCVGNU)-objdump -S $@ > $@.asm
 	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 
+USER_CFLAGS += -DNET_TESTS_PORT=$(SERVERPORT)
 $(USER_DIR)/_udptest: $(ULIB) 
 	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/udptest.o $(USER_DIR)/udptest.c
 	$(RISCVGNU)-ld $(LDFLAGS)  -T $(USER_DIR)/linker.ld -o $@  $(USER_DIR)/udptest.o $^
@@ -139,6 +140,7 @@ clean :
 		$(USER_DIR)/initcode  $(USER_DIR)/initcode.out
 
 FWDPORT = $(shell expr `id -u` % 5000 + 25999)
+SERVERPORT = $(shell expr `id -u` % 5000 + 25099)
 QEMU_FLAGS  += -nographic
 
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0

@@ -17,6 +17,7 @@
 #include "vm.h"
 #include "wait.h"
 #include "sysfile.h"
+#include "printk.h"
 
 static struct spinlock lock;
 static struct sock *sockets;
@@ -136,6 +137,7 @@ int sockwrite(struct sock *si, uint64 addr, int n)
         mbuffree(m);
         return -1;
     }
+
     net_tx_udp(m, si->raddr, si->lport, si->rport);
     return n;
 }

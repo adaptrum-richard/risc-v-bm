@@ -6,7 +6,7 @@
 #include "e1000.h"
 #include "sysnet.h"
 
-static uint32 local_ip = MAKE_IP_ADDR(10, 8, 3, 244); // qemu's idea of the guest IP
+static uint32 local_ip = MAKE_IP_ADDR(10, 0, 2, 15); // qemu's idea of the guest IP
 static uint8 local_mac[ETHADDR_LEN] = {0x52, 0x54, 0x00, 0x12, 0x34, 0x56};
 static uint8 broadcast_mac[ETHADDR_LEN] = {0xFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF};
 
@@ -166,6 +166,7 @@ static void net_tx_eth(struct mbuf *m, uint16 ethtype)
     */
     memmove(ethhdr->dhost, broadcast_mac, ETHADDR_LEN);
     ethhdr->type = htons(ethtype);
+
     if (e1000_transmit(m))
         mbuffree(m);
 }
@@ -265,7 +266,7 @@ static void net_rx_arp(struct mbuf *m)
     memmove(smac, arphdr->sha, ETHADDR_LEN); // sender's ethernet address
     sip = ntohl(arphdr->sip);                // sender's IP address (qemu's slirp)
     net_tx_arp(ARP_OP_REPLY, smac, sip);
-
+    
 done:
     mbuffree(m);
 }

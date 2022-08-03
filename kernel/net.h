@@ -163,4 +163,6 @@ struct dns_data
 
 void net_tx_udp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport);
 void net_rx(struct mbuf *m);
+void net_init(void);
+
 #endif

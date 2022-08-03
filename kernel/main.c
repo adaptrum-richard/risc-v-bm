@@ -145,6 +145,7 @@ void main()
         init_process();
         __sync_synchronize();
         virtio_disk_init();
+        net_init();
         pci_init();
         run_proc();
         intr_on();

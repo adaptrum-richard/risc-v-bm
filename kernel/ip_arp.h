@@ -37,4 +37,5 @@ enum
 
 struct mbuf *arp_packet_build(uint16 op, struct eth_addr *dmac, ipaddr_t dip);
 int arp_packet_handle(struct arp *arphdr);
+void ip_arp_init(void);
 #endif

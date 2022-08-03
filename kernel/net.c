@@ -8,6 +8,7 @@
 #include "ip_arp.h"
 #include "ip_app.h"
 #include "debug.h"
+#include "ip_neighbor.h"
 
 /*
 从缓冲区的起点剥离数据，并返回指向该缓冲区的指针。
@@ -330,4 +331,10 @@ void net_rx(struct mbuf *m)
         net_rx_arp(m);
     else
         mbuffree(m);
+}
+
+void net_init(void)
+{
+    ip_neighbor_init();
+    ip_arp_init();
 }

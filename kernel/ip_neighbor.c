@@ -33,7 +33,7 @@ void neighbor_periodic(void)
     }
 }
 
-void neighbor_add(ipaddr_t ipaddr, struct neighbor_addr *addr)
+static void neighbor_add(ipaddr_t ipaddr, struct neighbor_addr *addr)
 {
     int i, oldest;
     uint8 oldest_time;
@@ -41,7 +41,6 @@ void neighbor_add(ipaddr_t ipaddr, struct neighbor_addr *addr)
     oldest = 0;
 
     /*找到一个没有使用的项，最旧且使用过的项*/
-    acquire(&neighbor_lock);
     for(i = 0; i < NEIGHBOR_ENTRIES; ++i){
         if(ipaddr_cmp(p_entries[i].ipaddr, ipaddr)){
             oldest = i;
@@ -59,7 +58,6 @@ void neighbor_add(ipaddr_t ipaddr, struct neighbor_addr *addr)
     p_entries[oldest].time = 0;
     ipaddr_copy(p_entries[oldest].ipaddr, ipaddr);
     ethaddr_copy(&p_entries[oldest].addr, addr);
-    release(&neighbor_lock);
 }
 
 static struct neighbor_entry *find_entry(ipaddr_t ipaddr)
@@ -73,14 +71,12 @@ static struct neighbor_entry *find_entry(ipaddr_t ipaddr)
     return NULL;
 }
 
-void neighbor_update(ipaddr_t ipaddr)
+static void neighbor_update(ipaddr_t ipaddr)
 {
     struct neighbor_entry *entry;
-    acquire(&neighbor_lock);
     entry = find_entry(ipaddr);
     if(entry)
         entry->time = 0;
-    release(&neighbor_lock);
 }
 
 int neighbor_lookup(ipaddr_t ipaddr, struct neighbor_addr *na)
@@ -99,4 +95,25 @@ int neighbor_lookup(ipaddr_t ipaddr, struct neighbor_addr *na)
     }
     release(&neighbor_lock);
     return -1;
+}
+
+void neighbor_add_or_update(ipaddr_t ipaddr, struct neighbor_addr *na)
+{
+    struct neighbor_entry *entry;
+
+    if(!na || ipaddr_cmp(ipaddr, 0)){
+        pr_err("%s %d: arg error\n", __func__, __LINE__);
+        return;
+    }
+    acquire(&neighbor_lock);
+    entry = find_entry(ipaddr);
+    if(!entry)
+        neighbor_add(ipaddr, na);
+    else{
+        if(!ethaddr_cmp(&entry->addr, &na->addr)){
+            ethaddr_copy(&entry->addr,&na->addr);
+        }
+        neighbor_update(ipaddr);
+    }
+    release(&neighbor_lock);
 }

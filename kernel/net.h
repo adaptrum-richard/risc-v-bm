@@ -77,6 +77,15 @@ struct eth
     uint16 type;
 } __attribute__((packed));
 
+//以太网的地址
+struct eth_addr {
+    uint8 addr[ETHADDR_LEN];
+};
+
+typedef uint32 ipaddr_t;
+#define ipaddr_cmp(addr1, addr2) (addr1 == addr2)
+#define ipaddr_copy(addr1, addr2) (addr1 = addr2)
+#define ethaddr_copy(ethaddr1, ethaddr2) (memcpy(ethaddr1, ethaddr2, ETHADDR_LEN))
 #define ETHTYPE_IP 0x0800  // Internet protocol
 #define ETHTYPE_ARP 0x0806 // Address resolution protocol
 

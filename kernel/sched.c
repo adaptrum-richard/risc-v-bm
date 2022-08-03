@@ -8,6 +8,7 @@
 #include "spinlock.h"
 #include "vm.h"
 #include "mm.h"
+#include "timer.h"
 
 extern struct sched_class simple_sched_class;
 volatile uint64 jiffies = 0;
@@ -161,9 +162,12 @@ void preempt_schedule_irq(void)
 
 void wake_up_process(struct task_struct *p)
 {
+    unsigned long flags;
     struct run_queue *rq = &g_rq;
+    spin_lock_irqsave(&rq->lock, flags);
     p->state = TASK_RUNNING;
     enqueue_task(rq, p);
+    spin_unlock_irqrestore(&rq->lock, flags);
 }
 
 void timer_tick(void)
@@ -253,4 +257,45 @@ int default_wake_function(wait_queue_entry_t *curr,
                 unsigned mode, int wake_flags, void *key)
 {
     return try_to_wake_up(curr->private, mode, wake_flags);
+}
+
+static void process_timeout(unsigned long __data)
+{
+    struct task_struct *p = (struct task_struct *)__data;
+    wake_up_process(p);
+}
+
+/*
+返回值,
+0: 表示超时返回
+大于0：表示剩余未超时的时间
+*/
+long schedule_timeout(signed long timeout)
+{
+    struct timer_list timer;
+    unsigned long expire;
+
+    switch(timeout){
+        case MAX_SCHEDULE_TIMEOUT:
+            schedule();
+            goto out;
+        default:
+        if(timeout < 0){
+            printk("schedule_timeout: wrong timeout value: 0x%lx\n", timeout);
+            current->state = TASK_RUNNING;
+        }
+    }
+
+    expire = timeout + jiffies;
+    init_timer(&timer);
+    timer.expires = expire;
+    timer.data = (unsigned long)current;
+    timer.function = process_timeout;
+    add_timer(&timer);
+    schedule();
+    del_timer(&timer);
+
+    timeout = expire - jiffies;
+out:
+    return timeout < 0 ? 0 : timeout;
 }

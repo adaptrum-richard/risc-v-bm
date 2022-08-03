@@ -24,6 +24,7 @@ struct sched_class {
 };
 
 #define DEF_COUNTER (HZ/10)  /* 100ms time slice */
+#define	MAX_SCHEDULE_TIMEOUT ((long)(~0UL>>1))
 
 /*变量task，除了init_task*/
 #define for_each_task(p)    \
@@ -50,6 +51,7 @@ struct run_queue *cpu_rq(int cpu);
 void sched_init(void);
 void preempt_schedule_irq(void);
 void traversing_rq(void);
+long schedule_timeout(signed long timeout);
 extern volatile uint64 jiffies;
 
 #endif

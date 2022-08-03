@@ -23,6 +23,8 @@ void ip_neighbor_init(void);
 
 
 /*
+https://blog.csdn.net/bigsheng2/article/details/122776855
+
 neighbour项是在什么时候创建的呢?
 
 这需要从两个方向来分析，发送与接收：

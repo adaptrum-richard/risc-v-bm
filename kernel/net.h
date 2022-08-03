@@ -86,6 +86,7 @@ typedef uint32 ipaddr_t;
 #define ipaddr_cmp(addr1, addr2) (addr1 == addr2)
 #define ipaddr_copy(addr1, addr2) (addr1 = addr2)
 #define ethaddr_copy(ethaddr1, ethaddr2) (memcpy(ethaddr1, ethaddr2, ETHADDR_LEN))
+#define ethaddr_cmp(ethaddr1, ethaddr2) (!memcmp(ethaddr1, ethaddr2, ETHADDR_LEN))
 #define ETHTYPE_IP 0x0800  // Internet protocol
 #define ETHTYPE_ARP 0x0806 // Address resolution protocol
 
@@ -119,29 +120,6 @@ struct udp
     uint16 dport; // destination port
     uint16 ulen;  // length, including udp header, not including IP header
     uint16 sum;   // checksum
-};
-
-// an ARP packet (comes after an Ethernet header).
-struct arp
-{
-    uint16 hrd; // format of hardware address
-    uint16 pro; // format of protocol address
-    uint8 hln;  // length of hardware address
-    uint8 pln;  // length of protocol address
-    uint16 op;  // operation
-
-    char sha[ETHADDR_LEN]; // sender hardware address
-    uint32 sip;            // sender IP address
-    char tha[ETHADDR_LEN]; // target hardware address
-    uint32 tip;            // target IP address
-} __attribute__((packed));
-
-#define ARP_HRD_ETHER 1 // Ethernet
-
-enum
-{
-    ARP_OP_REQUEST = 1, // requests hw addr given protocol addr
-    ARP_OP_REPLY = 2,   // replies a hw addr given protocol addr
 };
 
 // an DNS packet (comes after an UDP header).

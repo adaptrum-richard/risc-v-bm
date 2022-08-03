@@ -5,10 +5,9 @@
 #include "string.h"
 #include "e1000.h"
 #include "sysnet.h"
-
-static uint32 local_ip = MAKE_IP_ADDR(10, 0, 2, 15); // qemu's idea of the guest IP
-static uint8 local_mac[ETHADDR_LEN] = {0x52, 0x54, 0x00, 0x12, 0x34, 0x56};
-static uint8 broadcast_mac[ETHADDR_LEN] = {0xFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF};
+#include "ip_arp.h"
+#include "ip_app.h"
+#include "debug.h"
 
 /*
 从缓冲区的起点剥离数据，并返回指向该缓冲区的指针。
@@ -159,12 +158,12 @@ static void net_tx_eth(struct mbuf *m, uint16 ethtype)
     struct eth *ethhdr;
 
     ethhdr = mbufpushhdr(m, *ethhdr);
-    memmove(ethhdr->shost, local_mac, ETHADDR_LEN);
+    ethaddr_copy(&ethhdr->shost, &ip_app_get_local_mac()->addr);
     /*
     在真实的网络堆栈中，dhost会被设置为通过ARP发现的地址。
     因为我们对ARP协议的支持不够，所以把它设置为广播。
     */
-    memmove(ethhdr->dhost, broadcast_mac, ETHADDR_LEN);
+    ethaddr_copy(&ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);
     ethhdr->type = htons(ethtype);
 
     if (e1000_transmit(m))
@@ -181,7 +180,7 @@ static void net_tx_ip(struct mbuf *m, uint8 proto, uint32 dip)
     memset(iphdr, 0, sizeof(*iphdr));
     iphdr->ip_vhl = (4 << 4) | (20 >> 2);
     iphdr->ip_p = proto;
-    iphdr->ip_src = htonl(local_ip);
+    iphdr->ip_src = htonl(ip_app_get_local_ip());
     iphdr->ip_dst = htonl(dip);
     iphdr->ip_len = htons(m->len);
     iphdr->ip_ttl = 100;
@@ -208,29 +207,14 @@ void net_tx_udp(struct mbuf *m, uint32 dip, uint16 sport, uint16 dport)
 }
 
 // sends an ARP packet
-static int net_tx_arp(uint16 op, uint8 dmac[ETHADDR_LEN], uint32 dip)
+static int net_tx_arp(uint16 op, struct eth_addr *dmac, ipaddr_t dip)
 {
     struct mbuf *m;
-    struct arp *arphdr;
-
-    m = mbufalloc(MBUF_DEFAULT_HEADROOM);
-    if (!m)
+    m = arp_packet_build(op, dmac, dip);
+    if(!m){
+        pr_err("%s %d: failed\n", __func__, __LINE__);
         return -1;
-
-    // generic part of ARP header
-    arphdr = mbufputhdr(m, *arphdr);
-    arphdr->hrd = htons(ARP_HRD_ETHER);
-    arphdr->pro = htons(ETHTYPE_IP);
-    arphdr->hln = ETHADDR_LEN;
-    arphdr->pln = sizeof(uint32);
-    arphdr->op = htons(op);
-
-    // ethernet + IP part of ARP header
-    memmove(arphdr->sha, local_mac, ETHADDR_LEN);
-    arphdr->sip = htonl(local_ip);
-    memmove(arphdr->tha, dmac, ETHADDR_LEN);
-    arphdr->tip = htonl(dip);
-
+    }
     // header is ready, send the packet
     net_tx_eth(m, ETHTYPE_ARP);
     return 0;
@@ -240,33 +224,20 @@ static int net_tx_arp(uint16 op, uint8 dmac[ETHADDR_LEN], uint32 dip)
 static void net_rx_arp(struct mbuf *m)
 {
     struct arp *arphdr;
-    uint8 smac[ETHADDR_LEN];
-    uint32 sip, tip;
+    struct eth_addr smac;
+    uint32 sip;
 
     arphdr = mbufpullhdr(m, *arphdr);
     if (!arphdr)
         goto done;
 
-    // validate the ARP header
-    if (ntohs(arphdr->hrd) != ARP_HRD_ETHER ||
-        ntohs(arphdr->pro) != ETHTYPE_IP ||
-        arphdr->hln != ETHADDR_LEN ||
-        arphdr->pln != sizeof(uint32))
-    {
-        goto done;
-    }
-
-    // only requests are supported so far
-    // check if our IP was solicited
-    tip = ntohl(arphdr->tip); // target IP address
-    if (ntohs(arphdr->op) != ARP_OP_REQUEST || tip != local_ip)
+    if(arp_packet_handle(arphdr) < 0)
         goto done;
 
     // handle the ARP request
-    memmove(smac, arphdr->sha, ETHADDR_LEN); // sender's ethernet address
+    ethaddr_copy(&smac, &arphdr->sha);// sender's ethernet address
     sip = ntohl(arphdr->sip);                // sender's IP address (qemu's slirp)
-    net_tx_arp(ARP_OP_REPLY, smac, sip);
-    
+    net_tx_arp(ARP_OP_REPLY, &smac, sip);
 done:
     mbuffree(m);
 }
@@ -324,7 +295,7 @@ static void net_rx_ip(struct mbuf *m)
     if (htons(iphdr->ip_off) != 0)
         goto fail;
     // is the packet addressed to us?
-    if (htonl(iphdr->ip_dst) != local_ip)
+    if (htonl(iphdr->ip_dst) != ip_app_get_local_ip())
         goto fail;
     // can only support UDP
     if (iphdr->ip_p != IPPROTO_UDP)

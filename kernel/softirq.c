@@ -1,6 +1,7 @@
 #include "hardirq.h"
 #include "sched.h"
 #include "sleep.h"
+#include "timer.h"
 
 void irq_enter(void)
 {
@@ -21,5 +22,6 @@ void irq_exit(void)
 out:
 #endif
     wakes_sleep();
+    run_timers();
     return;
 }

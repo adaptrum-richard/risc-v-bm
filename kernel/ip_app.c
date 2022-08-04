@@ -14,80 +14,95 @@ static ipaddr_t broadcast_ipaddr = MAKE_IP_ADDR(0xff,0xff,0xff,0xff);
 
 
 
-arp_waitqueue_t arp_wq_head = {
-    .entry = LIST_HEAD_INIT(arp_wq_head.entry),
+event_timeout_wq_t event_timeout_wq_head = {
+    .entry = LIST_HEAD_INIT(event_timeout_wq_head.entry),
     .p = NULL,
-    .ipaddr = MAKE_IP_ADDR(0, 0, 0, 0),
-    .lock = INIT_SPINLOCK("arp_wq")
+    .condition = 0,
+    .lock = INIT_SPINLOCK("event_timeout_wq")
 };
 
-int init_arp_waitqueue_entry(arp_waitqueue_t *arpwq, ipaddr_t ipaddr)
+int init_event_timeout_wq_entry(event_timeout_wq_t *e, unsigned long condition)
 {
-    arpwq->entry.next = arpwq->entry.prev = NULL;
-    initlock(&arpwq->lock, "arp_wq_entry");
-    ipaddr_copy(arpwq->ipaddr, ipaddr);
+    e->entry.next = e->entry.prev = NULL;
+    initlock(&e->lock, "event_timeout_wq_entry");
+    e->condition = condition;
     return 0;
 }
 
-int ip_app_add_arp_wq_entry(arp_waitqueue_t *wq_entry)
+int ip_app_add_wq_entry(event_timeout_wq_t *wq_entry)
 {
     unsigned long flags;
-    if(on_arp_waitqueue(wq_entry)){
+    if(on_event_timeout_wq(wq_entry)){
         printk("%s %d: bug\n", __func__, __LINE__);
         return 0;
     }
-    spin_lock_irqsave(&arp_wq_head.lock, flags);
+    spin_lock_irqsave(&event_timeout_wq_head.lock, flags);
     wq_entry->p = current;
-    list_add_tail(&wq_entry->entry, &arp_wq_head.entry);
-    spin_unlock_irqrestore(&arp_wq_head.lock, flags);
+    list_add_tail(&wq_entry->entry, &event_timeout_wq_head.entry);
+    spin_unlock_irqrestore(&event_timeout_wq_head.lock, flags);
     return 0;
 }
 
-static int ip_app_del_arp_wq_entry(arp_waitqueue_t *wq_entry)
+static int ip_app_del_wq_entry(event_timeout_wq_t *wq_entry)
 {
-    if(!on_arp_waitqueue(wq_entry)){
+    unsigned long flags;
+    if(!on_event_timeout_wq(wq_entry)){
         printk("%s %d: bug\n", __func__, __LINE__);
         return 0;
     }
-    if(list_empty(&arp_wq_head.entry)){
+    if(list_empty(&event_timeout_wq_head.entry)){
         printk("%s %d: ERROR\n", __func__, __LINE__);
         return -1;
     }
-
+    spin_lock_irqsave(&event_timeout_wq_head.lock, flags);
     list_del(&wq_entry->entry);
-    if(wq_entry->p)
-        wake_up_process(wq_entry->p);
+    spin_unlock_irqrestore(&event_timeout_wq_head.lock, flags);
     return 0;
 }
 
-static int ip_app_arp_wq_try_wakeup_proccess_and_del_entry(ipaddr_t ipaddr)
+static int ip_app_wq_try_wakeup_proccess_and_del_entry(unsigned long condition)
 {
     unsigned long flags;
-    int found = 0;
-    arp_waitqueue_t *wq_entry;
-    spin_lock_irqsave(&arp_wq_head.lock, flags);
-    list_for_each_entry(wq_entry, &arp_wq_head.entry, entry){
-       if(ipaddr_cmp(ipaddr, wq_entry->ipaddr)){
-            found = 1;
-            break;
-       }
+    event_timeout_wq_t *curr;
+    struct list_head *next, *prev;
+    struct list_head tmp_head = LIST_HEAD_INIT(tmp_head);
+
+    spin_lock_irqsave(&event_timeout_wq_head.lock, flags);
+    list_for_each_safe(prev, next, &event_timeout_wq_head.entry){
+        curr = list_entry(prev, event_timeout_wq_t, entry);
+        if(condition == curr->condition){
+            list_del(&curr->entry);
+            list_add(&curr->entry, &tmp_head);
+        }
     }
-    if(found == 1)
-        ip_app_del_arp_wq_entry(wq_entry);
-    spin_unlock_irqrestore(&arp_wq_head.lock, flags);
+    
+    if(list_empty(&tmp_head)){
+        goto out;
+    }
+    list_for_each_entry(curr, &tmp_head, entry){
+        if(curr->p){
+            wake_up_process(curr->p);
+        }
+    }
+out:
+    spin_unlock_irqrestore(&event_timeout_wq_head.lock, flags);
     return 0;
 }
 
-int ip_app_wait_arp_reply(arp_waitqueue_t *wq_entry, ipaddr_t ipaddr, signed timeout)
+long ip_app_wq_timeout_wait_condion(unsigned long condition, signed timeout)
 {
-    init_arp_waitqueue_entry(wq_entry, ipaddr);
-    ip_app_add_arp_wq_entry(wq_entry);
-    return schedule_timeout(timeout);
+    event_timeout_wq_t wq_entry;
+    long ret;
+    init_event_timeout_wq_entry(&wq_entry, condition);
+    ip_app_add_wq_entry(&wq_entry);
+    ret = schedule_timeout(timeout);
+    ip_app_del_wq_entry(&wq_entry);
+    return ret;
 }
 
-int ip_app_wake_arp_process(ipaddr_t ipaddr)
+int ip_app_wq_wakeup_process(unsigned long condition)
 {
-    return ip_app_arp_wq_try_wakeup_proccess_and_del_entry(ipaddr);
+    return ip_app_wq_try_wakeup_proccess_and_del_entry(condition);
 }
 
 ipaddr_t ip_app_get_broadcast_ipaddr()

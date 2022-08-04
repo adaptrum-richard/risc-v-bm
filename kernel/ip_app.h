@@ -6,15 +6,15 @@
 #include "spinlock.h"
 #include "timer.h"
 
-typedef struct arp_waitqueue{
+typedef struct event_timeout_wq{
     struct task_struct *p;
-    ipaddr_t ipaddr;
+    unsigned long condition;
     struct spinlock lock;
     struct list_head entry;
     struct timer_list timer;
-}arp_waitqueue_t;
+}event_timeout_wq_t;
 
-#define on_arp_waitqueue(arpwq) (arpwq->entry.next != NULL)
+#define on_event_timeout_wq(wq) (wq->entry.next != NULL)
 
 void print_ipaddr(ipaddr_t *ipaddr);
 ipaddr_t ip_app_get_local_ip(void);
@@ -25,10 +25,9 @@ void print_mac(struct eth_addr *mac);
 
 
 
-/*发出arp后等待arp回应，如果等待超时，则返回0，
+/*如果等待超时，则返回0，
 未超时，则返回剩余等待的时间 timeout的单位是一个jiffies*/
-int ip_app_wait_arp_reply(arp_waitqueue_t *wq_entry, ipaddr_t ipaddr, signed timeout);
-
+long ip_app_wq_timeout_wait_condion(unsigned long condition, signed timeout);
 /*唤醒等待arp响应的进程*/
-int ip_app_wake_arp_process(ipaddr_t ipaddr);
+int ip_app_wq_wakeup_process(unsigned long condition);
 #endif

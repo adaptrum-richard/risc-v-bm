@@ -38,6 +38,7 @@ int ip_app_add_wq_entry(event_timeout_wq_t *wq_entry)
     }
     spin_lock_irqsave(&event_timeout_wq_head.lock, flags);
     wq_entry->p = current;
+    set_current_state(TASK_INTERRUPTIBLE);
     list_add_tail(&wq_entry->entry, &event_timeout_wq_head.entry);
     spin_unlock_irqrestore(&event_timeout_wq_head.lock, flags);
     return 0;
@@ -47,7 +48,6 @@ static int ip_app_del_wq_entry(event_timeout_wq_t *wq_entry)
 {
     unsigned long flags;
     if(!on_event_timeout_wq(wq_entry)){
-        printk("%s %d: bug\n", __func__, __LINE__);
         return 0;
     }
     if(list_empty(&event_timeout_wq_head.entry)){
@@ -79,9 +79,15 @@ static int ip_app_wq_try_wakeup_proccess_and_del_entry(unsigned long condition)
     if(list_empty(&tmp_head)){
         goto out;
     }
-    list_for_each_entry(curr, &tmp_head, entry){
+    /*wakeup process后应该立即从tmp_head中删除entry，
+        否则在ip_app_del_wq_entry将会报错。原因是在没有超时的情况下，在此函数中将会先
+        执行，被唤醒的进程回去执行ip_app_del_wq_entry来将entry从全局链表中删除
+    */
+    list_for_each_safe(prev, next,  &tmp_head){
+        curr = list_entry(prev, event_timeout_wq_t, entry);
         if(curr->p){
             wake_up_process(curr->p);
+            list_del(&curr->entry);
         }
     }
 out:

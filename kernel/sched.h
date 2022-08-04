@@ -4,6 +4,7 @@
 #include "proc.h"
 #include "jiffies.h"
 #include "spinlock.h"
+#include "list.h"
 
 struct run_queue {
     struct spinlock lock;
@@ -42,6 +43,8 @@ struct sched_class {
 
 #define set_current_state(state_value)					\
     smp_store_mb(current->state, (state_value))		
+
+#define task_on_runqueue(p) (p->run_list.next != NULL)
 
 void schedule_tail(struct task_struct *prev);
 void schedule(void);

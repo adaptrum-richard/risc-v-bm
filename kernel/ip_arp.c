@@ -166,13 +166,14 @@ int arp_packet_handle(struct arp *arphdr)
     sip = ntohl(arphdr->sip); //源ip地址
 
     //neighbor update
-    if(ntohs(arphdr->op) == ARP_OP_REQUEST){
+    if(ntohs(arphdr->op) == ARP_OP_REPLY){
         neighbor_add_or_update(sip, (struct neighbor_addr*)&arphdr->sha);
     }
 
-    if (ntohs(arphdr->op) != ARP_OP_REQUEST || (!ipaddr_cmp(tip, ip_app_get_local_ip())))
+    if (ntohs(arphdr->op) != ARP_OP_REPLY || (!ipaddr_cmp(tip, ip_app_get_local_ip())))
         goto done;
 
+    //arp table update
     arp_update(tip, &arphdr->sha);
     return 0;
 done:

@@ -14,7 +14,6 @@ struct sock
     uint16 rport;         // the remote UDP port number
     struct spinlock lock; // protects the rxq
     struct mbufq rxq;     // a queue of packets waiting to be received
-    wait_queue_head_t wait_head;
 };
 
 void sockinit(void);

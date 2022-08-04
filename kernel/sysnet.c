@@ -18,6 +18,7 @@
 #include "wait.h"
 #include "sysfile.h"
 #include "printk.h"
+#include "ip_app.h"
 
 static struct spinlock lock;
 static struct sock *sockets;
@@ -48,9 +49,6 @@ int sockalloc(struct file **f, uint32 raddr, uint16 lport, uint16 rport)
     (*f)->readable = 1;
     (*f)->writable = 1;
     (*f)->sock = si;
-    //init wait head
-    si->wait_head.head.next = &(si->wait_head.head);
-    si->wait_head.head.prev = &(si->wait_head.head);
     // add to list of sockets
     acquire(&lock);
     pos = sockets;
@@ -107,7 +105,9 @@ int sockread(struct sock *si, uint64 addr, int n)
     struct mbuf *m;
     int len;
 
-    wait_event(si->wait_head, !mbufq_empty(&si->rxq));
+    if(mbufq_empty(&si->rxq))
+        if(ip_app_wq_timeout_wait_condion((unsigned long)si, 2*HZ) == 0)
+            return -1;
 
     acquire(&si->lock);
     m = mbufq_pophead(&si->rxq);
@@ -168,7 +168,7 @@ found:
     mbufq_pushtail(&si->rxq, m);
     release(&si->lock);
     release(&lock);
-    wake_up(&si->wait_head);
+    ip_app_wq_wakeup_process((unsigned long)si);
 }
 
 int __sys_connect(uint32 raddr, uint16 lport, uint16 rport)

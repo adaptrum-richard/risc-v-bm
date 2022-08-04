@@ -52,3 +52,14 @@ void print_ipaddr(ipaddr_t *ipaddr)
             *ipaddr & 0xff);
 }
 
+void print_mac(struct eth_addr *mac)
+{
+    if(mac)
+        printk("%02x:%02x:%02x:%02x:%02x:%02x",
+            mac->addr[0], 
+            mac->addr[1],
+            mac->addr[2],
+            mac->addr[3],
+            mac->addr[4],
+            mac->addr[5]);
+}

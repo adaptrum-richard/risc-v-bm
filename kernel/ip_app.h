@@ -7,4 +7,6 @@ ipaddr_t ip_app_get_local_ip(void);
 struct eth_addr *ip_app_get_local_mac(void);
 struct eth_addr *ip_app_get_broadcast_mac(void);
 ipaddr_t ip_app_get_broadcast_ipaddr();
+void print_mac(struct eth_addr *mac);
+
 #endif

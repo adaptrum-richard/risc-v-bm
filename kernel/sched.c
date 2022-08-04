@@ -166,7 +166,8 @@ void wake_up_process(struct task_struct *p)
     struct run_queue *rq = &g_rq;
     spin_lock_irqsave(&rq->lock, flags);
     p->state = TASK_RUNNING;
-    enqueue_task(rq, p);
+    if(!task_on_runqueue(p))
+        enqueue_task(rq, p);
     spin_unlock_irqrestore(&rq->lock, flags);
 }
 

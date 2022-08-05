@@ -190,10 +190,12 @@ static void net_tx_eth(struct mbuf *m, uint16 ethtype)
                 }
             }
         }
-    } else if(ethtype == ETHTYPE_ARP){
-        ethaddr_copy(ethhdr->dhost, arphdr->tha.addr);
-    } else 
-        ethaddr_copy(ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);
+    } else{
+        if(ethtype == ETHTYPE_ARP)
+            ethaddr_copy(ethhdr->dhost, arphdr->tha.addr);
+        else 
+            ethaddr_copy(ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);
+    }
 
     
     ethaddr_copy(&ethhdr->shost, &ip_app_get_local_mac()->addr);

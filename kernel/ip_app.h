@@ -36,7 +36,7 @@ void ip_app_set_local_broadcast(ipaddr_t *ipaddr);
 
 /*如果等待超时，则返回0，
 未超时，则返回剩余等待的时间 timeout的单位是一个jiffies*/
-long ip_app_wq_timeout_wait_condion(unsigned long condition, signed timeout);
+long ip_app_wq_timeout_wait_condition(unsigned long condition, signed timeout);
 /*唤醒等待arp响应的进程*/
 int ip_app_wq_wakeup_process(unsigned long condition);
 #endif

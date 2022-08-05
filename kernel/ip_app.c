@@ -96,7 +96,7 @@ out:
     return 0;
 }
 
-long ip_app_wq_timeout_wait_condion(unsigned long condition, signed timeout)
+long ip_app_wq_timeout_wait_condition(unsigned long condition, signed timeout)
 {
     event_timeout_wq_t wq_entry;
     long ret;

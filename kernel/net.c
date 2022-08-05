@@ -180,7 +180,7 @@ static void net_tx_eth(struct mbuf *m, uint16 ethtype)
             ethaddr_copy(ethhdr->dhost, mac.addr);
         else{
             net_tx_arp(ARP_OP_REQUEST, ip_app_get_broadcast_mac(), ntohl(iphdr->ip_dst));
-            ret = ip_app_wq_timeout_wait_condion((unsigned long)ntohl(iphdr->ip_dst), 2*HZ);
+            ret = ip_app_wq_timeout_wait_condition((unsigned long)ntohl(iphdr->ip_dst), 2*HZ);
             if(ret == 0){
                 printk("%s %d: wait arp reply timeout\n", __func__, __LINE__);
                 ethaddr_copy(&ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);

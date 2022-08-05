@@ -106,7 +106,7 @@ int sockread(struct sock *si, uint64 addr, int n)
     int len;
 
     if(mbufq_empty(&si->rxq))
-        if(ip_app_wq_timeout_wait_condion((unsigned long)si, 2*HZ) == 0)
+        if(ip_app_wq_timeout_wait_condition((unsigned long)si, 2*HZ) == 0)
             return -1;
 
     acquire(&si->lock);

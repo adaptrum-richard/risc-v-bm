@@ -165,12 +165,22 @@ static void net_tx_eth(struct mbuf *m, uint16 ethtype)
 
     ethhdr = mbufpushhdr(m, *ethhdr);
 
-    if(ethtype == ETHTYPE_IP){
+    /*
+     *1.源ip地址不为0.0.0.0，
+     *2.目的ip地址和源ip地址是同网段，
+     *3.目的ip地址不为255.255.255.255
+     *4.目的ip地址在arp_tbl中没有对应的mac地址，
+     *满足上述4个要求发出arp请求
+    */
+    if(ethtype == ETHTYPE_IP && !ipaddr_cmp(iphdr->ip_src, MAKE_IP_ADDR(0, 0, 0, 0))
+        && !ipaddr_cmp(iphdr->ip_dst, MAKE_IP_ADDR(0xff, 0xff, 0xff, 0xff))
+        && !ipaddr_cmp(ip_app_get_local_netmask(), MAKE_IP_ADDR(0, 0, 0, 0))
+        && ipaddr_netcmp(ntohl(iphdr->ip_dst), ip_app_get_local_ip(), ip_app_get_local_netmask())){
         if(arp_lookup(ntohl(iphdr->ip_dst), &mac) == 0)
             ethaddr_copy(ethhdr->dhost, mac.addr);
         else{
             net_tx_arp(ARP_OP_REQUEST, ip_app_get_broadcast_mac(), ntohl(iphdr->ip_dst));
-            ret = ip_app_wq_timeout_wait_condion((unsigned long)ntohl(iphdr->ip_dst), 10*HZ);
+            ret = ip_app_wq_timeout_wait_condion((unsigned long)ntohl(iphdr->ip_dst), 2*HZ);
             if(ret == 0){
                 printk("%s %d: wait arp reply timeout\n", __func__, __LINE__);
                 ethaddr_copy(&ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);

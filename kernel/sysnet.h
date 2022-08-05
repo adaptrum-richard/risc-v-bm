@@ -23,4 +23,6 @@ int sockread(struct sock *, uint64, int);
 int sockwrite(struct sock *, uint64, int);
 void sockrecvudp(struct mbuf *, uint32, uint16, uint16);
 int __sys_connect(uint32 raddr, uint16 lport, uint16 rport);
+int __sys_ipctl(unsigned long cmd, void *data);
+
 #endif

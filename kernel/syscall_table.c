@@ -138,6 +138,11 @@ int sys_connect(uint32 raddr, uint16 lport, uint16 rport)
     return __sys_connect(raddr, lport, rport);
 }
 
+int sys_ipctl(unsigned long cmd, void *data)
+{
+    return __sys_ipctl(cmd, data);
+}
+
 void * const sys_call_table[__NR_syscalls] = {
     sys_printf, //0
     sys_fork,   //1
@@ -163,5 +168,6 @@ void * const sys_call_table[__NR_syscalls] = {
     sys_close,  //21
     sys_sbrk,   //22
     sys_connect,   //23
-    sys_ni_syscall, //24
+    sys_ipctl,  //24
+    sys_ni_syscall, //25
 };

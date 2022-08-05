@@ -39,4 +39,5 @@ void ip_app_set_local_broadcast(ipaddr_t *ipaddr);
 long ip_app_wq_timeout_wait_condition(unsigned long condition, signed timeout);
 /*唤醒等待arp响应的进程*/
 int ip_app_wq_wakeup_process(unsigned long condition);
+int ipctl(unsigned long cmd, void *data);
 #endif

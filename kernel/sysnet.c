@@ -184,3 +184,8 @@ int __sys_connect(uint32 raddr, uint16 lport, uint16 rport)
     }
     return fd;
 }
+
+int __sys_ipctl(unsigned long cmd, void *data)
+{
+    return ipctl(cmd, data);
+}

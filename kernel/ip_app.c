@@ -5,8 +5,10 @@
 #include "spinlock.h"
 #include "sched.h"
 #include "timer.h"
+#include "vm.h"
+#include "ip_app_user.h"
 
-static ipaddr_t local_ip = MAKE_IP_ADDR(10, 0, 2, 15); // qemu's idea of the guest IP
+static ipaddr_t local_ip = MAKE_IP_ADDR(0, 0, 0, 0);
 static ipaddr_t local_netmask = MAKE_IP_ADDR(0, 0, 0, 0);
 static ipaddr_t local_gateway = MAKE_IP_ADDR(0, 0, 0, 0);
 static ipaddr_t local_broadcast = MAKE_IP_ADDR(0, 0, 0, 0);
@@ -216,4 +218,48 @@ void print_mac(struct eth_addr *mac)
             mac->addr[3],
             mac->addr[4],
             mac->addr[5]);
+}
+
+int ipctl(unsigned long cmd, void *data)
+{
+    int ret = -1;
+    ipaddr_t ipaddr;
+    if(!data || cmd >= IP_APP_CMD_MAX || cmd <= IP_APP_CMD_MIN){
+        printk("%s %d: error\n", __func__, __LINE__);
+        goto out;
+    }
+    switch (cmd)
+    {
+        case IP_APP_GET_LOCAL_IP:
+            ret = space_data_copy_out((unsigned long)data, &local_ip, sizeof(ipaddr_t));
+            break;
+        case IP_APP_SET_LOCAL_IP:
+            ret = spcae_data_copy_in(&ipaddr, (unsigned long)data, sizeof(ipaddr_t));
+            if(ret == 0)
+                ipaddr_copy(local_ip, ipaddr);
+            break;
+        case IP_APP_GET_LOCAL_NETMASK:
+            ret = space_data_copy_out((unsigned long)data, &local_netmask, sizeof(ipaddr_t));
+            break;
+        case IP_APP_SET_LOCAL_NETMASK:
+            ret = spcae_data_copy_in(&ipaddr, (unsigned long)data, sizeof(ipaddr_t));
+            if(ret == 0)
+                ipaddr_copy(local_netmask, ipaddr);
+            break;
+        case IP_APP_SET_LOCAL_GATEWAY:
+            ret = spcae_data_copy_in(&ipaddr, (unsigned long)data, sizeof(ipaddr_t));
+            if(ret == 0)
+                ipaddr_copy(local_gateway, ipaddr);
+            break;
+        case IP_APP_GET_LOCAL_GATEWAY:
+            ret = space_data_copy_out((unsigned long)data, &local_gateway, sizeof(ipaddr_t));
+            break;
+        case IP_APP_GET_LOCAL_MAC:
+             ret = space_data_copy_out((unsigned long)data, &local_mac, sizeof(struct eth_addr));
+            break;
+        default:
+            break;
+    }
+out:
+    return ret;
 }

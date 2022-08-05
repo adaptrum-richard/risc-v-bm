@@ -7,12 +7,13 @@
 #include "timer.h"
 
 static ipaddr_t local_ip = MAKE_IP_ADDR(10, 0, 2, 15); // qemu's idea of the guest IP
+static ipaddr_t local_netmask = MAKE_IP_ADDR(0, 0, 0, 0);
+static ipaddr_t local_gateway = MAKE_IP_ADDR(0, 0, 0, 0);
+static ipaddr_t local_broadcast = MAKE_IP_ADDR(0, 0, 0, 0);
 static struct eth_addr local_mac = { {0x52, 0x54, 0x00, 0x12, 0x34, 0x56} };
 static struct eth_addr broadcast_mac = {{0xFF, 0XFF, 0XFF, 0XFF, 0XFF, 0XFF}};
 
 static ipaddr_t broadcast_ipaddr = MAKE_IP_ADDR(0xff,0xff,0xff,0xff);
-
-
 
 event_timeout_wq_t event_timeout_wq_head = {
     .entry = LIST_HEAD_INIT(event_timeout_wq_head.entry),
@@ -136,6 +137,57 @@ void ip_app_set_local_ip(ipaddr_t *ipaddr)
 ipaddr_t ip_app_get_local_ip(void)
 {
     return local_ip;
+}
+
+ipaddr_t ip_app_get_local_netmask(void)
+{
+    return local_netmask;
+}
+
+void ip_app_set_local_netmask(ipaddr_t *ipaddr)
+{
+    if(!ipaddr){
+        pr_err("set default local netmask failed\n");
+        printk("use default ipaddr: ");
+        print_ipaddr(&local_ip);
+        printk("\n");
+        return;
+    }
+    ipaddr_copy(local_netmask, *ipaddr);
+}
+
+ipaddr_t ip_app_get_local_gateway(void)
+{
+    return local_gateway;
+}
+
+void ip_app_set_local_gateway(ipaddr_t *ipaddr)
+{
+    if(!ipaddr){
+        pr_err("set default local gateway failed\n");
+        printk("use default ipaddr: ");
+        print_ipaddr(&local_ip);
+        printk("\n");
+        return;
+    }
+    ipaddr_copy(local_gateway, *ipaddr);
+}
+
+ipaddr_t ip_app_get_local_broadcast(void)
+{
+    return local_broadcast;
+}
+
+void ip_app_set_local_broadcast(ipaddr_t *ipaddr)
+{
+    if(!ipaddr){
+        pr_err("set default local broadcas failed\n");
+        printk("use default ipaddr: ");
+        print_ipaddr(&local_ip);
+        printk("\n");
+        return;
+    }
+    ipaddr_copy(local_broadcast, *ipaddr);
 }
 
 struct eth_addr *ip_app_get_local_mac(void)

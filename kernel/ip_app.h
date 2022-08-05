@@ -23,7 +23,14 @@ struct eth_addr *ip_app_get_broadcast_mac(void);
 ipaddr_t ip_app_get_broadcast_ipaddr();
 void print_mac(struct eth_addr *mac);
 
+ipaddr_t ip_app_get_local_netmask(void);
+void ip_app_set_local_netmask(ipaddr_t *ipaddr);
 
+ipaddr_t ip_app_get_local_gateway(void);
+void ip_app_set_local_gateway(ipaddr_t *ipaddr);
+
+ipaddr_t ip_app_get_local_broadcast(void);
+void ip_app_set_local_broadcast(ipaddr_t *ipaddr);
 
 /*如果等待超时，则返回0，
 未超时，则返回剩余等待的时间 timeout的单位是一个jiffies*/

@@ -14,6 +14,8 @@ typedef struct event_timeout_wq{
     struct timer_list timer;
 }event_timeout_wq_t;
 
+
+#define ipaddr_netcmp(addr1, addr2, mask) ((addr1 & mask) == (addr2 & mask))
 #define on_event_timeout_wq(wq) (wq->entry.next != NULL)
 
 void print_ipaddr(ipaddr_t *ipaddr);

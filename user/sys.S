@@ -144,3 +144,9 @@ connect:
     li a7, SYS_connect
     ecall
     ret
+
+.global ipctl
+ipctl:
+    li a7, SYS_ipctl
+    ecall
+    ret

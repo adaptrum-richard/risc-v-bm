@@ -143,6 +143,9 @@ FWDPORT = $(shell expr `id -u` % 5000 + 25999)
 SERVERPORT = $(shell expr `id -u` % 5000 + 25099)
 QEMU_FLAGS  += -nographic
 
+##
+##https://blog.csdn.net/ren_star/article/details/125060518
+##
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 QEMUOPTS += -netdev user,id=net0,hostfwd=udp::$(FWDPORT)-:2000 -object filter-dump,id=net0,netdev=net0,file=packets.pcap

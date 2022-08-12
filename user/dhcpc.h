@@ -3,7 +3,7 @@
 #include "kernel/types.h"
 #include "kernel/net.h"
 
-struct dhcp {
+typedef struct dhcp_msg{
     uint8 op;
     uint8 htype;
     uint8 hlen;
@@ -17,9 +17,9 @@ struct dhcp {
     uint8 sname[64];
     uint8 file[128];
     uint8 options[312];
-};
+}dhcp_msg_t;
 
-struct dhcpc_state {
+typedef struct dhcpc_state {
     int fd;
     char state;
     uint8 *mac_addr;
@@ -29,7 +29,7 @@ struct dhcpc_state {
     ipaddr_t ipaddr;
     ipaddr_t netmask;
     ipaddr_t default_router;
-};
+}dhcpc_state_t;
 
 #define STATE_INITIAL         0
 #define STATE_SENDING         1

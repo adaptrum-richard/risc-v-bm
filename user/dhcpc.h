@@ -2,6 +2,7 @@
 #define __DHCPC_H__
 #include "kernel/types.h"
 #include "kernel/net.h"
+#include "string.h"
 
 typedef struct dhcp_msg{
     uint8 op;
@@ -9,6 +10,8 @@ typedef struct dhcp_msg{
     uint8 hlen;
     uint8 hops;
     uint32 xid;
+    uint16 secs;
+    uint16 flags;
     ipaddr_t ciaddr;
     ipaddr_t yiaddr;
     ipaddr_t siaddr;
@@ -17,7 +20,7 @@ typedef struct dhcp_msg{
     uint8 sname[64];
     uint8 file[128];
     uint8 options[312];
-}dhcp_msg_t;
+}dhcp_msg_t  __attribute__((packed));
 
 typedef struct dhcpc_state {
     int fd;
@@ -65,5 +68,50 @@ typedef struct dhcpc_state {
 #define DHCP_OPTION_SERVER_ID    54
 #define DHCP_OPTION_REQ_LIST     55
 #define DHCP_OPTION_END         255
+
+static inline unsigned char *
+add_msg_type(unsigned char *optptr, unsigned char type)
+{
+    *optptr++ = DHCP_OPTION_MSG_TYPE;
+    *optptr++ = 1;
+    *optptr++ = type;
+    return optptr;
+}
+
+static inline unsigned char *
+add_server_id(unsigned char *optptr, unsigned char *serverid)
+{
+    *optptr++ = DHCP_OPTION_SERVER_ID;
+    *optptr++ = 4;
+    memcpy(optptr, serverid, 4);
+    return optptr + 4;
+}
+
+static inline unsigned char *
+add_req_ipaddr(unsigned char *optptr, unsigned int *ipaddr)
+{
+    *optptr++ = DHCP_OPTION_REQ_IPADDR;
+    *optptr++ = 4;
+    memcpy(optptr, ipaddr, 4);
+    return optptr + 4;
+}
+
+static inline unsigned char *
+add_req_options(unsigned char *optptr)
+{
+    *optptr++ = DHCP_OPTION_REQ_LIST;
+    *optptr++ = 3;
+    *optptr++ = DHCP_OPTION_SUBNET_MASK;
+    *optptr++ = DHCP_OPTION_ROUTER;
+    *optptr++ = DHCP_OPTION_DNS_SERVER;
+    return optptr;
+}
+
+static unsigned char *
+add_end(unsigned char *optptr)
+{
+    *optptr++ = DHCP_OPTION_END;
+    return optptr;
+}
 
 #endif

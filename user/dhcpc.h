@@ -31,6 +31,7 @@ typedef struct dhcpc_state {
     uint8 lease_time[2];
     ipaddr_t ipaddr;
     ipaddr_t netmask;
+    ipaddr_t dnsaddr;
     ipaddr_t default_router;
 }dhcpc_state_t;
 

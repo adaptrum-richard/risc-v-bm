@@ -4,6 +4,7 @@
 #include "printf.h"
 #include "string.h"
 #include "dhcpc.h"
+#include "ip_app_user.h"
 
 static const uint8 xid[4] = {0xad, 0xde, 0x12, 0x23};
 static const uint8 magic_cookie[4] = {99, 130, 83, 99};
@@ -84,15 +85,132 @@ static void create_dhcp_msg(dhcp_msg_t *m)
 static void send_discover(void)
 {
     uint8 *end;
+    int len = 0;
     dhcp_msg_t m;
-    create_msg(&m);
+    create_dhcp_msg(&m);
     end = add_msg_type((uint8 *)&m.options[4], DHCPDISCOVER);
     end = add_req_options(end);
     end = add_end(end);
+    len = end - (uint8)&m;
+    if(write(dhcpc_s.fd, (void*)&m, len) < 0){
+        printf("%s %d: failed\n");
+        exit(0);
+    }
+}
+
+static uint8 dhcp_parse_options(uint8 *optptr, int len)
+{
+    uint8 *end = optptr + len;
+    uint8 type = 0;
+
+    while(optptr < end) {
+        switch(*optptr) {
+            case DHCP_OPTION_SUBNET_MASK:
+                memcpy(dhcpc_s.netmask, optptr + 2, 4);
+                break;
+            case DHCP_OPTION_ROUTER:
+                memcpy(dhcpc_s.default_router, optptr + 2, 4);
+                break;
+            case DHCP_OPTION_DNS_SERVER:
+                memcpy(dhcpc_s.dnsaddr, optptr + 2, 4);
+                break;
+            case DHCP_OPTION_MSG_TYPE:
+                type = *(optptr + 2);
+                break;
+            case DHCP_OPTION_SERVER_ID:
+                memcpy(dhcpc_s.serverid, optptr + 2, 4);
+                break;
+            case DHCP_OPTION_LEASE_TIME:
+                memcpy(dhcpc_s.lease_time, optptr + 2, 4);
+                break;
+            case DHCP_OPTION_END:
+                return type;
+        }
+
+        optptr += optptr[1] + 2;
+    }
+    return type;
+}
+
+static uint8 dhcp_parse_msg(dhcp_msg_t *m, int options_len)
+{
+    if(m->op == DHCP_REPLY &&
+            memcmp(m->xid, xid, sizeof(xid)) == 0 &&
+            memcmp(m->chaddr, dhcpc_s.mac_addr, dhcpc_s.mac_len) == 0){
+        memcpy(dhcpc_s.ipaddr, m->yiaddr, 4);
+        return dhcp_parse_options(&m->options[4], options_len - 4);    
+    }
+    return 0;
+}
+
+static void send_request(void)
+{
+    uint8 *end;
+    dhcp_msg_t m;
+    int len = 0;
+    create_dhcp_msg(&m);
+
+    end = add_msg_type(&m.options[4], DHCPREQUEST);
+    end = add_server_id(end, dhcpc_s.serverid);
+    end = add_req_ipaddr(end, &dhcpc_s.ipaddr);
+    end = add_end(end);
+
+    len = end - (uint8*)&m;
+
+    if(write(dhcpc_s.fd, (void*)&m, len) < 0){
+        printf("%s %d: failed\n");
+        exit(0);
+    }
+  
+}
+
+static void handle_dhcp(void)
+{
+    dhcp_msg_t tmp = {0};
+    int ret = 0;
+    dhcpc_s.state = STATE_SENDING;
+    int hdr_len = sizeof(dhcp_msg_t) - sizeof(tmp.options);
+    do{
+        send_discover();
+        ret = read(dhcpc_s.fd, (void*)&tmp, sizeof(dhcp_msg_t));
+        if(ret >= hdr_len){
+            if(dhcp_parse_msg(&tmp, ret - hdr_len) == DHCPOFFER){
+                dhcpc_s.state = STATE_OFFER_RECEIVED;
+                break;
+            }
+        }
+        sleep(1);
+        memset((void*)&tmp, 0, sizeof(tmp));
+    }while(dhcpc_s.state != STATE_OFFER_RECEIVED);
+    
+    memset((void*)&tmp, 0, sizeof(tmp));
+
+    do {
+        send_request();
+        ret = read(dhcpc_s.fd, (void*)&tmp, sizeof(dhcp_msg_t));
+        if(ret >= hdr_len){
+            if(dhcp_parse_msg(&tmp, ret - hdr_len) == DHCPACK){
+                dhcpc_s.state = STATE_CONFIG_RECEIVED;
+                break;
+            }
+        }
+        if(parse_msg() == DHCPACK) {
+            dhcpc_s.state = STATE_CONFIG_RECEIVED;
+            break;
+        }
+
+        sleep(1);
+        memset((void*)&tmp, 0, sizeof(tmp));
+    } while(dhcpc_s.state != STATE_CONFIG_RECEIVED);
+    printf("got ip = %lx\n", dhcpc_s.ipaddr);
 }
 
 void main(void)
 {
-
+    uint8 mac[6] = {0};
+    ipctl(IP_APP_GET_LOCAL_MAC, mac);
+    printf("mac: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1],mac[2],mac[3],mac[4],mac[5]);
+    dhcpc_init(mac, 6);
+    handle_dhcp();
     exit(0);
 }

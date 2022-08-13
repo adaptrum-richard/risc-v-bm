@@ -108,7 +108,7 @@ int sockread(struct sock *si, uint64 addr, int n)
     if(mbufq_empty(&si->rxq))
         if(ip_app_wq_timeout_wait_condition((unsigned long)si, 2*HZ) == 0)
             return -1;
-
+            
     acquire(&si->lock);
     m = mbufq_pophead(&si->rxq);
     release(&si->lock);
@@ -155,7 +155,9 @@ void sockrecvudp(struct mbuf *m, uint32 raddr, uint16 lport, uint16 rport)
     acquire(&lock);
     si = sockets;
     while (si){
-        if (si->raddr == raddr && si->lport == lport && si->rport == rport)
+        if(si->raddr == MAKE_IP_ADDR(255,255,255,255) && si->lport == lport && si->rport == rport)
+            goto found;
+        if(si->raddr == raddr && si->lport == lport && si->rport == rport)
             goto found;
         si = si->next;
     }

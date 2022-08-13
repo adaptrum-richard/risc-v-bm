@@ -315,7 +315,6 @@ static void net_rx_ip(struct mbuf *m)
 {
     struct ip *iphdr;
     uint16 len;
-
     iphdr = mbufpullhdr(m, *iphdr);
     if (!iphdr)
         goto fail;
@@ -330,8 +329,12 @@ static void net_rx_ip(struct mbuf *m)
     if (htons(iphdr->ip_off) != 0)
         goto fail;
     // is the packet addressed to us?
+    if(htonl(iphdr->ip_dst) == MAKE_IP_ADDR(255,255,255,255))
+        goto skip;
+    
     if (htonl(iphdr->ip_dst) != ip_app_get_local_ip())
         goto fail;
+skip:
     // can only support UDP
     if (iphdr->ip_p != IPPROTO_UDP)
         goto fail;

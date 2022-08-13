@@ -4,7 +4,7 @@
 #include "kernel/net.h"
 #include "string.h"
 
-typedef struct dhcp_msg{
+struct dhcp_msg{
     uint8 op;
     uint8 htype;
     uint8 hlen;
@@ -20,8 +20,9 @@ typedef struct dhcp_msg{
     uint8 sname[64];
     uint8 file[128];
     uint8 options[312];
-}dhcp_msg_t  __attribute__((packed));
+}__attribute__((packed));
 
+typedef struct dhcp_msg dhcp_msg_t;
 typedef struct dhcpc_state {
     int fd;
     char state;

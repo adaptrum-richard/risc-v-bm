@@ -4,7 +4,7 @@
 #include "printf.h"
 #include "string.h"
 #include "dhcpc.h"
-#include "ip_app_user.h"
+#include "kernel/ip_app_user.h"
 
 static const uint8 xid[4] = {0xad, 0xde, 0x12, 0x23};
 static const uint8 magic_cookie[4] = {99, 130, 83, 99};
@@ -15,7 +15,7 @@ static dhcpc_state_t dhcpc_s;
 static int dhcpc_init(const void *mac_addr, int mac_len)
 {
     ipaddr_t addr = MAKE_IP_ADDR(255, 255, 255, 255);
-    dhcpc_s.mac_addr = mac_addr;
+    dhcpc_s.mac_addr = (uint8 *)mac_addr;
     dhcpc_s.mac_len = mac_len;
     
     dhcpc_s.state = STATE_INITIAL;
@@ -40,7 +40,7 @@ static void create_dhcp_msg(dhcp_msg_t *m)
     /*事务ID，由客户端选择的一个随机数，被服务器和客户端用来
     在它们之间交流请求和响应，客户端用它对请求和应答进行匹配。
     该ID由客户端设置并由服务器返回，为32位整数。*/
-    memcpy(m->xid, xid, sizeof(m->xid));
+    memcpy(&m->xid, xid, sizeof(m->xid));
     /*由客户端填充，表示从客户端开始获得IP地址或IP地址续借后所使用了的秒数。*/
     m->secs = 0;
     /*此字段在BOOTP中保留未用，在DHCP中表示标志字段。
@@ -51,18 +51,18 @@ static void create_dhcp_msg(dhcp_msg_t *m)
     */
     m->flags = htons(BOOTP_BROADCAST);
     /*客户端的IP地址。只有客户端是Bound、Renew、Rebinding状态，并且能响应ARP请求时，才能被填充。*/
-    memset(m->ciaddr, 0, sizeof(m->ciaddr));
+    memset(&m->ciaddr, 0, sizeof(m->ciaddr));
     /*"你自己的"或客户端的IP地址*/
-    memset(m->yiaddr, 0, sizeof(m->yiaddr));
+    memset(&m->yiaddr, 0, sizeof(m->yiaddr));
     /*表明DHCP协议流程的下一个阶段要使用的服务器的IP地址。*/
-    memset(m->siaddr, 0, sizeof(m->siaddr));
+    memset(&m->siaddr, 0, sizeof(m->siaddr));
     /*该字段表示第一个DHCP中继的IP地址（注意：不是地址池中定义的网关）。当客户端发出DHCP请求时，
         如果服务器和客户端不在同一个网络中，那么第一个DHCP中继在转发这个DHCP请求报文时会把自己的IP地址填入此字段。
         服务器会根据此字段来判断出网段地址，从而选择为用户分配地址的地址池。服务器还会根据此地址将响应报文发送给
         此DHCP中继，再由DHCP中继将此报文转发给客户端。
         若在到达DHCP服务器前经过了不止一个DHCP中继，那么第一个DHCP中继后的中继不会改变此字段，只是把Hops的数目加1。
     */
-    memset(m->giaddr, 0, sizeof(m->giaddr));
+    memset(&m->giaddr, 0, sizeof(m->giaddr));
     /*
     该字段表示客户端的MAC地址，此字段与前面的“Hardware Type”和“Hardware Length”保持一致。当客户端发出DHCP请求时，
     将自己的硬件地址填入此字段。对于以太网，当“Hardware Type”和“Hardware Length”分别为“1”和“6”时，此字段必须填入6字节的以太网MAC地址。
@@ -91,7 +91,7 @@ static void send_discover(void)
     end = add_msg_type((uint8 *)&m.options[4], DHCPDISCOVER);
     end = add_req_options(end);
     end = add_end(end);
-    len = end - (uint8)&m;
+    len = end - (uint8*)&m;
     if(write(dhcpc_s.fd, (void*)&m, len) < 0){
         printf("%s %d: failed\n");
         exit(0);
@@ -106,13 +106,13 @@ static uint8 dhcp_parse_options(uint8 *optptr, int len)
     while(optptr < end) {
         switch(*optptr) {
             case DHCP_OPTION_SUBNET_MASK:
-                memcpy(dhcpc_s.netmask, optptr + 2, 4);
+                memcpy(&dhcpc_s.netmask, optptr + 2, 4);
                 break;
             case DHCP_OPTION_ROUTER:
-                memcpy(dhcpc_s.default_router, optptr + 2, 4);
+                memcpy(&dhcpc_s.default_router, optptr + 2, 4);
                 break;
             case DHCP_OPTION_DNS_SERVER:
-                memcpy(dhcpc_s.dnsaddr, optptr + 2, 4);
+                memcpy(&dhcpc_s.dnsaddr, optptr + 2, 4);
                 break;
             case DHCP_OPTION_MSG_TYPE:
                 type = *(optptr + 2);
@@ -135,9 +135,9 @@ static uint8 dhcp_parse_options(uint8 *optptr, int len)
 static uint8 dhcp_parse_msg(dhcp_msg_t *m, int options_len)
 {
     if(m->op == DHCP_REPLY &&
-            memcmp(m->xid, xid, sizeof(xid)) == 0 &&
+            memcmp(&m->xid, xid, sizeof(xid)) == 0 &&
             memcmp(m->chaddr, dhcpc_s.mac_addr, dhcpc_s.mac_len) == 0){
-        memcpy(dhcpc_s.ipaddr, m->yiaddr, 4);
+        memcpy(&dhcpc_s.ipaddr, &m->yiaddr, 4);
         return dhcp_parse_options(&m->options[4], options_len - 4);    
     }
     return 0;
@@ -194,15 +194,15 @@ static void handle_dhcp(void)
                 break;
             }
         }
-        if(parse_msg() == DHCPACK) {
-            dhcpc_s.state = STATE_CONFIG_RECEIVED;
-            break;
-        }
-
         sleep(1);
         memset((void*)&tmp, 0, sizeof(tmp));
     } while(dhcpc_s.state != STATE_CONFIG_RECEIVED);
-    printf("got ip = %lx\n", dhcpc_s.ipaddr);
+    dhcpc_s.ipaddr = ntohl(dhcpc_s.ipaddr);
+    printf("got ip = %d.%d.%d.%d\n", 
+            (dhcpc_s.ipaddr >> 24) & 0xff,
+            (dhcpc_s.ipaddr >> 16) & 0xff,
+            (dhcpc_s.ipaddr >> 8) & 0xff,
+            dhcpc_s.ipaddr & 0xff);
 }
 
 void main(void)

@@ -26,6 +26,7 @@
 #define SYS_close  21
 #define SYS_sbrk   22
 #define SYS_connect 23
-#define __NR_syscalls 25
+#define SYS_ipctl 24
+#define __NR_syscalls 26
 
 #endif

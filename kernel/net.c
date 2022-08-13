@@ -10,6 +10,7 @@
 #include "debug.h"
 #include "ip_neighbor.h"
 
+static int net_tx_arp(uint16 op, struct eth_addr *dmac, ipaddr_t dip);
 /*
 从缓冲区的起点剥离数据，并返回指向该缓冲区的指针。
 如果小于请求的完整长度，则返回0
@@ -157,14 +158,47 @@ static unsigned short in_cksum(const unsigned char *addr, int len)
 static void net_tx_eth(struct mbuf *m, uint16 ethtype)
 {
     struct eth *ethhdr;
+    struct eth_addr mac;
+    long ret;
+    struct ip *iphdr= (struct ip*)m->head;
+    struct arp *arphdr = (struct arp*)m->head;
 
     ethhdr = mbufpushhdr(m, *ethhdr);
-    ethaddr_copy(&ethhdr->shost, &ip_app_get_local_mac()->addr);
+
     /*
-    在真实的网络堆栈中，dhost会被设置为通过ARP发现的地址。
-    因为我们对ARP协议的支持不够，所以把它设置为广播。
+     *1.源ip地址不为0.0.0.0，
+     *2.目的ip地址和源ip地址是同网段，
+     *3.目的ip地址不为255.255.255.255
+     *4.目的ip地址在arp_tbl中没有对应的mac地址，
+     *满足上述4个要求发出arp请求
     */
-    ethaddr_copy(&ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);
+    if(ethtype == ETHTYPE_IP && !ipaddr_cmp(iphdr->ip_src, MAKE_IP_ADDR(0, 0, 0, 0))
+        && !ipaddr_cmp(iphdr->ip_dst, MAKE_IP_ADDR(0xff, 0xff, 0xff, 0xff))
+        && !ipaddr_cmp(ip_app_get_local_netmask(), MAKE_IP_ADDR(0, 0, 0, 0))
+        && ipaddr_netcmp(ntohl(iphdr->ip_dst), ip_app_get_local_ip(), ip_app_get_local_netmask())){
+        if(arp_lookup(ntohl(iphdr->ip_dst), &mac) == 0)
+            ethaddr_copy(ethhdr->dhost, mac.addr);
+        else{
+            net_tx_arp(ARP_OP_REQUEST, ip_app_get_broadcast_mac(), ntohl(iphdr->ip_dst));
+            ret = ip_app_wq_timeout_wait_condition((unsigned long)ntohl(iphdr->ip_dst), 2*HZ);
+            if(ret == 0){
+                printk("%s %d: wait arp reply timeout\n", __func__, __LINE__);
+                ethaddr_copy(&ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);
+            }else {
+                if(arp_lookup(iphdr->ip_dst, &mac) == 0){
+                    ethaddr_copy(ethhdr->dhost, mac.addr);
+                }
+            }
+        }
+    } else{
+        if(ethtype == ETHTYPE_ARP)
+            ethaddr_copy(ethhdr->dhost, arphdr->tha.addr);
+        else 
+            ethaddr_copy(ethhdr->dhost, &ip_app_get_broadcast_mac()->addr);
+    }
+
+    
+    ethaddr_copy(&ethhdr->shost, &ip_app_get_local_mac()->addr);
     ethhdr->type = htons(ethtype);
 
     if (e1000_transmit(m))
@@ -227,7 +261,6 @@ static void net_rx_arp(struct mbuf *m)
     struct arp *arphdr;
     struct eth_addr smac;
     uint32 sip;
-
     arphdr = mbufpullhdr(m, *arphdr);
     if (!arphdr)
         goto done;
@@ -238,6 +271,7 @@ static void net_rx_arp(struct mbuf *m)
     // handle the ARP request
     ethaddr_copy(&smac, &arphdr->sha);// sender's ethernet address
     sip = ntohl(arphdr->sip);                // sender's IP address (qemu's slirp)
+    ip_app_wq_wakeup_process((unsigned long)sip);
     net_tx_arp(ARP_OP_REPLY, &smac, sip);
 done:
     mbuffree(m);
@@ -281,7 +315,6 @@ static void net_rx_ip(struct mbuf *m)
 {
     struct ip *iphdr;
     uint16 len;
-
     iphdr = mbufpullhdr(m, *iphdr);
     if (!iphdr)
         goto fail;
@@ -296,8 +329,12 @@ static void net_rx_ip(struct mbuf *m)
     if (htons(iphdr->ip_off) != 0)
         goto fail;
     // is the packet addressed to us?
+    if(htonl(iphdr->ip_dst) == MAKE_IP_ADDR(255,255,255,255))
+        goto skip;
+    
     if (htonl(iphdr->ip_dst) != ip_app_get_local_ip())
         goto fail;
+skip:
     // can only support UDP
     if (iphdr->ip_p != IPPROTO_UDP)
         goto fail;

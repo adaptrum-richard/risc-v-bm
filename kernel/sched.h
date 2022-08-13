@@ -55,6 +55,7 @@ void sched_init(void);
 void preempt_schedule_irq(void);
 void traversing_rq(void);
 long schedule_timeout(signed long timeout);
+void wake_up_process(struct task_struct *p);
 extern volatile uint64 jiffies;
 
 #endif

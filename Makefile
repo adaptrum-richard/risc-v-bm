@@ -122,12 +122,19 @@ $(USER_DIR)/_udptest: $(ULIB)
 	$(RISCVGNU)-objdump -S $@ > $@.asm
 	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 
+$(USER_DIR)/_dhcpc: $(ULIB) 
+	$(RISCVGNU)-gcc $(USER_CFLAGS) -I. -I$(USER_DIR) -c -o $(USER_DIR)/dhcpc.o $(USER_DIR)/dhcpc.c
+	$(RISCVGNU)-ld $(LDFLAGS)  -T $(USER_DIR)/linker.ld -o $@  $(USER_DIR)/dhcpc.o $^
+	$(RISCVGNU)-objdump -S $@ > $@.asm
+	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
+
+
 mkfs/mkfs: mkfs/mkfs.c
 	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
 USER_PROGS= $(USER_DIR)/_init $(USER_DIR)/initcode.out $(USER_DIR)/_sh $(USER_DIR)/_cat \
 	$(USER_DIR)/_ls $(USER_DIR)/_echo $(USER_DIR)/_mkdir $(USER_DIR)/_rm \
-	$(USER_DIR)/_pipetest $(USER_DIR)/_udptest
+	$(USER_DIR)/_pipetest $(USER_DIR)/_udptest  $(USER_DIR)/_dhcpc
 
 fs.img: mkfs/mkfs README $(USER_PROGS)
 	mkfs/mkfs fs.img README $(USER_PROGS)
@@ -143,9 +150,13 @@ FWDPORT = $(shell expr `id -u` % 5000 + 25999)
 SERVERPORT = $(shell expr `id -u` % 5000 + 25099)
 QEMU_FLAGS  += -nographic
 
+##
+##https://blog.csdn.net/ren_star/article/details/125060518
+##
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
-QEMUOPTS += -netdev user,id=net0,hostfwd=udp::$(FWDPORT)-:2000 -object filter-dump,id=net0,netdev=net0,file=packets.pcap
+QEMUOPTS += -netdev user,id=net0,hostfwd=udp::$(FWDPORT)-:2000,net=192.168.100.0/24,dhcpstart=192.168.100.100 \
+	-object filter-dump,id=net0,netdev=net0,file=packets.pcap
 QEMUOPTS += -device e1000,netdev=net0,bus=pcie.0
 run:
 	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel $(KERNEL_BUILD_DIR)/kernel.elf  $(QEMU_FLAGS) $(QEMUOPTS)

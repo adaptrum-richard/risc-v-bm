@@ -1,3 +1,4 @@
+#include "syscall.h"
 .globl kernelvec
 .align 4
 kernelvec:
@@ -166,7 +167,7 @@ handle_syscall:
         addi s2, s2, 0x4 //s2在前面已经被保存为epc了
         sd s2, 0(sp) //保存到pt_regs->epc
 
-        li t0, 25        //TODO:__NR_syscalls 
+        li t0, __NR_syscalls
         /*找到对应的函数地址*/
         la s0, sys_call_table
         slli t0, a7, 3

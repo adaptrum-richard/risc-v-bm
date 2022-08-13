@@ -38,6 +38,35 @@ void arp_timer(void)
     release(&arp_lock);
 }
 
+static struct arp_entry *find_entry(ipaddr_t ipaddr)
+{
+    int i;
+    for(i = 0; i < ARP_ENTRIES; ++i){
+        if(ipaddr_cmp(p_arp_table[i].ipaddr, ipaddr)){
+            return &p_arp_table[i];
+        }
+    }
+    return NULL;
+}
+
+int arp_lookup(ipaddr_t ipaddr, struct eth_addr *mac)
+{
+    struct arp_entry *entry;
+    if(!mac){
+        pr_err("%s arg error\n", __func__);
+        return -1;
+    }
+    acquire(&arp_lock);
+    entry = find_entry(ipaddr);
+    if(entry){
+        ethaddr_copy(&mac->addr, &entry->ethaddr.addr);
+        release(&arp_lock);
+        return 0;
+    }
+    release(&arp_lock);
+    return -1;
+}
+
 static void arp_update(ipaddr_t ipaddr, struct eth_addr *ethaddr)
 {
     int i;
@@ -137,13 +166,14 @@ int arp_packet_handle(struct arp *arphdr)
     sip = ntohl(arphdr->sip); //源ip地址
 
     //neighbor update
-    if(ntohs(arphdr->op) == ARP_OP_REQUEST){
+    if(ntohs(arphdr->op) == ARP_OP_REPLY){
         neighbor_add_or_update(sip, (struct neighbor_addr*)&arphdr->sha);
     }
 
-    if (ntohs(arphdr->op) != ARP_OP_REQUEST || (!ipaddr_cmp(tip, ip_app_get_local_ip())))
+    if (ntohs(arphdr->op) != ARP_OP_REPLY || (!ipaddr_cmp(tip, ip_app_get_local_ip())))
         goto done;
 
+    //arp table update
     arp_update(tip, &arphdr->sha);
     return 0;
 done:

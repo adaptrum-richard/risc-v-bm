@@ -11,5 +11,6 @@ void* memcpy(void *dst, const void *src, unsigned int n);
 char *strndup(const char *src, unsigned int n);
 char *strdup(const char *src);
 char *strsep(char **stringp, const char *delim);
+char *strchr(const char *src, int c);
 
 #endif

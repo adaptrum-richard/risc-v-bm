@@ -143,3 +143,18 @@ char *strsep(char **stringp, const char *delim)
     }
     return NULL;
 }
+
+char *strchr(const char *src, int c)
+{
+    int len;
+    char *ptr = (char *)src;
+    if(!ptr)
+        return NULL;
+    len = strlen(ptr) + 1;
+    for(int i = 0; i < len; i++)
+        if(*ptr == c)
+            return ptr;
+        else
+            ptr++;
+    return NULL;
+}

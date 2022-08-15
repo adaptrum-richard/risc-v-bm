@@ -6,11 +6,13 @@
 #include "spinlock.h"
 #include "ip_app.h"
 #include "ip_neighbor.h"
+#include "timer.h"
 
 static struct arp_entry *p_arp_table;
 static struct spinlock arp_lock;
-static uint8 arptime;
-
+static uint64 arptime;
+static struct timer_list arp_timer_entry;
+void arp_timer_callbak(unsigned long data);
 void ip_arp_init(void)
 {
     p_arp_table = kmalloc(sizeof(struct arp_entry)*ARP_ENTRIES);
@@ -21,6 +23,17 @@ void ip_arp_init(void)
     memset(p_arp_table, 0, sizeof(struct arp_entry)*ARP_ENTRIES);
     initlock(&arp_lock, "arp");
     arptime = 0;
+    init_timer(&arp_timer_entry);
+    arp_timer_entry.function = arp_timer_callbak;
+    arp_timer_entry.expires = jiffies + 1*HZ;
+    add_timer(&arp_timer_entry);
+}
+
+void arp_timer(void);
+void arp_timer_callbak(unsigned long data)
+{
+    arp_timer();
+    mod_timer(&arp_timer_entry, jiffies + HZ);
 }
 
 void arp_timer(void)
@@ -93,7 +106,7 @@ static void arp_update(ipaddr_t ipaddr, struct eth_addr *ethaddr)
     /*如果entry满了，则找到一个最老的entry，然后丢弃，填入新的entry*/
     if(i == ARP_ENTRIES){
         int c = 0;
-        int tmpage = 0;
+        unsigned long tmpage = 0;
         for(i = 0; i < ARP_ENTRIES; i++){
             tabptr = &p_arp_table[i];
             if( (arptime - tabptr->time) > tmpage){

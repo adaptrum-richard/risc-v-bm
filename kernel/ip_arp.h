@@ -5,7 +5,7 @@
 struct arp_entry {
     ipaddr_t ipaddr;
     struct eth_addr ethaddr;
-    uint8 time;
+    uint64 time;
 };
 
 // an ARP packet (comes after an Ethernet header).

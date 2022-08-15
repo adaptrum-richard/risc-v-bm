@@ -4,6 +4,7 @@
 #include "kernel/types.h"
 #include "user.h"
 #include "kernel/fcntl.h"
+#include "string.h"
 
 int fputs(const char *s, int stream)
 {
@@ -61,4 +62,32 @@ int stat(const char *n, struct stat *st)
     r = fstat(fd, st);
     close(fd);
     return r;
+}
+
+unsigned int inet_addr(const char *str)
+{
+    unsigned int ipaddr = 0;
+    int i = 1, j = 1;
+    const char *pstr[4] = { NULL };
+    pstr[0] = strchr(str, '.');
+    pstr[1] = strchr(pstr[0] + 1, '.');
+    pstr[2] = strchr(pstr[1] + 1, '.');
+    pstr[3] = strchr(str, '\0');
+ 
+    for (j = 0; j < 4; j++){
+        i = 1;
+        if (j == 0){
+            while (str != pstr[0]){
+                ipaddr += (*--pstr[j] - '0') * i;
+                i *= 10;
+            }
+        }
+        else{
+            while (*--pstr[j] != '.'){
+                ipaddr += (*pstr[j] - '0') * i << 8 * j;
+                i *= 10;
+            }
+        }
+    }
+    return ipaddr;
 }

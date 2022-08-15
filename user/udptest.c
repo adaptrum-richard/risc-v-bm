@@ -2,6 +2,8 @@
 #include "printf.h"
 #include "string.h"
 #include "kernel/types.h"
+#include "ulib.h"
+#include "kernel/net.h"
 /*
 测试方法：在一个终端中运行
 $ python3 server.py 26099
@@ -9,12 +11,11 @@ $ python3 server.py 26099
 */
 
 
-static void send_udp(unsigned short sport, unsigned short dport)
+static void send_udp(uint32 dst, unsigned short sport, unsigned short dport)
 {
     int fd;
     char *obuf = "this a risc-v-bm message!";
-    uint32 dst;
-    dst = (10 << 24) | (0 << 16) | (2 << 8) | (2 << 0);
+
     if ((fd = connect(dst, sport, dport)) < 0)
     {
         fprintf(2, "ping: connect() failed\n");
@@ -38,11 +39,24 @@ static void send_udp(unsigned short sport, unsigned short dport)
     printf("rcv: %s\n", ibuf);
     close(fd);
 }
-
-void main(void)
+/*
+用法：
+udptest 192.168.100.2
+*/
+void main(int argc, char *argv[])
 {
     unsigned short dport = NET_TESTS_PORT;
-    printf("testing udp sport:2000, dport:%d\n", dport);
-    send_udp(2000, dport);
+    char str_ipaddr[128] = {0};
+    unsigned int dst = 0;
+    uint16 sport = 2000;
+    if(argc == 2){
+        strcpy(str_ipaddr, argv[1]);
+        dst = inet_addr(str_ipaddr);
+        dst = ntohl(dst);
+    }
+    if(dst == 0)
+        dst = (10 << 24) | (0 << 16) | (2 << 8) | (2 << 0);
+    printf("udp dst:%s, sport: %d, dport:%d\n",str_ipaddr, sport, dport);
+    send_udp(dst, 2000, dport);
     exit(0);
 }

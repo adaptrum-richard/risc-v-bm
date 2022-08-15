@@ -12,5 +12,6 @@
 int fputs(const char *s, int stream);
 int getline(char **lineptr, size_t *n, int stream);
 int stat(const char *n, struct stat *st);
+unsigned int inet_addr(const char *str);
 
 #endif

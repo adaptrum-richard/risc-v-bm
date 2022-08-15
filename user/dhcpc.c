@@ -198,11 +198,35 @@ static void handle_dhcp(void)
         memset((void*)&tmp, 0, sizeof(tmp));
     } while(dhcpc_s.state != STATE_CONFIG_RECEIVED);
     dhcpc_s.ipaddr = ntohl(dhcpc_s.ipaddr);
-    printf("got ip = %d.%d.%d.%d\n", 
+    printf("net ip %d.%d.%d.%d", 
             (dhcpc_s.ipaddr >> 24) & 0xff,
             (dhcpc_s.ipaddr >> 16) & 0xff,
             (dhcpc_s.ipaddr >> 8) & 0xff,
             dhcpc_s.ipaddr & 0xff);
+    dhcpc_s.netmask = ntohl(dhcpc_s.netmask);
+    printf(" netmask %d.%d.%d.%d", 
+            (dhcpc_s.netmask >> 24) & 0xff,
+            (dhcpc_s.netmask >> 16) & 0xff,
+            (dhcpc_s.netmask >> 8) & 0xff,
+            dhcpc_s.netmask & 0xff);
+
+    dhcpc_s.default_router = ntohl(dhcpc_s.default_router);
+    printf(" gw %d.%d.%d.%d", 
+            (dhcpc_s.default_router >> 24) & 0xff,
+            (dhcpc_s.default_router >> 16) & 0xff,
+            (dhcpc_s.default_router >> 8) & 0xff,
+            dhcpc_s.default_router & 0xff);
+
+    dhcpc_s.dnsaddr = ntohl(dhcpc_s.dnsaddr);
+    printf(" dns %d.%d.%d.%d\n", 
+            (dhcpc_s.dnsaddr >> 24) & 0xff,
+            (dhcpc_s.dnsaddr >> 16) & 0xff,
+            (dhcpc_s.dnsaddr >> 8) & 0xff,
+            dhcpc_s.dnsaddr & 0xff);
+
+    ipctl(IP_APP_SET_LOCAL_IP, (void*)&dhcpc_s.ipaddr);
+    ipctl(IP_APP_SET_LOCAL_NETMASK, (void*)&dhcpc_s.netmask);
+    ipctl(IP_APP_SET_LOCAL_GATEWAY, (void*)&dhcpc_s.default_router);
 }
 
 void main(void)

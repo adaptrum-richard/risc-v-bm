@@ -164,6 +164,15 @@ static int cmd_empty(int cmds, char *cmd)
     return 0;
 }
 
+static void run_cmd(char *cmd)
+{
+    pipeline_t *cmd1 = parse_pipeline(cmd);
+    printf("run cmd %s:\n", cmd);
+    run_with_redir(cmd1->cmds[0], 0, NULL);
+    wait(NULL);
+    free_pipeline(cmd1);
+}
+
 int main(void)
 {
     int fd;
@@ -181,6 +190,8 @@ int main(void)
             break;
         }
     }
+
+    run_cmd("dhcpc");
 
     while(prompt_and_get_input("$ ", &line, &len) > 0){
         pipeline_t *pipeline = parse_pipeline(line);

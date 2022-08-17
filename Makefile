@@ -136,8 +136,8 @@ USER_PROGS= $(USER_DIR)/_init $(USER_DIR)/initcode.out $(USER_DIR)/_sh $(USER_DI
 	$(USER_DIR)/_ls $(USER_DIR)/_echo $(USER_DIR)/_mkdir $(USER_DIR)/_rm \
 	$(USER_DIR)/_pipetest $(USER_DIR)/_udptest  $(USER_DIR)/_dhcpc
 
-fs.img: mkfs/mkfs README $(USER_PROGS)
-	mkfs/mkfs fs.img README $(USER_PROGS)
+fs.img: mkfs/mkfs readme.md $(USER_PROGS)
+	mkfs/mkfs fs.img readme.md $(USER_PROGS)
 
 clean :
 	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)  \

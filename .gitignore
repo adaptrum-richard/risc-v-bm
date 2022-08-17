@@ -13,3 +13,4 @@ user/*.o
 user/initcode
 user/initcode.out
 packets.pcap
+*DS_Store

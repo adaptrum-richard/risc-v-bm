@@ -38,9 +38,9 @@
     * CFS调度器
 ## 环境搭建
 * riscv工具链安装
-riscv
-[riscv gcc工具链安装](https://blog.csdn.net/dai_xiangjun/article/details/123040325)
-[gdb-multiarch工具安装](https://blog.csdn.net/dai_xiangjun/article/details/123073604)
+1. [riscv gcc工具链安装](https://blog.csdn.net/dai_xiangjun/article/details/123040325)
+2. [gdb-multiarch工具安装](https://blog.csdn.net/dai_xiangjun/article/details/123073604)
+
 目前只在ubuntu20.04和22.04上测试。
  
 ## 运行与调试
@@ -99,4 +99,4 @@ qemu-system-riscv64 -machine virt -m 128M  -bios none -nographic -kernel kernel_
 ```
 $ make gdb
 ```
-![](https://github.com/adaptrum-richard/raw/dev/pic/gdb.jpg) 
+![](https://github.com/adaptrum-richard/risc-v-bm/raw/dev/pic/gdb.jpg) 

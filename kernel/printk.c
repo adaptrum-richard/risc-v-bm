@@ -23,17 +23,6 @@ static struct
     int locking;
 } pr;
 
-void panic(char *s)
-{
-    pr.locking = 0;
-    printk("panic: ");
-    printk(s);
-    printk("\n");
-    panicked = 1; // freeze uart output from other CPUs
-    for (;;)
-        ;
-}
-
 static void simple_outputchar(char **str, char c)
 {
     if (str)
@@ -159,7 +148,7 @@ static int printk_write_num(char **out, long long i, int base, int sign,
     return pc + prints(out, s, width, flags);
 }
 
-static int simple_vsprintf(char **out, const char *format, va_list ap)
+int simple_vsprintf(char **out, const char *format, va_list ap)
 {
     int width, flags;
     int pc = 0;

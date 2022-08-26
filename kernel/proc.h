@@ -87,7 +87,7 @@ static inline unsigned int task_cpu(const struct task_struct *p)
         .head = LIST_HEAD_INIT(task.wait_childexit.head) \
     }, \
 }
-
+register unsigned long current_stack_pointer asm ("sp");
 extern struct task_struct *current;
 extern struct task_struct *task[];
 extern struct task_struct init_task;

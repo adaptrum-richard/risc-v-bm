@@ -10,7 +10,7 @@ struct pt_regs {
 	unsigned long t0;   //40
 	unsigned long t1;   //48
 	unsigned long t2;   //56
-	unsigned long s0;	//64
+	unsigned long s0;	//64  fp
 	unsigned long s1;	//72
 	unsigned long a0;	//80
 	unsigned long a1;	//88

@@ -18,9 +18,11 @@
 #include "vm.h"
 #include "debug.h"
 #include "e1000.h"
+#include "stacktrace.h"
+#include "types.h"
 
 void kernelvec();
-
+extern void print_symbol(unsigned long addr);
 // set up to take exceptions and traps while in the kernel.
 void trapinithart(void)
 {
@@ -205,4 +207,87 @@ void handler_irq(struct pt_regs *regs)
     }
 
     irq_exit();
+}
+
+void show_regs(struct pt_regs *regs)
+{
+	printk("task: %p\n", current);
+	printk("PC is at 0x%016llx\n", regs->epc);
+	printk("LR is at 0x%016llx\n", regs->ra);
+    printk("epc:  %016llx ra: %016llx sp:  %016llx\n", regs->epc, regs->ra, regs->sp);
+    printk(" gp:  %016llx tp: %016llx t0:  %016llx\n", regs->gp, regs->tp, regs->t0);
+    printk(" t1:  %016llx t2: %016llx s0:  %016llx\n", regs->t1, regs->t2, regs->s0);
+    printk(" s1:  %016llx a0: %016llx a1:  %016llx\n", regs->s1, regs->a0, regs->a1);
+    printk(" a2:  %016llx a3: %016llx a4:  %016llx\n", regs->a2, regs->a3, regs->a4);
+    printk(" a5:  %016llx a6: %016llx a7:  %016llx\n", regs->a5, regs->a6, regs->a7);
+    printk(" s2:  %016llx s3: %016llx s4:  %016llx\n", regs->s2, regs->s3, regs->s4);
+    printk(" s5:  %016llx s6: %016llx s7:  %016llx\n", regs->s5, regs->s6, regs->s7);
+    printk(" s8:  %016llx s9: %016llx s10: %016llx\n", regs->s8, regs->s9, regs->s10);
+    printk(" s11: %016llx t3: %016llx t4:  %016llx\n", regs->s11, regs->t3, regs->t4);
+    printk(" t5:  %016llx t6: %016llx\n", regs->t5, regs->t6);
+    printk("status: %016llx badaddr: %016llx cause:  %016llx\n", regs->status, regs->badaddr, regs->cause);
+}
+
+static int unwind_frame(struct stackframe *frame)
+{
+	unsigned long high, low;
+	unsigned long fp = frame->fp;
+    
+    low = frame->sp;
+    high = ALIGN(low, THREAD_SIZE);
+
+    /* fp在 栈顶部和栈底之间*/
+	if (fp < low || fp > high)
+		return -EINVAL;
+    /* fp必须16字节对齐*/
+	if (fp & 0xf)
+		return -EINVAL;
+    
+    /*子函数栈的FP存储了父函数PF的值*/
+	frame->fp = *(unsigned long *)(fp);
+	frame->sp = fp;
+    /*
+	 * 根据子函数栈帧里保存的LR可以间接
+	 * 获取父函数调用子函数时的PC值
+	 *
+	 * 在调用子函数时，LR指向子函数
+	 * 返回的下一条指令
+	 *
+	 * PC_f=*LR_c-4=*(FP_c+8)-4
+	 *
+	 * PC_f: 指的是父函数调用子函数时
+	 * 的PC值
+	 */
+    //参考：https://blog.csdn.net/dai_xiangjun/article/details/126541174
+	frame->pc = *(unsigned long *)(fp + 8) - 4;
+    return 0;
+}
+
+void dump_backtrace(struct pt_regs *regs, struct task_struct *p)
+{
+	struct stackframe frame;
+
+	if (regs) {
+		show_regs(regs);
+
+		frame.fp = regs->s0;
+		frame.sp = regs->sp;
+		frame.pc = regs->epc;
+	} else if (p == current) {
+		frame.fp = (unsigned long)__builtin_frame_address(0);
+		frame.sp = current_stack_pointer;
+		frame.pc = (unsigned long)dump_backtrace;
+	}
+
+	printk("Call trace:\n");
+	while (1) {
+		unsigned long where = frame.pc;
+		int ret;
+
+		ret = unwind_frame(&frame);
+		if (ret < 0)
+			break;
+
+		print_symbol(where);
+	}
 }

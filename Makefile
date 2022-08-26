@@ -11,7 +11,7 @@ USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean mkdir_kernel_build kernel.img fs.img
+all : clean mkdir_kernel_build kernel.img fs.img kallsyms
 
 mkdir_kernel_build:
 	mkdir -p $(KERNEL_BUILD_DIR)
@@ -32,10 +32,7 @@ DEP_FILES = $(OBJ_FILES:%.o=%.d)
 
 
 kernel.img: $(KERNEL_DIR)/linker.ld $(OBJ_FILES)
-	$(RISCVGNU)-ld -T $(KERNEL_DIR)/linker.ld -Map kernel.map -o $(KERNEL_BUILD_DIR)/kernel.elf  $(OBJ_FILES)
-	$(RISCVGNU)-objcopy $(KERNEL_BUILD_DIR)/kernel.elf -O binary kernel.img
-	$(RISCVGNU)-objdump -S $(KERNEL_BUILD_DIR)/kernel.elf > $(KERNEL_BUILD_DIR)/kernel.asm
-	$(RISCVGNU)-objdump -t $(KERNEL_BUILD_DIR)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BUILD_DIR)/kernel.sym
+	$(RISCVGNU)-ld -T $(KERNEL_DIR)/linker.ld -Map kernel.map -o $(KERNEL_BUILD_DIR)/kernel_tmp.elf  $(OBJ_FILES)
 
 $(USER_DIR)/initcode.out: $(USER_DIR)/initcode.S 
 	$(RISCVGNU)-gcc $(CFLAGS) -march=rv64g -nostdinc -I. -Ikernel -c $(USER_DIR)/initcode.S -o $(USER_DIR)/initcode.o
@@ -138,6 +135,23 @@ USER_PROGS= $(USER_DIR)/_init $(USER_DIR)/initcode.out $(USER_DIR)/_sh $(USER_DI
 
 fs.img: mkfs/mkfs readme.md $(USER_PROGS)
 	mkfs/mkfs fs.img readme.md $(USER_PROGS)
+
+scripts/kallsyms: scripts/kallsyms.c
+	gcc -Werror -Wall -I. -o scripts/kallsyms scripts/kallsyms.c
+
+kallsyms: scripts/kallsyms
+	$(RISCVGNU)-nm -n kernel_build/kernel_tmp.elf | scripts/kallsyms --all-symbols > $(KERNEL_BUILD_DIR)/tmp_kallsyms1.S
+	$(RISCVGNU)-gcc -c $(ASMOPS) $(KERNEL_BUILD_DIR)/tmp_kallsyms1.S -o $(KERNEL_BUILD_DIR)/tmp_kallsyms1.o
+	$(RISCVGNU)-ld -T $(KERNEL_DIR)/linker.ld -Map kernel.map -o $(KERNEL_BUILD_DIR)/kernel_tmp1.elf \
+		 $(OBJ_FILES) $(KERNEL_BUILD_DIR)/tmp_kallsyms1.o
+	$(RISCVGNU)-nm -n $(KERNEL_BUILD_DIR)/kernel_tmp1.elf | scripts/kallsyms --all-symbols > $(KERNEL_BUILD_DIR)/tmp_kallsyms2.S
+	$(RISCVGNU)-gcc -c $(ASMOPS) $(KERNEL_BUILD_DIR)/tmp_kallsyms2.S -o $(KERNEL_BUILD_DIR)/tmp_kallsyms2.o
+	$(RISCVGNU)-ld -T $(KERNEL_DIR)/linker.ld -Map kernel.map -o $(KERNEL_BUILD_DIR)/kernel.elf \
+		 $(OBJ_FILES) $(KERNEL_BUILD_DIR)/tmp_kallsyms2.o
+	$(RISCVGNU)-objcopy $(KERNEL_BUILD_DIR)/kernel.elf -O binary kernel.img
+	$(RISCVGNU)-objdump -S $(KERNEL_BUILD_DIR)/kernel.elf > $(KERNEL_BUILD_DIR)/kernel.asm
+	$(RISCVGNU)-objdump -t $(KERNEL_BUILD_DIR)/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $(KERNEL_BUILD_DIR)/kernel.sym
+
 
 clean :
 	rm -rf $(KERNEL_BUILD_DIR) *.img kernel.map null.d $(USER_BUILD_DIR)  \

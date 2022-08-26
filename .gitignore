@@ -14,3 +14,4 @@ user/initcode
 user/initcode.out
 packets.pcap
 *DS_Store
+scripts/kallsyms

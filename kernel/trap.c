@@ -236,15 +236,15 @@ static int unwind_frame(struct stackframe *frame)
     low = frame->sp;
     high = ALIGN(low, THREAD_SIZE);
 
-    /* fp在 栈顶部和栈底之间*/
+    /* fp在栈顶部和栈底之间*/
 	if (fp < low || fp > high)
 		return -EINVAL;
     /* fp必须16字节对齐*/
 	if (fp & 0xf)
 		return -EINVAL;
     
-    /*子函数栈的FP存储了父函数PF的值*/
-	frame->fp = *(unsigned long *)(fp);
+    /*子函数栈的FP存储了父函数FP的值*/
+	frame->fp = *(unsigned long *)(fp - 16);
 	frame->sp = fp;
     /*
 	 * 根据子函数栈帧里保存的LR可以间接
@@ -253,13 +253,13 @@ static int unwind_frame(struct stackframe *frame)
 	 * 在调用子函数时，LR指向子函数
 	 * 返回的下一条指令
 	 *
-	 * PC_f=*LR_c-4=*(FP_c+8)-4
+	 * PC_f=*LR_c-4=*(FP_c-8)-4
 	 *
 	 * PC_f: 指的是父函数调用子函数时
 	 * 的PC值
 	 */
     //参考：https://blog.csdn.net/dai_xiangjun/article/details/126541174
-	frame->pc = *(unsigned long *)(fp + 8) - 4;
+	frame->pc = *(unsigned long *)(fp-8) - 4;
     return 0;
 }
 

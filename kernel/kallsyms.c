@@ -45,7 +45,7 @@
 extern unsigned long kallsyms_addresses[] __attribute__((weak));
 
 /* 有多少个symbol的表项 */
-extern unsigned int kallsyms_num_syms __attribute__((weak));
+extern unsigned long kallsyms_num_syms __attribute__((weak));
 
 /* 用来存储地址对应的函数名 */
 extern uint8 kallsyms_names[] __attribute__((weak));
@@ -54,7 +54,7 @@ extern uint8 kallsyms_names[] __attribute__((weak));
 extern uint8 kallsyms_token_table[] __attribute__((weak));
 extern uint16 kallsyms_token_index[] __attribute__((weak));
 
-extern unsigned int kallsyms_markers[] __attribute__((weak));
+extern unsigned long kallsyms_markers[] __attribute__((weak));
 
 extern char _text[], _etext[];
 

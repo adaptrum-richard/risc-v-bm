@@ -32,6 +32,8 @@
     * udp
     * arp
     * ip
+* debug
+    * 支持打印backtrace
 * TODO
     * ICMP,DNS,TCP,httpserver
     * 多核调度

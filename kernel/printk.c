@@ -12,6 +12,7 @@
 #include "proc.h"
 #include "printk.h"
 #include "console.h"
+#include "trap.h"
 
 volatile int panicked = 0;
 #define PRINT_BUF_LEN 64
@@ -527,4 +528,22 @@ void printkinit(void)
 {
     initlock(&pr.lock, "pr");
     pr.locking = 1;
+}
+
+void panic(const char *fmt, ...)
+{
+    va_list va;
+    char buf[1024] = {0};
+    char *ptr = buf;
+    va_start(va, fmt);
+    simple_vsprintf(&ptr, fmt, va);
+    va_end(va);
+
+    printk("Kernel panic: %s\n", buf);
+    if (current->pid == 0)
+        printk("In idle task - not syncing\n");
+
+    dump_backtrace(NULL, current);
+    while (1)
+        ;
 }

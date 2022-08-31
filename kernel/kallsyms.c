@@ -14,6 +14,8 @@
  *
  * 4)  加上tmp_kallsyms1.o，重新link一个新的kernel_tmp1.elf
  *     这个新的kernel_tmp1.elf包含了kallsyms本身的符号表
+ *     但是在kallsyms_addresses/kallsyms_num_syms/kallsyms_names等 这些数组里面没有tmp_kallsyms1
+ *     相关的信息。所以下面还要在做一次上面的操作。
  * 5） 再导出一次汇编文件：
  *     riscv64-linux-gnu-nm -n kernel_tmp1.elf | scripts/kallsyms > tmp_kallsyms2.S
  *

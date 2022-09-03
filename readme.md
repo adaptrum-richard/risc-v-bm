@@ -1,50 +1,34 @@
 ## 支持功能
 * 中断处理
-    * timer
-    * 外部中断
+    * timer，外部中断
 * 内存映射
 * 虚拟内存管理 
     * brk，sbrk
 * 进程调度
-    * fork，exec，wait，exit
-    * 抢占调度
-* 伙伴系统
-    * buddy system
-* slub
+    * fork，exec，wait，exit，抢占调度
+* 内存管理
+    * 伙伴系统，简易slub
 * 系统调用
 * 简易文件系统
 * 内核功能
-    * 等待队列
-    * 定时器
-    * spinlock
-    * atomic
+    * 等待队列，定时器，spinlock，atomic
 * 驱动
-    * 串口驱动
-    * e1000驱动
+    * 串口驱动，e1000驱动
 * shell
-    * ls
-    * echo
-    * cat
-    * mkdir
-    * rm
+    * ls，echo，cat，mkdir，rm
 * 网络
-    * dhcpc
-    * udp
-    * arp
-    * ip
+    * dhcpc，udp，arp，ip
 * debug
     * 支持打印backtrace
 * TODO
-    * ICMP,DNS,TCP,httpserver
-    * 多核调度
-    * CFS调度器
+    * ICMP，DNS，TCP，httpserver，多核调度，CFS调度器
 ## 环境搭建
 * riscv工具链安装
 1. [riscv gcc工具链安装](https://blog.csdn.net/dai_xiangjun/article/details/123040325)
 2. [gdb-multiarch工具安装](https://blog.csdn.net/dai_xiangjun/article/details/123073604)
 
 目前只在ubuntu20.04和22.04上测试。
- 
+
 ## 运行与调试
 * 运行
 1. 在一个终端中先编译,直接make

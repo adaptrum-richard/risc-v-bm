@@ -15,3 +15,4 @@ user/initcode.out
 packets.pcap
 *DS_Store
 scripts/kallsyms
+._readme.md

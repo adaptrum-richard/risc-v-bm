@@ -42,8 +42,9 @@ void start()
     timerinit();
 
     // keep each CPU's hartid in its tp register, for cpuid().
-    //int id = r_mhartid();
-    //w_tp(id);
+    /*tp寄存器低4位用于保存cpuid，高60位用于保存进程task_struct地址*/
+    int id = r_mhartid();
+    w_tp(id);
 
     // switch to supervisor mode and jump to main().
     asm volatile("mret");

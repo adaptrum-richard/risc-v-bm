@@ -182,6 +182,13 @@ static inline void w_tp(uint64 x)
                  : "r"(x));
 }
 
+static inline void w_current(uint64 p)
+{
+    uint64 x = r_tp() & 0xf;
+    x |= p;
+    w_tp(x);
+}
+
 /*
 mepc:机器模式异常程序计数器( Machine Exception Program Counter)
 当trap进入 M 模式时，mepc 被写入被中断或遇到异常的指令的虚拟地址。

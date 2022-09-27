@@ -126,7 +126,7 @@ void bge_test()
     );
     printk("========================ret = 0x%lx\n", ret);
 }
-
+int init_done_flag = 0;
 void main()
 {
     if(smp_processor_id() == 0)
@@ -149,12 +149,19 @@ void main()
         pci_init();
         run_proc();
         intr_on();
+        init_done_flag = 1;
+        __smp_wmb();
         while(1){
             //printk("current %s run pid:%d\n", current->name, current->pid);
             schedule();
             free_zombie_task();
         }
     }else{
+        
+        while(init_done_flag == 0)
+            __smp_rmb();
+        printk("cpud id = %d\n", smp_processor_id());
+        
         while(1);
     }
 }

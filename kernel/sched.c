@@ -12,11 +12,16 @@
 
 extern struct sched_class simple_sched_class;
 volatile uint64 jiffies = 0;
-struct run_queue g_rq;
+struct run_queue g_rq[NCPU];
+
+static inline struct run_queue *get_cpu_rq()
+{
+    return &g_rq[smp_processor_id()];
+}
 
 void traversing_rq(void)
 {
-    struct run_queue *rq = &g_rq;
+    struct run_queue *rq = get_cpu_rq();
     unsigned long flags;
     struct list_head *tmp;
     struct task_struct *p;
@@ -66,7 +71,7 @@ static void schedule_debug(struct task_struct *p)
 
 void sched_init(void)
 {
-    struct run_queue *rq = &g_rq;
+    struct run_queue *rq = get_cpu_rq();
     INIT_LIST_HEAD(&rq->rq_head);
     rq->nr_running = 0;
     rq->nr_switches = 0;
@@ -105,7 +110,7 @@ void set_task_sched_class(struct task_struct *p)
 
 void tick_handle_periodic(void)
 {
-    struct run_queue *rq = &g_rq;
+    struct run_queue *rq = get_cpu_rq();
     task_tick(rq, current);
 }
 
@@ -117,7 +122,7 @@ static void clear_task_resched(struct task_struct *p)
 static void __schedule(void)
 {
     struct task_struct *prev, *next, *last;
-    struct run_queue *rq = &g_rq;
+    struct run_queue *rq = get_cpu_rq();
     prev = current;
 
     /* 检查是否在中断上下文中发生了调度 */
@@ -163,7 +168,7 @@ void preempt_schedule_irq(void)
 void wake_up_process(struct task_struct *p)
 {
     unsigned long flags;
-    struct run_queue *rq = &g_rq;
+    struct run_queue *rq = get_cpu_rq();
     spin_lock_irqsave(&rq->lock, flags);
     p->state = TASK_RUNNING;
     if(!task_on_runqueue(p))
@@ -177,18 +182,14 @@ void timer_tick(void)
     if(smp_processor_id() == 0){
         jiffies++;
     }
-
 }
 
 struct run_queue *cpu_rq(int cpu)
 {
-    struct run_queue *rq;
-    if(cpu == 0){
-        rq = &g_rq;
-    }else {
-        panic("Unimplemented function\n");
+    if(cpu >= NCPU){
+        panic("%s %d\n", __func__, __LINE__);
     }
-    return rq;
+    return &g_rq[cpu];
 }
 
 static inline void __enqueue_task(struct run_queue *rq, struct task_struct *p)

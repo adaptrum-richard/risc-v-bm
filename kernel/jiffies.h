@@ -23,5 +23,5 @@
 
 /*timer_after_eq(a,b)返回true, a<=b*/
 #define timer_before_eq(a, b) timer_after_eq(b, a)
-
+extern volatile uint64 jiffies;
 #endif

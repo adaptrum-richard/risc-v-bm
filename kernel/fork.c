@@ -207,7 +207,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     p->thread.sp = (uint64)childregs;
     p->kernel_sp = p->thread.sp;
     p->parent = current;
-    LINK_TASK(p);
+    LINK_TASK(p, get_init_task());
     mb();
     spin_lock_irqsave(&(cpu_rq(smp_processor_id())->lock),flags);
     p->sched_class->enqueue_task(cpu_rq(task_cpu(p)), p);

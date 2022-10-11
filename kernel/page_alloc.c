@@ -29,6 +29,7 @@ static void init_zone_free_area_list(struct pg_data *pgdat)
     struct zone *zone;
     for (int i = 0; i < MAX_NR_ZONES; i++) {
         zone = &pgdat->node_zones[i];
+        initlock(&zone->lock, (char *)zone->name);
         zone_init_free_lists(zone);
         zone->name = zone_names[i];
     }
@@ -250,11 +251,14 @@ struct page *alloc_pages(unsigned int order)
     struct page *page;
     for (int i = 0; i < MAX_NR_ZONES; i++) {
         zone = &pgdat->node_zones[i];
+        //acquire_irq(&zone->lock);
         page = __rmqueue(zone, order);
         if (page) {
             prev_new_page(page, order);
+            //release_irq(&zone->lock);
             return page;
         }
+        //release_irq(&zone->lock);
     }
     return NULL;
 }

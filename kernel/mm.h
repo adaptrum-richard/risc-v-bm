@@ -5,6 +5,7 @@
 #include "atomic.h"
 #include "bitops.h"
 #include "proc.h"
+#include "spinlock.h"
 
 /*什么情况下，设置了VM_MAY%,而没有设置对应的VM_%属性呢？
 在内存为只读的情况下，希望设置写的属性。
@@ -95,6 +96,7 @@ struct zone {
     unsigned long zone_end_pfn;
     unsigned long spanned_pages;
     const char *name;
+    struct spinlock lock;
     struct free_area free_area[MAX_ORDER];
 };
 

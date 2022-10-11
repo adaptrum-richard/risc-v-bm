@@ -40,7 +40,7 @@ void devintr()
     else if (irq == E1000_IRQ)
         e1000_intr();
     else
-        printk("unexpected interrupt irq = %d\n", irq);
+        printk("unexpected interrupt irq = %d, hart%d\n", irq, smp_processor_id());
 
     if(irq)
         plic_complete(irq);

@@ -9,22 +9,23 @@
 #include "spinlock.h"
 #include "vm.h"
 #include "slab.h"
+#include "list.h"
 
 static unsigned long *pid_table;
-static struct spinlock task_list_lock;
+static struct spinlock pid_lock; 
+static struct spinlock task_list_lock[NCPU];
 
 struct task_struct init_task = INIT_TASK(init_task);
+struct task_struct *init_task_array[NCPU] = {NULL,};
 
-struct task_struct *current = &init_task;
-
-void get_task_list_lock(void)
+struct task_struct *get_init_task()
 {
-    acquire(&task_list_lock);
+    return init_task_array[smp_processor_id()];
 }
 
-void free_task_list_lock(void)
+void set_init_task_to_current()
 {
-    release(&task_list_lock);
+    w_current((uint64)&init_task);
 }
 
 int smp_processor_id()
@@ -33,34 +34,87 @@ int smp_processor_id()
     return id;
 }
 
+void get_task_list_lock(void)
+{
+    acquire(&task_list_lock[smp_processor_id()]);
+}
+
+void free_task_list_lock(void)
+{
+    release(&task_list_lock[smp_processor_id()]);
+}
+extern volatile int init_done_flag;
 int get_free_pid(void)
 {
+    acquire(&pid_lock);
     int pid = find_next_zero_bit(pid_table, MAX_PID+1, 0);
     if(pid > MAX_PID)
         pid = -1;
     else
         set_bit(pid, pid_table);
+    release(&pid_lock);
     return pid;
 }
 
 void free_pid(int pid)
 {
+    acquire(&pid_lock);
     clear_bit(pid, pid_table);
+    release(&pid_lock);
+}
+void init_task_struct(struct task_struct *p)
+{
+    sprintf(p->name, "init_task%d", smp_processor_id());
+    memset(&p->thread, 0, sizeof(p->thread));
+    p->counter = 1;
+    initlock(&p->lock, p->name);
+    p->user_sp = 0x55555;
+    p->kernel_sp = 0x6666;
+    p->pid = smp_processor_id();
+    p->preempt_count = 0;
+    p->state = TASK_RUNNING;
+    p->flags = PF_KTHREAD | TASK_NORMAL;
+    p->priority = 5;
+    p->need_resched = 0;
+    p->on_rq = 0;
+    p->run_list.next = &p->run_list;
+    p->run_list.prev = &p->run_list;
+    p->parent = NULL;
+    p->cwd = NULL;
+    p->next_task = p;
+    p->prev_task = p;
+    initlock(&p->wait_childexit.lock, p->name);
+    p->wait_childexit.head.next = p->wait_childexit.head.prev =
+        &p->wait_childexit.head;
 }
 
-void init_process(void)
-{
-    struct task_struct *p = &init_task;
-    pid_table = (unsigned long*)get_free_page();
-    memset(pid_table, 0x0, PGSIZE);
 
-    /*init_task pid 0 used*/
-    set_bit(0, pid_table);
-    initlock(&task_list_lock, "task list lock");
+void init_process()
+{
+    struct task_struct *p ;
+    if(smp_processor_id() == 0){
+        p = &init_task;
+        for(int i = 0; i < NCPU; i++){
+            initlock(&task_list_lock[i], "task list lock");
+        }
+        initlock(&pid_lock, "pid_lock");
+        pid_table = (unsigned long*)get_free_page();
+        memset(pid_table, 0x0, PGSIZE);
+        /*init_task pid 0 used*/
+        p->pid = get_free_pid();
+        w_current((uint64)p);
+    }else{
+        p = (struct task_struct *)get_free_page();
+        init_done_flag = 10;
+        init_task_struct(p);
+        w_current((uint64)p);
+        p->pid = get_free_pid();
+    }
+
+    init_task_array[smp_processor_id()] = p;
     p->cpu = smp_processor_id();
     set_task_sched_class(p);
     p->sched_class->enqueue_task(cpu_rq(p->cpu), p);
-    w_current((uint64)current);
 }
 
 void free_task(struct task_struct *p)
@@ -118,8 +172,9 @@ out:
 struct task_struct *get_zombie_task(void)
 {
     struct task_struct *p = NULL;
+    struct task_struct *init_p = get_init_task();
     get_task_list_lock();
-    for(p = init_task.next_task->next_task ; p && p != &init_task; 
+    for(p = init_p->next_task->next_task ; p && p != init_p; 
                     p = p->next_task){
         acquire(&p->lock);
         if(p->parent == current){
@@ -147,7 +202,7 @@ struct task_struct *get_child_task(void)
 {
     struct task_struct *p = NULL;
     get_task_list_lock();
-    for_each_task(p)
+    for_each_task(p, get_init_task())
     {
         acquire(&p->lock);
         if(p->parent == current){

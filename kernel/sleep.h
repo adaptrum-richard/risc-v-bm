@@ -4,5 +4,6 @@
 
 void kernel_sleep(uint64 times);
 void wakes_sleep(void);
+void init_sleep_queue(void);
 
 #endif

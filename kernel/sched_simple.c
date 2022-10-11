@@ -33,13 +33,14 @@ static int goodness(struct task_struct *p)
 static void reset_score(void)
 {
     struct task_struct *p;
-    for_each_task(p){
+    for_each_task(p, get_init_task()){
         if(p->counter <= 0){
             p->counter = DEF_COUNTER + p->priority;
         }
     }
-    if(init_task.counter <=  0)
-        init_task.counter = DEF_COUNTER + init_task.priority;
+    if(get_init_task()->counter <=  0)
+        get_init_task()->counter = DEF_COUNTER + 
+            get_init_task()->priority;
 }
 
 static struct task_struct *pick_next_task_simple(struct run_queue *rq,

@@ -21,12 +21,13 @@
 #include "page.h"
 #include "exec.h"
 #include "pci.h"
+volatile int init_done_flag = 0;
 static volatile int fs_init_done = 0;
 void kernel_process(uint64 arg)
 {
     while(1){
         kernel_sleep(1);
-        printk("1 current %s run pid:%d\n", current->name, current->pid);
+        printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
         //delay();
     }
 }
@@ -34,14 +35,19 @@ void kernel_process(uint64 arg)
 void idle()
 {
     //文件系统初始化
-    binit();
-    iinit();
-    fsinit(ROOTINO);//这里需要中断
-    fileinit();
-    fs_init_done = 1;
-    __smp_wmb();
+    if(smp_processor_id() == 0){
+        binit();
+        iinit();
+        fsinit(ROOTINO);//这里需要中断
+        fileinit();
+        fs_init_done = 1;
+        __smp_wmb();
+    }else 
+        while(fs_init_done == 1)
+            __smp_rmb();
     while(1){
-        //printk("current %s run pid:%d\n", current->name, current->pid);
+        printk("current %s run pid:%d, cpu%d, init_done_flag = %d\n", current->name, current->pid,
+            smp_processor_id(), init_done_flag);
         kernel_sleep(1);
         //traversing_rq();
     }
@@ -87,14 +93,17 @@ void copy_to_user_thread(uint64 arg)
 void run_proc()
 {
     int ret ;
-    ret = copy_process(PF_KTHREAD, (uint64)&idle, 0, "idle");
+    char name[8] = {0};
+    sprintf(name, "idle%d", smp_processor_id());
+    //printk("name = %s\n", name);
+    ret = copy_process(PF_KTHREAD, (uint64)&idle, 0, name);
     if(ret < 0)
         panic("copy_process error ,arg = 0\n");
-#if 0
-    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1, "kernel_process1");
+    sprintf(name, "process%d", smp_processor_id());
+    ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1, name);
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
-
+#if 0
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
@@ -104,10 +113,11 @@ void run_proc()
     if(ret < 0)
         panic("copy_process error ,arg = 2\n");
 #endif
-    ret = copy_process(PF_KTHREAD, (uint64)&copy_to_user_thread, 0, "kernel_init");
-    if(ret < 0)
-        panic("copy_process error init\n");
-
+    if(smp_processor_id() == 0){
+        ret = copy_process(PF_KTHREAD, (uint64)&copy_to_user_thread, 0, "kernel_init");
+        if(ret < 0)
+            panic("copy_process error init\n");
+    }
 }
 
 void bge_test()
@@ -126,11 +136,12 @@ void bge_test()
     );
     printk("========================ret = 0x%lx\n", ret);
 }
-int init_done_flag = 0;
+
 void main()
 {
     if(smp_processor_id() == 0)
     {
+        set_init_task_to_current();
         w_sscratch(0);
         consoleinit();
         printkinit();
@@ -141,6 +152,7 @@ void main()
         trapinithart();
         plicinit();
         plicinithart();
+        init_sleep_queue();
         sched_init();
         init_process();
         __sync_synchronize();
@@ -149,19 +161,36 @@ void main()
         pci_init();
         run_proc();
         intr_on();
+        __sync_synchronize();
         init_done_flag = 1;
-        __smp_wmb();
-        while(1){
+        __sync_synchronize();
+        printk("init_done_flag = %d\n", init_done_flag);
+        //while(1){
             //printk("current %s run pid:%d\n", current->name, current->pid);
-            schedule();
-            free_zombie_task();
-        }
+        //    schedule();
+        //    
+        //}
     }else{
-        
+
         while(init_done_flag == 0)
-            __smp_rmb();
-        printk("cpud id = %d\n", smp_processor_id());
-        
-        while(1);
+            __sync_synchronize();
+        init_done_flag = smp_processor_id();
+        sched_init();
+        init_done_flag = 5;
+        init_process();
+        init_done_flag = 6;
+        printk("hart%d run\n", smp_processor_id());
+        w_sscratch(0);
+        kvminithart();
+        trapinithart();
+        //plicinithart(); /*外设中断在cpu0上处理，其他CPU不用初始化*/
+        printk("preemt count = %d\n", current->preempt_count);
+        run_proc();
     }
+    traversing_rq();
+    while(1){
+        schedule();
+        free_zombie_task();
+    }
+
 }

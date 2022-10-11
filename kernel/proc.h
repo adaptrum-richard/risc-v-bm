@@ -67,7 +67,7 @@ static inline unsigned int task_cpu(const struct task_struct *p)
     .thread = {0},  \
     .counter = 1, \
     .lock = INIT_SPINLOCK(task), \
-    .name = ""#task"",    \
+    .name = ""#task"""0",    \
     .user_sp = 0x55555, \
     .kernel_sp = 0x6666, \
     .pid = 0,   \
@@ -88,7 +88,6 @@ static inline unsigned int task_cpu(const struct task_struct *p)
     }, \
 }
 register unsigned long current_stack_pointer asm ("sp");
-extern struct task_struct *current;
 extern struct task_struct *task[];
 extern struct task_struct init_task;
 extern int nr_tasks;
@@ -107,4 +106,12 @@ struct task_struct *get_zombie_task(void);
 void free_zombie_task(void);
 struct task_struct *get_child_task(void);
 int is_zombie(struct task_struct *p);
+struct task_struct *get_init_task();
+
+static inline struct task_struct *get_current_task()
+{
+    return (struct task_struct *)r_current();
+}
+#define current get_current_task()
+void set_init_task_to_current();
 #endif

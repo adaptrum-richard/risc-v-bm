@@ -28,16 +28,16 @@ struct sched_class {
 #define	MAX_SCHEDULE_TIMEOUT ((long)(~0UL>>1))
 
 /*变量task，除了init_task*/
-#define for_each_task(p)    \
-    for(p = &init_task; (p = p->next_task) != &init_task;)
+#define for_each_task(p, init_task)    \
+    for(p = init_task; (p = p->next_task) != init_task;)
 
-#define LINK_TASK(p) \
+#define LINK_TASK(p, init_task) \
     do {        \
         LOCK_TASK_LIST();   \
-        (p)->next_task = &init_task; \
-        (p)->prev_task = init_task.prev_task; \
-        init_task.prev_task->next_task = (p); \
-        init_task.prev_task = (p); \
+        (p)->next_task = init_task; \
+        (p)->prev_task = init_task->prev_task; \
+        init_task->prev_task->next_task = (p); \
+        init_task->prev_task = (p); \
         UNLOCK_TASK_LIST(); \
     }while(0)
 

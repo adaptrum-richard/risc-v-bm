@@ -11,6 +11,7 @@ struct spinlock
 
     // For debugging:
     char *name; // Name of lock.
+    int cpu;
 };
 
 #define INIT_SPINLOCK(_name)  \

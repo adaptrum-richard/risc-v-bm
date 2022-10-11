@@ -28,8 +28,8 @@ void traversing_rq(void)
     spin_lock_irqsave(&rq->lock, flags);
     list_for_each(tmp, &rq->rq_head) {
         p = list_entry(tmp, struct task_struct, run_list);
-        printk("pid: %d, name: %s, counter: %d, preempt: 0x%x, need_resched: %lu\n", 
-            p->pid, p->name, p->counter, p->preempt_count, p->need_resched);
+        printk("hart: %d, pid: %d, name: %s, counter: %d, preempt: 0x%x, need_resched: %lu\n", 
+            smp_processor_id(), p->pid, p->name, p->counter, p->preempt_count, p->need_resched);
     }
     spin_unlock_irqrestore(&rq->lock, flags);
 }
@@ -47,7 +47,7 @@ struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next
     if(current == next){
         return NULL;
     }
-    current = next;
+    w_current((uint64)next);
     if(next->mm && next->mm->pagetable){
         pgd = MAKE_SATP(next->mm->pagetable);
     }
@@ -64,8 +64,11 @@ struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next
 static void schedule_debug(struct task_struct *p)
 {
     if(in_atomic_preempt_off()) {
-        printk("BUG: schedule while atomic pid:%d, preempt_count:0x%x, task_name = %s\n", 
-            p->pid, preempt_count(), current->name);
+        //if(smp_processor_id()!= 0)
+        printk("p name: %s, preempt_count: %d\n", p->name, p->preempt_count);
+        printk("BUG: schedule while atomic pid:%d, preempt_count:0x%x, task_name = %s, cpu = %d\n", 
+            p->pid, preempt_count(), current->name, smp_processor_id());
+        panic("123");
     }
 }
 
@@ -126,6 +129,8 @@ static void __schedule(void)
     prev = current;
 
     /* 检查是否在中断上下文中发生了调度 */
+    if(smp_processor_id()!= 0)
+        printk("prev name: %s, preempt_count: %d\n", prev->name, prev->preempt_count);
     schedule_debug(prev);
     
     /*关闭中断，以免发送影响调度器*/
@@ -134,6 +139,9 @@ static void __schedule(void)
         dequeue_task(rq, prev);
 
     next = pick_next_task(rq, prev);
+    if(smp_processor_id()!= 0){
+        printk("prev = %s, next = %s\n", prev->name, next->name);
+    }
     clear_task_resched(prev);
     if(next != prev){
         last = switch_to(prev, next);

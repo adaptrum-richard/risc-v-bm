@@ -3,6 +3,7 @@
 #include "types.h"
 #include "string.h"
 #include "mm.h"
+#include "spinlock.h"
 
 /*
  * slob机制设计思路
@@ -25,6 +26,8 @@
  */
 
 static LIST_HEAD(free_slob_list);
+
+struct spinlock slob_lock;
 
 typedef short slobidx_t;
 
@@ -212,7 +215,7 @@ void *slob_alloc(size_t size, int align)
 {
     struct page *page;
     slob_t *b = NULL;
-
+    acquire(&slob_lock);
     list_for_each_entry(page, &free_slob_list, lru){
         if (page->slob_left_units < SLOB_UNITS(size))
             continue;
@@ -222,6 +225,7 @@ void *slob_alloc(size_t size, int align)
             continue;
         break;
     }
+    release(&slob_lock);
 
     if (!b){
         b = slob_alloc_new_page(0);
@@ -235,7 +239,9 @@ void *slob_alloc(size_t size, int align)
         INIT_LIST_HEAD(&page->lru);
         set_slob(b, SLOB_UNITS(PGSIZE), b + SLOB_UNITS(PGSIZE));
         list_add(&page->lru, &free_slob_list);
+        acquire(&slob_lock);
         b = slob_page_alloc(page, size, align);
+        release(&slob_lock);
     }
 
     memset(b, 0, size);
@@ -302,8 +308,9 @@ void kfree(const void *block)
     if (PageSlab(page)){
         int align = sizeof(unsigned long long);
         unsigned int *m = (unsigned int *)(block - align);
-
+        acquire(&slob_lock);
         slob_free(m, *m + align);
+        release(&slob_lock);
     }
     else
         free_pages((unsigned long)block, page->slob_left_units);
@@ -333,6 +340,7 @@ struct kmem_cache kmem_cache_boot = {
 void kmem_cache_init(void)
 {
     boot_kmem_cache = &kmem_cache_boot;
+    initlock(&slob_lock, "slob");
 }
 
 struct kmem_cache *boot_kmem_cache;

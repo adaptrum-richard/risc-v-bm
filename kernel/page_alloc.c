@@ -133,7 +133,7 @@ static void __free_one_page(struct page *page, unsigned long pfn,
     struct page *buddy;
 
     max_order = MAX_ORDER;
-
+    acquire(&zone->lock);
     while (order < max_order - 1) {
         /* 往高地址处 找order相同的伙伴*/
         buddy_pfn = find_buddy_pfn(pfn, order);
@@ -165,6 +165,7 @@ done_merge:
     set_page_order(page, order);
     list_add(&page->lru, &zone->free_area[order].free_list);
     zone->free_area[order].nr_free++;
+    release(&zone->lock);
 }
 
 static void free_pages_ok(struct page *page, unsigned int order)
@@ -251,14 +252,14 @@ struct page *alloc_pages(unsigned int order)
     struct page *page;
     for (int i = 0; i < MAX_NR_ZONES; i++) {
         zone = &pgdat->node_zones[i];
-        //acquire_irq(&zone->lock);
+        acquire(&zone->lock);
         page = __rmqueue(zone, order);
         if (page) {
             prev_new_page(page, order);
-            //release_irq(&zone->lock);
+            release(&zone->lock);
             return page;
         }
-        //release_irq(&zone->lock);
+        release(&zone->lock);
     }
     return NULL;
 }

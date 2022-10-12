@@ -39,6 +39,5 @@ cpu_switch_to:
     ld s9, 88(a1)
     ld s10, 96(a1)
     ld s11, 104(a1)
-    andi tp, tp, 0xf /*此时tp低4位保留cpu id的值*/
-    add tp, a1, tp/*tp高60为0，tp+= a1，保存task_struct到tp中*/
+    add tp, a1, 0
     ret

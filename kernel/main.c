@@ -27,7 +27,7 @@ void kernel_process(uint64 arg)
 {
     while(1){
         kernel_sleep(1);
-        printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
+        //printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
         //delay();
     }
 }
@@ -46,9 +46,8 @@ void idle()
         while(fs_init_done == 1)
             __smp_rmb();
     while(1){
-        printk("current %s run pid:%d, cpu%d, init_done_flag = %d\n", current->name, current->pid,
-            smp_processor_id(), init_done_flag);
-        kernel_sleep(1);
+        printk("current %s run pid:%d, cpu%d\n", current->name, current->pid, smp_processor_id());
+        kernel_sleep(smp_processor_id() + 1);
         //traversing_rq();
     }
 }
@@ -136,10 +135,10 @@ void bge_test()
     );
     printk("========================ret = 0x%lx\n", ret);
 }
-
+/*tp寄存器刚开始存放hart id，执行完init_process后，tp寄存器存放task_struct结构体*/
 void main()
 {
-    if(smp_processor_id() == 0)
+    if(r_tp() == 0)
     {
         set_init_task_to_current();
         w_sscratch(0);
@@ -154,40 +153,30 @@ void main()
         plicinithart();
         init_sleep_queue();
         sched_init();
-        init_process();
+        init_process(0);
         __sync_synchronize();
         virtio_disk_init();
         net_init();
         pci_init();
         run_proc();
         intr_on();
-        __sync_synchronize();
         init_done_flag = 1;
         __sync_synchronize();
-        printk("init_done_flag = %d\n", init_done_flag);
-        //while(1){
-            //printk("current %s run pid:%d\n", current->name, current->pid);
-        //    schedule();
-        //    
-        //}
     }else{
-
         while(init_done_flag == 0)
             __sync_synchronize();
-        init_done_flag = smp_processor_id();
-        sched_init();
-        init_done_flag = 5;
-        init_process();
-        init_done_flag = 6;
+        intr_off();
+        init_process(r_tp());
         printk("hart%d run\n", smp_processor_id());
         w_sscratch(0);
         kvminithart();
         trapinithart();
-        //plicinithart(); /*外设中断在cpu0上处理，其他CPU不用初始化*/
-        printk("preemt count = %d\n", current->preempt_count);
+        //plicinithart(); /*外设中断在cpu0上处理，其他CPU不用初始化*/     
+        traversing_rq();
+        intr_on();
         run_proc();
     }
-    traversing_rq();
+    
     while(1){
         schedule();
         free_zombie_task();

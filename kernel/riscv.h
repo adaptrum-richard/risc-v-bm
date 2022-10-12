@@ -184,14 +184,12 @@ static inline void w_tp(uint64 x)
 
 static inline void w_current(uint64 p)
 {
-    uint64 x = r_tp() & 0xf;
-    x |= p;
-    w_tp(x);
+    w_tp(p);
 }
 
 static inline uint64 r_current()
 {
-    return (r_tp() & (~0xfUL));
+    return r_tp();
 }
 
 /*

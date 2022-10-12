@@ -17,7 +17,7 @@ static struct spinlock task_list_lock[NCPU];
 
 struct task_struct init_task = INIT_TASK(init_task);
 struct task_struct *init_task_array[NCPU] = {NULL,};
-
+__attribute__((aligned(1024))) struct task_struct init_task_mem[NCPU][1024] = {0};
 struct task_struct *get_init_task()
 {
     return init_task_array[smp_processor_id()];
@@ -30,8 +30,7 @@ void set_init_task_to_current()
 
 int smp_processor_id()
 {
-    int id = r_tp() & 0xf;
-    return id;
+    return current->cpu;
 }
 
 void get_task_list_lock(void)
@@ -66,11 +65,11 @@ void init_task_struct(struct task_struct *p)
 {
     sprintf(p->name, "init_task%d", smp_processor_id());
     memset(&p->thread, 0, sizeof(p->thread));
-    p->counter = 1;
+    p->counter = DEF_COUNTER;
     initlock(&p->lock, p->name);
     p->user_sp = 0x55555;
     p->kernel_sp = 0x6666;
-    p->pid = smp_processor_id();
+    //p->pid = smp_processor_id();
     p->preempt_count = 0;
     p->state = TASK_RUNNING;
     p->flags = PF_KTHREAD | TASK_NORMAL;
@@ -89,10 +88,10 @@ void init_task_struct(struct task_struct *p)
 }
 
 
-void init_process()
+void init_process(int cpu)
 {
-    struct task_struct *p ;
-    if(smp_processor_id() == 0){
+    struct task_struct *p;
+    if(cpu == 0){
         p = &init_task;
         for(int i = 0; i < NCPU; i++){
             initlock(&task_list_lock[i], "task list lock");
@@ -100,19 +99,17 @@ void init_process()
         initlock(&pid_lock, "pid_lock");
         pid_table = (unsigned long*)get_free_page();
         memset(pid_table, 0x0, PGSIZE);
-        /*init_task pid 0 used*/
-        p->pid = get_free_pid();
-        w_current((uint64)p);
     }else{
-        p = (struct task_struct *)get_free_page();
-        init_done_flag = 10;
-        init_task_struct(p);
+        p = (struct task_struct *)init_task_mem[cpu];
+        p->cpu = cpu;
+        /*先设置task_struct到tp寄存器,sched_init函数会使用current*/
         w_current((uint64)p);
-        p->pid = get_free_pid();
+        init_task_struct(p);
+        sched_init();
     }
 
+    p->pid = get_free_pid();
     init_task_array[smp_processor_id()] = p;
-    p->cpu = smp_processor_id();
     set_task_sched_class(p);
     p->sched_class->enqueue_task(cpu_rq(p->cpu), p);
 }

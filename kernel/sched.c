@@ -63,12 +63,12 @@ struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next
 */
 static void schedule_debug(struct task_struct *p)
 {
-    if(in_atomic_preempt_off()) {
-        //if(smp_processor_id()!= 0)
-        printk("p name: %s, preempt_count: %d\n", p->name, p->preempt_count);
-        printk("BUG: schedule while atomic pid:%d, preempt_count:0x%x, task_name = %s, cpu = %d\n", 
-            p->pid, preempt_count(), current->name, smp_processor_id());
-        panic("123");
+    //if(in_atomic_preempt_off()) { 
+    if(READ_ONCE(p->preempt_count) != 1){
+        printk("BUG: schedule while atomic pid:%d, preempt_count:0x%x, "
+            "task_name = %s, cpu = %d, task addr = 0x%lx\n", 
+            p->pid, preempt_count(), current->name, smp_processor_id(), current);
+        panic("schedule_debug");
     }
 }
 
@@ -127,10 +127,7 @@ static void __schedule(void)
     struct task_struct *prev, *next, *last;
     struct run_queue *rq = get_cpu_rq();
     prev = current;
-
     /* 检查是否在中断上下文中发生了调度 */
-    if(smp_processor_id()!= 0)
-        printk("prev name: %s, preempt_count: %d\n", prev->name, prev->preempt_count);
     schedule_debug(prev);
     
     /*关闭中断，以免发送影响调度器*/
@@ -139,9 +136,6 @@ static void __schedule(void)
         dequeue_task(rq, prev);
 
     next = pick_next_task(rq, prev);
-    if(smp_processor_id()!= 0){
-        printk("prev = %s, next = %s\n", prev->name, next->name);
-    }
     clear_task_resched(prev);
     if(next != prev){
         last = switch_to(prev, next);
@@ -162,10 +156,6 @@ void schedule(void)
 /*抢占调度*/
 void preempt_schedule_irq(void)
 {
-    if(preempt_count()){
-        printk("BUG: %s incorrect preempt count: 0x%x, %s\n",
-            __func__, preempt_count(), current->name);
-    }
     preempt_disable();
     intr_on();
     __schedule();

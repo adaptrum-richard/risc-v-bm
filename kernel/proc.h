@@ -80,6 +80,7 @@ static inline unsigned int task_cpu(const struct task_struct *p)
     .run_list = LIST_HEAD_INIT(task.run_list), \
     .parent = NULL, \
     .cwd = NULL, \
+    .cpu = 0, \
     .next_task = (struct task_struct *)&task, \
     .prev_task = (struct task_struct *)&task, \
     .wait_childexit = {  \
@@ -92,7 +93,7 @@ extern struct task_struct *task[];
 extern struct task_struct init_task;
 extern int nr_tasks;
 int smp_processor_id();
-void init_process(void);
+void init_process(int cpu);
 
 int get_free_pid(void);
 void free_pid(int pid);

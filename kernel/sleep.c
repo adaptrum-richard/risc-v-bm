@@ -24,13 +24,13 @@ void kernel_sleep(uint64 times)
 static unsigned long timeout_period = 0;
 void wakes_sleep(void)
 {
-    /*一秒钟唤醒一次在sleep中睡眠的进程*/
+    /*200ms唤醒一次在sleep中睡眠的进程*/
     if(0 == timeout_period){
-        timeout_period = jiffies + HZ;
+        timeout_period = jiffies + HZ/5;
     } else {
         if(timer_after_eq(jiffies, timeout_period)){
             wake_up(&sleep_queue_array[smp_processor_id()]);
-            timeout_period = jiffies + HZ;
+            timeout_period = jiffies + HZ/5;
         }
     }
 }

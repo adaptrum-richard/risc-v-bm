@@ -355,7 +355,7 @@ int exec(char *path, char **argv)
         
     set_user_mode_epc(current, elf.entry);
 
-    //print_all_vma(current->mm->pagetable, current->mm->mmap);
+    //show_vma_info(current->mm->pagetable, current->mm->mmap);
     pr_debug("%s %d, name:%s, elf.entry = 0x%lx\n", 
         __func__, __LINE__,
         current->name, elf.entry);

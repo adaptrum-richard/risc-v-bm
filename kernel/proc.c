@@ -132,7 +132,7 @@ void free_task(struct task_struct *p)
         goto out;
     release(&p->lock);
     /*打印进程 mmap的页面*/
-    //print_all_vma(child->mm->pagetable, child->mm->mmap);
+    //show_vma_info(child->mm->pagetable, child->mm->mmap);
 
     /*释放stack/code/brk mmap pages and vma*/
     struct vm_area_struct *tmp, *vma = p->mm->mmap;

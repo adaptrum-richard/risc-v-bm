@@ -137,13 +137,7 @@ int expand_downwards(struct vm_area_struct *vma, unsigned long address)
         return -EPERM;
     
     if(address < vma->vm_start){
-        //unsigned long grow;
-        //grow = (vma->vm_start - address) / PGSIZE;/*计算需要增长的页面数量*/
-        //if(grow <= vma->vm_pgoff){
-            vma->vm_start = PGROUNDDOWN(address);//扩充栈
-            pr_debug("grow stack = 0x%lx\n", vma->vm_start);
-        //    vma->vm_pgoff -= grow;
-        //}
+        vma->vm_start = PGROUNDDOWN(address);//扩充栈
     }
     //TODO
     return 0;
@@ -188,8 +182,6 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool down
         pr_err("args error\n");
         return -EINVAL;
     }
-    pr_debug("%s, %d: unmap start = 0x%lx, end = 0x%lx\n", __func__ , __LINE__,
-            start, end);
     //释放掉多余的内存
     //if(vma->vm_end > end){
         tmp.vm_start = start;
@@ -197,13 +189,9 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool down
         unmap_region(mm, &tmp);
     //}
     if(mm->start_brk == start ){
-        pr_debug("%s, %d: remove start = 0x%lx, end = 0x%lx\n", __func__ , __LINE__,
-            vma->vm_start, vma->vm_end);
         remove_vma(vma);
     }
     else{
-        pr_debug("%s, %d: update end, start = 0x%lx, oldend = 0x%lx, new_end = %lx， new_brk= 0x%lx\n", __func__ , __LINE__,
-            vma->vm_start, vma->vm_end, end, start);
         if(vma->vm_end < start){
             pr_err("%s %d: bug\n", __func__, __LINE__);
         }
@@ -235,23 +223,15 @@ static int do_brk_flags(unsigned long addr, unsigned long len, unsigned long fla
         newvma->vm_start = addr,
         newvma->vm_end = end;
         newvma->vm_pgoff = pgoff;
-        pr_debug("%s %d: new vm start = %lx, vm end = %lx\n", __func__, __LINE__,
-            addr, end);
         newvma->vm_flags = VM_DATA_FLAGS_NON_EXEC;
         insert_vm_struct(mm, newvma);
     }else{
         /*对vma进行扩容*/
         if(vma->vm_end <= end){
-            pr_debug("%s %d: brk grow vm start = %lx, old end = %lx, new end: %lx\n", 
-                __func__, __LINE__,
-                addr, vma->vm_end, end);
             vma->vm_end = end;
         }
         else{
             //此时vma已经有了，不需要设置
-            pr_debug("%s %d: vm start = %lx,vma end:%lx, oldbrk = %lx, size: %lx\n", 
-                __func__, __LINE__,
-                vma->vm_start, vma->vm_end, addr, len);
             pr_err("%s %d: dothing\n", __func__, __LINE__);
         }
     }
@@ -288,7 +268,6 @@ static unsigned long do_brk(unsigned long brk)
         int ret;
         mm->brk = newbrk; //至少要释放一个page的内存
         /*释放内存*/
-        pr_debug("%s %d: arg brk = 0x%lx\n", __func__, __LINE__, brk);
         ret = __do_munmap(mm, newbrk, oldbrk-newbrk, true);
         if(ret < 0){
             mm->brk = origbrk;
@@ -312,7 +291,6 @@ unsigned long sbrk(unsigned long size)
 {
     unsigned long new_brk = 0;
     unsigned long old_brk = current->mm->brk;
-    pr_debug("%s %d\n", __func__, __LINE__);
     if(size == 0)
         return old_brk;
     else {
@@ -327,27 +305,26 @@ unsigned long sbrk(unsigned long size)
 unsigned long brk(unsigned long addr)
 {
     unsigned long org_brk = current->mm->brk;
-    pr_debug("%s %d\n", __func__, __LINE__);
     return org_brk == do_brk(addr);
 }
 
-void print_all_vma(pagetable_t pagatable, struct vm_area_struct *vma)
+void show_vma_info(pagetable_t pagatable, struct vm_area_struct *vma)
 {
     struct vm_area_struct *tmp;
     uint64 pa;
     //pte_t *walk(pagetable_t pagetable, uint64 va, int alloc)
     if(!pagatable || !vma)
         return;
-    pr_debug("-------------show vma, mmap pages-----------------------------\n");
+    pr_mm_debug("-------------show vma, mmap pages-----------------------------\n");
     for(tmp = vma; tmp; tmp = tmp->vm_next){
-        pr_debug("[0x%lx -- 0x%lx], flag 0x%lx, mapping pages:\n", tmp->vm_start, tmp->vm_end, tmp->vm_flags);
+        pr_mm_debug("[0x%lx -- 0x%lx], flag 0x%lx, mapping pages:\n", tmp->vm_start, tmp->vm_end, tmp->vm_flags);
         for(int i = 0; i < PGROUNDUP(tmp->vm_end - tmp->vm_start); i+= PGSIZE){
             pa = walkaddr(pagatable, tmp->vm_start + i); 
             if(pa){
-                pr_debug("\tpage address: 0x%lx\n", pa);
+                pr_mm_debug("\tpage address: 0x%lx\n", pa);
             }
         }
     }
-    pr_debug("----------------------------------------------------------------\n");
+    pr_mm_debug("----------------------------------------------------------------\n");
 
 }

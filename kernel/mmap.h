@@ -11,7 +11,7 @@ struct vm_area_struct *remove_vma(struct vm_area_struct *vma);
 int expand_stack(struct vm_area_struct *vma, unsigned long address);
 unsigned long brk(unsigned long size);
 unsigned long sbrk(unsigned long size);
-void print_all_vma(pagetable_t pagatable, struct vm_area_struct *vma);
+void show_vma_info(pagetable_t pagatable, struct vm_area_struct *vma);
 static inline pgoff_t linear_page_index(struct vm_area_struct *vma,
                     unsigned long address)
 {

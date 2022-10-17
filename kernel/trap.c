@@ -174,7 +174,7 @@ void hanlder_exception(struct pt_regs *regs)
         printk("cpu status register:0x%lx, badaddr:0x%lx\n", regs->status, regs->badaddr);
         printk("task pid:%d, task name: %s, parent pid = %d\n", current->pid, current->name, current->parent ? current->parent->pid : -1);
         printk("current pagetable:%lx\n", current->mm->pagetable);
-        print_all_vma(current->mm->pagetable, current->mm->mmap);
+        show_vma_info(current->mm->pagetable, current->mm->mmap);
         panic("kerneltrap");
         break;
     }

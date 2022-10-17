@@ -174,7 +174,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
         /* Supervisor irqs on: */
         childregs->status = SSTATUS_SPP | SSTATUS_SPIE;
     } else {
-        //print_all_vma(current->mm->pagetable, current->mm->mmap);
+        //show_vma_info(current->mm->pagetable, current->mm->mmap);
         *childregs = *(task_pt_regs(current));
         childregs->a0 = 0;
         p->thread.ra = (unsigned long)ret_from_fork;
@@ -193,7 +193,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
                 p->ofile[i] = filedup(current->ofile[i]);
         }
         p->cwd = idup(current->cwd);
-        //print_all_vma(p->mm->pagetable, p->mm->mmap);
+        //show_vma_info(p->mm->pagetable, p->mm->mmap);
     }
     
     p->priority = current->priority;

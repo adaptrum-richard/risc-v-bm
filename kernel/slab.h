@@ -26,5 +26,5 @@ void *kmalloc(size_t size);
 void kfree(const void *block);
 struct kmem_cache *kmem_cache_create(const char *name, 
     size_t size, size_t align, unsigned long flags);
-
+void test_slob(void);
 #endif

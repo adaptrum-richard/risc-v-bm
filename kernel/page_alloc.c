@@ -6,6 +6,7 @@
 #include "printk.h"
 #include "memblock.h"
 #include "string.h"
+#include "debug.h"
 
 struct page *mem_map;
 struct pg_data contig_page_data;
@@ -267,11 +268,14 @@ struct page *alloc_pages(unsigned int order)
 unsigned long get_free_pages(unsigned int order)
 {
     struct page *page;
+    unsigned long pa;
     page = alloc_pages(order);
     if (!page)
         return 0;
-
-    return (unsigned long)page_to_address(page);
+    pa = page_to_address(page);
+    pr_buddy_debug("new page, pa addr:0x%lx, page addr: 0x%lx, order: %d\n", 
+        pa, (unsigned long)page, order);
+    return pa;
 }
 
 unsigned long get_free_page(void)
@@ -284,6 +288,8 @@ void free_pages(unsigned long addr, unsigned int order)
     struct page *page;
     page = virt_to_page(addr);
     __free_pages(page, order);
+    pr_buddy_debug("free page, pa addr:0x%lx, page addr: 0x%lx, order: %d\n", 
+        addr, (unsigned long)page, order);
 }
 
 void free_page(unsigned long addr)
@@ -326,5 +332,24 @@ void show_buddyinfo(void)
     }
     printk("\r\n");
 }
+unsigned long array[500] = {0};
+void test_buddy()
+{
+    for(int i = 0; i < 150; i++){
+        array[i] = get_free_pages(i%11);
+        if(array[i] == 0)
+            panic("BUG\n");
+        memset((void*)array[i], i%255, PGSIZE * (1<< (i%11)));
+    }
+    for(int i = 0; i < 150; i++)
+    {
+        unsigned char * p = (unsigned char *)array[i];
+        for(int j = 0; j < PGSIZE * (1<< (i%11));j++){
+            if(p[j] != (i%255))
+                panic("bug\n");
+        }
+        free_pages(array[i], (i%11));
+    }
 
+}
 

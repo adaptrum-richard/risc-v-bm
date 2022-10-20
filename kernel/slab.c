@@ -4,6 +4,7 @@
 #include "string.h"
 #include "mm.h"
 #include "spinlock.h"
+#include "debug.h"
 
 /*
  * slob机制设计思路
@@ -156,7 +157,7 @@ void slob_free(void *block, int size)
             list_del(&page->lru);
             ClearPageSlab(page);
         }
-
+        pr_slab_debug("free page, pa addr 0x%lx\n", (unsigned long)b);
         free_page((unsigned long)b);
 
         return;
@@ -211,9 +212,20 @@ static void *slob_alloc_new_page(int order)
     return (void *)get_free_pages(order);
 }
 
+static inline void check_alloc_scope(unsigned long start_pa, 
+    unsigned long alloc_pa, size_t size)
+{
+    unsigned long end_pa = start_pa + PGSIZE;
+    unsigned long alloc_pa_end = size + alloc_pa;
+    if(alloc_pa < start_pa || alloc_pa_end > end_pa)
+        panic("%s %s: [0x%lx+%lx]  beyond the scope of [0x%lx-0x%lx]\n", __func__, __LINE__, 
+                start_pa, size , start_pa, alloc_pa_end);
+}
+
 void *slob_alloc(size_t size, int align)
 {
     struct page *page;
+
     slob_t *b = NULL;
     acquire(&slob_lock);
     list_for_each_entry(page, &free_slob_list, lru){
@@ -223,6 +235,8 @@ void *slob_alloc(size_t size, int align)
         b = slob_page_alloc(page, size, align);
         if (!b)
             continue;
+        
+        check_alloc_scope(page_to_address(page), (unsigned long)b, size);
         break;
     }
     release(&slob_lock);
@@ -231,9 +245,9 @@ void *slob_alloc(size_t size, int align)
         b = slob_alloc_new_page(0);
         if (!b)
             return NULL;
-        page = virt_to_page((unsigned long)b);
         SetPageSlab(page);
-
+        pr_slab_debug("slab new page,order:%d, pa:0x%lx, page addr:0x%lx\n", 
+            0, (unsigned long)b, (unsigned long)page);
         page->slob_left_units = SLOB_UNITS(PGSIZE);
         page->freelist = b;
         INIT_LIST_HEAD(&page->lru);
@@ -284,6 +298,8 @@ void *kmalloc(size_t size)
 
         *b = size;
         ret = (void *)b + align;
+        pr_slab_debug("alloc addr: 0x%lx, size: 0x%lx\n", (unsigned long)ret, 
+            size);
     }
     else{
         unsigned int order = get_order(size);
@@ -291,6 +307,8 @@ void *kmalloc(size_t size)
         ret = slob_alloc_new_page(order);
         memset(ret, 0, size);
         page = virt_to_page((unsigned long)ret);
+        pr_slab_debug("malloc page,order:%d, pa:0x%lx, page addr:0x%lx\n", 
+            order, ret, (unsigned long)page);
         page->slob_left_units = order;
     }
 
@@ -374,4 +392,25 @@ out_free_cache:
     kmem_cache_free(boot_kmem_cache, s);
 out:
     return NULL;
+}
+
+unsigned long slob_array[1000];
+void test_slob(void)
+{
+    for(int i = 0 ; i< 500; i++){
+        slob_array[i] = (unsigned long)kmalloc((i+1)*4);
+        if(slob_array[i] == 0)
+            panic("%s: BUG1\n", __func__);
+        memset((void*)slob_array[i], i%255, (i+1)*4);
+    }
+    unsigned char *p;
+    for(int i = 0 ; i< 500; i++){
+        p = (unsigned char*)slob_array[i];
+        for(int j = 0; j < (i+1)*4; j++){
+            if(p[j] != (i%255)){
+                panic("%s: BUG2 p[%d] = 0x%ld\n", __func__, j, p[j]);
+            }
+        }
+        kfree((void*)slob_array[i]);
+    }
 }

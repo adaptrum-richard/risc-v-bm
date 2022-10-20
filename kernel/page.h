@@ -46,4 +46,5 @@ void free_area_init_node(int nid, unsigned long node_start_pfn,
 unsigned long get_free_page(void);
 unsigned long get_free_pages(unsigned int order);
 void show_buddyinfo(void);
+void test_buddy();
 #endif

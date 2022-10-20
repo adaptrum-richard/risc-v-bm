@@ -9,6 +9,7 @@
 #include "string.h"
 #include "vm.h"
 #include "mmap.h"
+#include "debug.h"
 
 static void zone_sizes_init(unsigned long min, unsigned long max)
 {

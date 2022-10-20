@@ -64,41 +64,50 @@ err:
     return -1;
 }
 
-static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
+static int dup_mmap(struct mm_struct *child_mm, struct mm_struct *parent_mm)
 {
     struct vm_area_struct *oldvma, *newvma;
-    mm->total_vm = oldmm->total_vm;
-    mm->stack_vm = oldmm->stack_vm;
-    mm->start_brk = oldmm->start_brk;
-    mm->brk = oldmm->brk;
-    for(oldvma = oldmm->mmap; oldvma; oldvma = oldvma->vm_next){
+    child_mm->total_vm = parent_mm->total_vm;
+    child_mm->stack_vm = parent_mm->stack_vm;
+    child_mm->start_brk = parent_mm->start_brk;
+    child_mm->brk = parent_mm->brk;
+    if(child_mm->mmap != NULL)
+        pr_sched_err("bug\n");
+    pr_sched_debug("dup mm start, show parent mm:\n");
+    show_vma_info(parent_mm->pagetable, parent_mm->mmap);
+    for(oldvma = parent_mm->mmap; oldvma; oldvma = oldvma->vm_next){
         newvma = vm_area_dup(oldvma);
-        insert_vm_struct(mm, newvma);
-        dup_vma_mmap(oldmm->pagetable, mm->pagetable, oldvma->vm_start, 
+        pr_sched_debug("newvma[0x%lx-0x%lx], oldvma[0x%lx-0x%lx]\n", 
+            newvma->vm_start, newvma->vm_end, oldvma->vm_start, oldvma->vm_end);
+        insert_vm_struct(child_mm, newvma);
+        dup_vma_mmap(parent_mm->pagetable, child_mm->pagetable, oldvma->vm_start, 
             newvma->vm_start, oldvma->vm_end - oldvma->vm_start);
     }
+    //pr_sched_debug("dup mm end, show child mm:\n");
+    //show_vma_info(mm->pagetable, mm->mmap);
     return 0;
 }
 
-struct mm_struct *dup_mm(struct task_struct *tsk, struct mm_struct *oldmm)
+struct mm_struct *dup_mm(struct task_struct *new_tsk, struct mm_struct *parent_mm)
 {
-    struct mm_struct *mm;
+    struct mm_struct *new_mm;
     int err;
 
-    mm = kmalloc(sizeof(*mm));
-    if(!mm){
+    new_mm = kmalloc(sizeof(*new_mm));
+    if(!new_mm){
         return NULL;
     }
 
-    memcpy(mm, oldmm, sizeof(*mm));
-    if(mm_init(mm, tsk) == NULL){
-        kfree(mm);
+    memcpy(new_mm, parent_mm, sizeof(*new_mm));
+    /*mm_init:分配页表基地址,并从parent中copy一份，并设置到mm->pagetable*/
+    if(mm_init(new_mm, new_tsk) == NULL){
+        kfree(new_mm);
         return NULL;
     }
-    err = dup_mmap(mm, oldmm);
+    err = dup_mmap(new_mm, parent_mm);
     if(err != 0)
         return NULL;
-    return mm;
+    return new_mm;
 }
 
 static inline struct pt_regs *task_pt_regs(struct task_struct *tsk)
@@ -174,7 +183,7 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
         /* Supervisor irqs on: */
         childregs->status = SSTATUS_SPP | SSTATUS_SPIE;
     } else {
-        //show_vma_info(current->mm->pagetable, current->mm->mmap);
+        pr_sched_debug("new child proccess\n");
         *childregs = *(task_pt_regs(current));
         childregs->a0 = 0;
         p->thread.ra = (unsigned long)ret_from_fork;
@@ -193,7 +202,8 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
                 p->ofile[i] = filedup(current->ofile[i]);
         }
         p->cwd = idup(current->cwd);
-        //show_vma_info(p->mm->pagetable, p->mm->mmap);
+        pr_sched_debug("child mm:\n");
+        show_vma_info(p->mm->pagetable, p->mm->mmap);
     }
     
     p->priority = current->priority;

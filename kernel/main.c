@@ -21,6 +21,7 @@
 #include "page.h"
 #include "exec.h"
 #include "pci.h"
+#include "slab.h"
 volatile int init_done_flag = 0;
 static volatile int fs_init_done = 0;
 void kernel_process(uint64 arg)

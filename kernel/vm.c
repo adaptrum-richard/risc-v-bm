@@ -144,7 +144,6 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
     pte_t *pte;
     uint64 end = va + npages*PGSIZE;
     if((va % PGSIZE) != 0){
-        printk(" va = 0x%lx\n", va);
         panic("uvmunmap: not aligned");
     }
 
@@ -160,8 +159,7 @@ void unmap_validpages(pagetable_t pagetable, uint64 va, uint64 npages)
         
         uint64 pa = PTE2PA(*pte);
         free_page((unsigned long)pa);
-        pr_debug("%s %d: unmap va:0x%lx, free pa = %lx, size: 0x%lx\n", 
-            __func__, __LINE__, 
+        pr_mm_debug("unmap va:0x%lx, free pa = %lx, size: 0x%lx\n", 
             a, pa, PGSIZE);
         local_flush_tlb_page(a);
         *pte = 0;
@@ -320,9 +318,8 @@ int vm_map_program(pagetable_t pagetable, uint64 va, uchar *src, uint size, int 
 
         memset(mem, 0, PGSIZE);
         mappages(pagetable, va, PGSIZE, (uint64)mem, PTE_U | PTE_R | PTE_W | PTE_X);
-        pr_debug("%s %d: map va: 0x%lx to pa: 0x%lx, size: 0x%lx\n", 
-            __func__, __LINE__, va,
-            (uint64)mem, PGSIZE);
+        pr_mm_debug("map va: 0x%lx to pa: 0x%lx, size: 0x%lx\n", 
+            va,(uint64)mem, PGSIZE);
 skip_mmap:
         if(src){
             memmove(mem, src, n);
@@ -334,7 +331,7 @@ skip_mmap:
     }
     return ret;    
 }
-
+/*返回值为1：释放掉传入的src*/
 int map_program_code(pagetable_t pagetable, uint64 va, uchar *src, uint size)
 {
     return vm_map_program(pagetable, va, src, size, PTE_R | PTE_U | PTE_X);
@@ -365,8 +362,7 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
         if(pa == 0){
             mem = (char*)get_free_page();
             ret = 1;
-        }
-        else{
+        } else {
             mem = (char*)pa;
             goto skip_mmap;
         }
@@ -376,8 +372,7 @@ int vm_map_normal_mem(pagetable_t pagetable, uint64 vm_base, uchar *src, uint si
         }
         memset(mem, 0, PGSIZE);
         mappages(pagetable, vm_base + i, PGSIZE, (uint64)mem, PTE_W | PTE_R | PTE_U);
-        pr_debug("%s %d: map va: 0x%lx to pa: 0x%lx, size: 0x%lx\n", 
-            __func__, __LINE__, vm_base + i,
+        pr_mm_debug("map va: 0x%lx to pa: 0x%lx, size: 0x%lx\n", vm_base + i,
             (uint64)mem, PGSIZE);
 skip_mmap:
         memmove(mem, src, n);

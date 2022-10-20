@@ -47,6 +47,14 @@ static struct vm_area_struct *find_vma_intersection(struct mm_struct *mm,
     return vma;
 }
 
+void show_all_vma(struct vm_area_struct *head, const char*info)
+{
+    struct vm_area_struct *tmp;
+    pr_mm_debug("%s", info);
+    for(tmp = head;tmp; tmp=tmp->vm_next){
+        pr_mm_debug("vm[%lx-%lx]\n", tmp->vm_start, tmp->vm_end);
+    }
+}
 
 //添加
 int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma)
@@ -55,25 +63,38 @@ int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma)
     struct vm_area_struct *next;
     struct vm_area_struct *prev;
     if(!mm->mmap){
+        pr_mm_debug("insert vma addr:0x%lx, va size [0x%lx-0x%lx]\n", 
+            (unsigned long)vma, vma->vm_start, vma->vm_end);
         mm->mmap = vma;
+        vma->vm_prev = vma->vm_next = NULL;
         return 0;
     }
-
+    show_all_vma(mm->mmap, "insert vma start show:\n");
     /*从小到大*/
     for(v = mm->mmap; v; v = v->vm_next){
         /*
          *case1:  prev | vma  | v |  边界可以相等
          */
+        
         if(vma->vm_end <= v->vm_start){
+            pr_mm_debug("vma [0x%lx-0x%lx], v[%lx-%lx]\n", vma->vm_start, vma->vm_end, 
+                v->vm_start, v->vm_end);
             prev = v->vm_prev;
-            if(prev && prev->vm_end > vma->vm_start)
+            if(prev && prev->vm_end > vma->vm_start){
+                pr_mm_debug("vma [0x%lx-0x%lx], prev vma[%lx-%lx]\n", vma->vm_start, vma->vm_end, 
+                    prev->vm_start, prev->vm_end);
                 continue;
+            }
             vma->vm_next = v ;
             vma->vm_prev = prev;
             v->vm_prev = vma;
             if(prev)
                 prev->vm_next = vma;
-             mm->mmap = vma;
+            else
+                mm->mmap = vma;
+            pr_mm_debug("insert vma addr:0x%lx, va size [0x%lx-0x%lx]\n", 
+                (unsigned long)vma, vma->vm_start, vma->vm_end);
+            show_all_vma(mm->mmap, "insert vma end show:\n");
             return 0;
         } else{
             /*
@@ -90,10 +111,13 @@ int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma)
             vma->vm_next = next;
             if(next)
                 next->vm_prev = vma;
+            pr_mm_debug("insert vma addr:0x%lx, va size [0x%lx-0x%lx]\n", 
+                (unsigned long)vma, vma->vm_start, vma->vm_end);
+            show_all_vma(mm->mmap, "insert vma end show:\n");
             return 0;
         }
     }
-
+    pr_mm_err("error\n");
     return -ENOMEM;
 }
 
@@ -101,6 +125,7 @@ int insert_vm_struct(struct mm_struct *mm, struct vm_area_struct *vma)
 static void vma_init(struct vm_area_struct *vma, struct mm_struct *mm)
 {
     memset(vma, 0 , sizeof(*vma));
+    vma->vm_next = vma->vm_prev = NULL;
     vma->vm_mm = mm;
 }
 
@@ -118,13 +143,25 @@ struct vm_area_struct *vm_area_alloc(struct mm_struct *mm)
     return vma;
 }
 
+void vm_area_init(struct vm_area_struct *vma, unsigned long start, 
+    unsigned long end, unsigned long flags)
+{
+    vma->vm_start = start;
+    vma->vm_end = end;
+    vma->vm_flags = flags;
+}
+
 struct vm_area_struct *remove_vma(struct vm_area_struct *vma)
 {
     struct vm_area_struct *next = vma->vm_next;
-    if(!vma->vm_prev)
+    if(!vma->vm_prev){
         current->mm->mmap = vma->vm_next;
+        if(next)
+            next->vm_prev = NULL;
+    }
     else{
         vma->vm_prev->vm_next = vma->vm_next;
+        vma->vm_next->vm_prev = vma->vm_prev;
     }
     vm_area_free(vma);
     return next;
@@ -155,9 +192,28 @@ static void unmap_region(struct mm_struct *mm, struct vm_area_struct *vma)
     unmap_validpages(current->mm->pagetable, va_start, npages);
 }
 
-/*断开映射
-start为新的brk地址
-len需要释放的内存大小
+/*删除从start-end的vma,并释放物理内存*/
+void remove_vma_region(struct vm_area_struct *head, unsigned long start, unsigned long end)
+{
+    struct vm_area_struct *tmp = head;
+    if(start >= end) {
+        pr_err("bug\n");
+    }
+    for(tmp = head; tmp; tmp= tmp->vm_next){
+        if(tmp->vm_start >= start && tmp->vm_end <= end){
+            pr_mm_debug("todo unmap and remove vma:[0x%lx-0x%lx]\n", tmp->vm_start, tmp->vm_end);
+            unmap_region(NULL, tmp);
+            remove_vma(tmp);
+        }
+        if(tmp == head)
+            break;
+    }
+}
+
+/*
+ * 断开映射
+ * start为新的brk地址
+ * len需要释放的内存大小
 */
 int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool downgrade)
 {
@@ -169,7 +225,7 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool down
         return -EINVAL;
     len = PAGE_ALIGN(len);
     end = start + len;
-
+    pr_mm_debug("maybe unmap mem [0x%lx-0x%lx]\n", start, end);
     if(len == 0)
         return -EINVAL;
     vma = find_vma_intersection(mm, start, end);
@@ -182,18 +238,19 @@ int __do_munmap(struct mm_struct *mm, unsigned long start, size_t len, bool down
         pr_err("args error\n");
         return -EINVAL;
     }
+
     //释放掉多余的内存
-    //if(vma->vm_end > end){
-        tmp.vm_start = start;
-        tmp.vm_end = end;
-        unmap_region(mm, &tmp);
-    //}
+    tmp.vm_start = start;
+    tmp.vm_end = end;
+    unmap_region(mm, &tmp);
+    pr_mm_debug("determine unmap mem [0x%lx-0x%lx]\n", tmp.vm_start, tmp.vm_end);
     if(mm->start_brk == start ){
+        pr_mm_debug("remove vma [0x%lx-0x%lx]\n", vma->vm_start, vma->vm_end);
         remove_vma(vma);
     }
     else{
         if(vma->vm_end < start){
-            pr_err("%s %d: bug\n", __func__, __LINE__);
+            pr_mm_err("bug\n");
         }
         vma->vm_end = start;
 
@@ -295,6 +352,7 @@ unsigned long sbrk(unsigned long size)
         return old_brk;
     else {
         new_brk = do_brk(current->mm->brk + PGROUNDUP(size));
+        pr_mm_debug("old_brk:0x%lx, new_brk:0x%lx\n", old_brk, new_brk);
         if(old_brk == new_brk)
             return 0;
         else 
@@ -304,8 +362,10 @@ unsigned long sbrk(unsigned long size)
 
 unsigned long brk(unsigned long addr)
 {
-    unsigned long org_brk = current->mm->brk;
-    return org_brk == do_brk(addr);
+    unsigned long old_brk = current->mm->brk;
+    unsigned long new_brk = do_brk(addr);
+    pr_mm_debug("old_brk:0x%lx, new_brk:0x%lx\n", old_brk, new_brk);
+    return old_brk == new_brk;
 }
 
 void show_vma_info(pagetable_t pagatable, struct vm_area_struct *vma)
@@ -321,7 +381,7 @@ void show_vma_info(pagetable_t pagatable, struct vm_area_struct *vma)
         for(int i = 0; i < PGROUNDUP(tmp->vm_end - tmp->vm_start); i+= PGSIZE){
             pa = walkaddr(pagatable, tmp->vm_start + i); 
             if(pa){
-                pr_mm_debug("\tpage address: 0x%lx\n", pa);
+                pr_mm_debug("\tpage phy addr: 0x%lx\n", pa);
             }
         }
     }

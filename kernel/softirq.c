@@ -22,6 +22,7 @@ void irq_exit(void)
 out:
 #endif
     wakes_sleep();
+    /*run timers放在这里会出现意异常代码4*/
     //run_timers();
     return;
 }

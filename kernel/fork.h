@@ -14,4 +14,5 @@ void print_epc(struct task_struct *tsk);
 void print_regs_sp(struct task_struct *tsk);
 void print_regs_tp(struct task_struct *tsk);
 void set_user_mode_a1(struct task_struct *tsk, uint64 a1);
+int create_kernel_thread(void (*fn)(unsigned long arg), unsigned long arg, char *name);
 #endif

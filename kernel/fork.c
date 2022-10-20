@@ -214,6 +214,8 @@ int copy_process(uint64 clone_flags, uint64 fn, uint64 arg, char *name)
     set_task_sched_class(p);
     if(name)
         strcpy(p->name, name);
+    initlock(&p->lock, p->name);
+    initlock(&p->wait_childexit.lock, p->name);
     p->thread.sp = (uint64)childregs;
     p->kernel_sp = p->thread.sp;
     p->parent = current;
@@ -268,4 +270,9 @@ int do_fork(void)
     int pid = copy_process(TASK_NORMAL, 0, 0, current->name);
     /*父进程返回值为子进程的pid*/
     return pid;
+}
+
+int create_kernel_thread(void (*fn)(unsigned long arg), unsigned long arg, char *name)
+{
+    return copy_process(PF_KTHREAD, (unsigned long)fn, arg, name);
 }

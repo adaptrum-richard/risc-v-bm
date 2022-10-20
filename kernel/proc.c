@@ -96,12 +96,16 @@ void init_process(int cpu)
         for(int i = 0; i < NCPU; i++){
             initlock(&task_list_lock[i], "task list lock");
         }
+        initlock(&p->wait_childexit.lock, "childexit");
+        initlock(&p->lock, "init_task");
         initlock(&pid_lock, "pid_lock");
         pid_table = (unsigned long*)get_free_page();
         memset(pid_table, 0x0, PGSIZE);
     }else{
         p = (struct task_struct *)init_task_mem[cpu];
         p->cpu = cpu;
+        initlock(&p->wait_childexit.lock, "childexit");
+        initlock(&p->lock, "init_task");
         /*先设置task_struct到tp寄存器,sched_init函数会使用current*/
         w_current((uint64)p);
         init_task_struct(p);

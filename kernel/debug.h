@@ -3,7 +3,7 @@
 
 #include "printk.h"
 
-#define DEBUG_SWITCH 
+//#define DEBUG_SWITCH 
 #define MM_DEBUG_LELVE 2
 #define EXEC_DEBUG_LELVE 2
 #define SLAB_DEBUG_LELVE 2

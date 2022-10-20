@@ -287,7 +287,7 @@ void *kmalloc(size_t size)
     unsigned int *b;
     void *ret;
     struct page *page;
-
+    pr_slab_debug("enter\n");
     size = ALIGN(size, sizeof(unsigned int));
 
     if (size < PGSIZE - align){
@@ -311,7 +311,7 @@ void *kmalloc(size_t size)
             order, ret, (unsigned long)page);
         page->slob_left_units = order;
     }
-
+    pr_slab_debug("exit\n");
     return ret;
 }
 

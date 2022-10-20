@@ -13,10 +13,10 @@ struct timer_list {
     unsigned int magic;
 };
 
-void run_timers(void);
 int mod_timer(struct timer_list *timer, unsigned long expires);
 int del_timer(struct timer_list *timer);
 int add_timer(struct timer_list *timer);
 void init_timer(struct timer_list *timer);
+void init_timer_thread(void);
 
 #endif

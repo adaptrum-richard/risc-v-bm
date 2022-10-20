@@ -5,9 +5,13 @@
 #include "sched.h"
 #include "types.h"
 #include "printk.h"
+#include "fork.h"
+#include "sleep.h"
+#include "timer.h"
 
 struct timer_list timer_list_head = {
     .entry = LIST_HEAD_INIT(timer_list_head.entry),
+    .lock = INIT_SPINLOCK("timerlist"),
 };
 
 void init_timer(struct timer_list *timer)
@@ -81,7 +85,7 @@ int mod_timer(struct timer_list *timer, unsigned long expires)
     return 0;
 }
 
-void run_timers(void)
+static void run_timers(void)
 {
     struct timer_list *timer;
     void (*func)(unsigned long) = NULL;
@@ -106,3 +110,16 @@ void run_timers(void)
     }
     release(&timer->lock);
 }
+
+static void run_timer(unsigned long arg)
+{
+    while(1){
+        run_timers();
+        kernel_sleep(1);
+    }
+}
+
+void init_timer_thread(void)
+{
+    create_kernel_thread(run_timer, 0, "run_times");
+}   

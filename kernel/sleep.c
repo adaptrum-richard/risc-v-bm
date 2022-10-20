@@ -2,6 +2,7 @@
 #include "wait.h"
 #include "sched.h"
 #include "proc.h"
+#include "printk.h"
 
 //DECLARE_WAIT_QUEUE_HEAD(sleep_queue);
 struct wait_queue_head sleep_queue_array[NCPU];
@@ -21,16 +22,16 @@ void kernel_sleep(uint64 times)
     wait_event_interruptible(sleep_queue_array[smp_processor_id()], timer_after_eq(jiffies, timeout));
 
 }
-static unsigned long timeout_period = 0;
+static unsigned long timeout_period[NCPU] = {0, };
 void wakes_sleep(void)
 {
     /*200ms唤醒一次在sleep中睡眠的进程*/
-    if(0 == timeout_period){
-        timeout_period = jiffies + HZ/5;
+    if(0 == timeout_period[smp_processor_id()]){
+        timeout_period[smp_processor_id()] = jiffies + HZ/5;
     } else {
-        if(timer_after_eq(jiffies, timeout_period)){
+        if(timer_after_eq(jiffies, timeout_period[smp_processor_id()])){
             wake_up(&sleep_queue_array[smp_processor_id()]);
-            timeout_period = jiffies + HZ/5;
+            timeout_period[smp_processor_id()] = jiffies + HZ/5;
         }
     }
 }

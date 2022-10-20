@@ -22,20 +22,23 @@
 #include "exec.h"
 #include "pci.h"
 #include "slab.h"
+#include "timer.h"
+
 volatile int init_done_flag = 0;
 static volatile int fs_init_done = 0;
+
 void kernel_process(uint64 arg)
 {
     while(1){
         kernel_sleep(1);
-        //printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
-        //delay();
+        printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
     }
 }
 
 void idle()
 {
     //文件系统初始化
+#if 1
     if(smp_processor_id() == 0){
         binit();
         iinit();
@@ -46,8 +49,9 @@ void idle()
     }else 
         while(fs_init_done == 1)
             __smp_rmb();
+#endif
     while(1){
-        //printk("current %s run pid:%d, cpu%d\n", current->name, current->pid, smp_processor_id());
+        printk("current %s run pid:%d, cpu%d\n", current->name, current->pid, smp_processor_id());
         kernel_sleep(smp_processor_id() + 1);
         //traversing_rq();
     }
@@ -160,6 +164,7 @@ void main()
         net_init();
         pci_init();
         run_proc();
+        init_timer_thread();
         intr_on();
         init_done_flag = 1;
         __sync_synchronize();
@@ -173,14 +178,15 @@ void main()
         kvminithart();
         trapinithart();
         //plicinithart(); /*外设中断在cpu0上处理，其他CPU不用初始化*/     
-        traversing_rq();
+        //traversing_rq();
         intr_on();
         run_proc();
+         __sync_synchronize();
     }
     
     while(1){
         schedule();
-        free_zombie_task();
+        //free_zombie_task();
     }
 
 }

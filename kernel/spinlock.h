@@ -7,8 +7,8 @@
 // Mutual exclusion lock.
 struct spinlock
 {
-    uint locked; // Is the lock held?
-
+    int owner; // Is the lock held?
+    int next;
     // For debugging:
     char *name; // Name of lock.
     int cpu;
@@ -16,7 +16,8 @@ struct spinlock
 
 #define INIT_SPINLOCK(_name)  \
     {                         \
-        .locked = 0,          \
+        .owner = 1,          \
+        .next = 0,          \
         .name = "" #_name "", \
     }
 
@@ -26,7 +27,6 @@ void spin_unlock_irqrestore(struct spinlock *lock,
 void release(struct spinlock *lk);
 void acquire(struct spinlock *lk);
 void initlock(struct spinlock *lk, char *name);
-int try_acquire(struct spinlock *lk);
 void release_irq(struct spinlock *lk);
 void acquire_irq(struct spinlock *lk);
 

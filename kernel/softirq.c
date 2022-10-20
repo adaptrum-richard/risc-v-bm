@@ -22,6 +22,6 @@ void irq_exit(void)
 out:
 #endif
     wakes_sleep();
-    run_timers();
+    //run_timers();
     return;
 }

@@ -111,7 +111,7 @@ void do_page_fault(struct pt_regs *regs)
     
     if(in_atomic() || !mm){
         /*do page fault不能能发送在in_atomic或没有mm的进程中*/
-        panic("do_page_fault\n");
+        panic("%s %d\n", __func__, __LINE__);
     }
 
     if (user_mode(regs))

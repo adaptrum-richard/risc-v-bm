@@ -349,6 +349,9 @@ w_mscratch(uint64 x)
             : "memory");			\
 })
 
+#define wfe() do{}while(0)
+#define wfi() do{}while(0)
+
 typedef uint64 pte_t;
 typedef uint64 *pagetable_t; // 512 PTEs
 

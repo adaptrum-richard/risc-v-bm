@@ -76,6 +76,7 @@ void sched_init(void)
 {
     struct run_queue *rq = get_cpu_rq();
     INIT_LIST_HEAD(&rq->rq_head);
+    initlock(&rq->lock, "rqlock");
     rq->nr_running = 0;
     rq->nr_switches = 0;
     rq->curr = NULL;
@@ -132,6 +133,7 @@ static void __schedule(void)
     
     /*关闭中断，以免发送影响调度器*/
     intr_off();
+    __smp_rmb();
     if(prev->state != TASK_RUNNING)
         dequeue_task(rq, prev);
 

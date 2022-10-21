@@ -186,7 +186,7 @@ void main()
     
     while(1){
         schedule();
-        //free_zombie_task();
+        free_zombie_task();
     }
 
 }

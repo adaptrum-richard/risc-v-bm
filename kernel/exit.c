@@ -40,8 +40,8 @@ out:
 void do_exit(int code)
 {
     //unsigned long flags;
-    if(current == &init_task){
-        panic("init_task can't exit\n");
+    if(current == get_init_task()){
+        panic("init_task%d can't exit\n", smp_processor_id());
     }
 
     for(int fd = 0; fd < NOFILE; fd++){
@@ -67,7 +67,7 @@ void do_exit(int code)
     //spin_unlock_irqrestore(&(cpu_rq(smp_processor_id())->lock), flags);
 
     if(current->parent == NULL){
-        current->parent = &init_task;
+        current->parent = get_init_task();
     }else 
         wake_up(&current->wait_childexit);
 

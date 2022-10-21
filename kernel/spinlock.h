@@ -4,10 +4,10 @@
 #include "riscv.h"
 #include "typecheck.h"
 
-// Mutual exclusion lock.
+// 排队自旋锁
 struct spinlock
 {
-    int owner; // Is the lock held?
+    int owner;
     int next;
     // For debugging:
     char *name; // Name of lock.
@@ -25,6 +25,7 @@ void spin_unlock_irqrestore(struct spinlock *lock,
                             unsigned long flags);
 
 void release(struct spinlock *lk);
+int try_acquire(struct spinlock *lk);
 void acquire(struct spinlock *lk);
 void initlock(struct spinlock *lk, char *name);
 void release_irq(struct spinlock *lk);

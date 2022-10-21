@@ -50,12 +50,46 @@ static inline void lock(struct spinlock *lock)
     }
 }
 
+/*将new值原子写入*locked，然后返回locked的旧值*/
+static inline int try_lock(struct spinlock *lock)
+{
+    unsigned long tmp;
+    int ret = -1;
+    struct spinlock lockval;
+    asm volatile(
+        "1:\n"
+        "lr.w %[new_next], (%[lock_next])\n"
+        "lw %[new_owner], (%[lock_owner])\n"
+        "bne %[new_owner], %[new_next], 2f\n"
+        "addi %[new_next], %[new_next], 1\n"
+        "addi %[ret], %[ret], 1\n"
+        "sc.w %[tmp],%[new_next],(%[lock_next])\n"
+        "bnez %2, 1b\n"
+        "2:"
+        :[new_next]"=r"(lockval.next), [new_owner]"=r"(lockval.owner), [tmp]"=r"(tmp), [ret]"=r"(ret)
+        :[lock_next]"r"(&lock->next), [lock_owner]"r"(&lock->owner)
+        :"memory"
+    );
+    return ret;
+}
+
+int try_acquire(struct spinlock *lk)
+{
+    preempt_disable();
+    if(try_lock(lk) == 0){
+        __smp_rmb();
+        return 0;
+    }
+    preempt_enable();
+    return -1;
+}
+
 void acquire(struct spinlock *lk)
 {
     preempt_disable();
     lock(lk);
     lk->cpu = smp_processor_id();
-    __smp_mb();
+    __smp_rmb();
 }
 
 void release(struct spinlock *lk)
@@ -63,6 +97,7 @@ void release(struct spinlock *lk)
     lk->cpu = -1;
     unlock(lk);
     preempt_enable();
+    __smp_wmb();
 }
 
 void acquire_irq(struct spinlock *lk)

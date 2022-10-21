@@ -191,7 +191,7 @@ int main(void)
         }
     }
 
-    run_cmd("ls");
+    run_cmd("dhcpc");
 
     while(prompt_and_get_input("$ ", &line, &len) > 0){
         pipeline_t *pipeline = parse_pipeline(line);

@@ -174,6 +174,11 @@ handle_syscall:
         add s0, s0, t0
         ld s0, 0(s0)
 
+        /*系统调用默认关闭了中断，这里开启中断才去调用系统调用函数。*/
+        csrr s1, sstatus
+        ori s1, s1 , (1<<1)
+        csrw sstatus, s1
+
         jalr s0 //跳转到对应的系统函数，并设置ra
 ret_from_syscall:
         sd a0, 80(sp) //返回值

@@ -20,7 +20,7 @@
 #include "printk.h"
 #include "ip_app.h"
 
-static struct spinlock lock;
+static struct spinlock lock = INIT_SPINLOCK("sysnet");
 static struct sock *sockets;
 
 void sockinit(void)

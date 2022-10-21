@@ -31,7 +31,7 @@ void kernel_process(uint64 arg)
 {
     while(1){
         kernel_sleep(1);
-        printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
+        //printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
     }
 }
 
@@ -51,7 +51,7 @@ void idle()
             __smp_rmb();
 #endif
     while(1){
-        printk("current %s run pid:%d, cpu%d\n", current->name, current->pid, smp_processor_id());
+        //printk("current %s run pid:%d, cpu%d\n", current->name, current->pid, smp_processor_id());
         kernel_sleep(smp_processor_id() + 1);
         //traversing_rq();
     }

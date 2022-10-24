@@ -173,7 +173,6 @@ void main()
             __sync_synchronize();
         intr_off();
         init_process(r_tp());
-        printk("hart%d run\n", smp_processor_id());
         w_sscratch(0);
         kvminithart();
         trapinithart();
@@ -183,7 +182,7 @@ void main()
         run_proc();
          __sync_synchronize();
     }
-    
+    printk("hart%d run, now mtime value 0x%lx\n", smp_processor_id(), read_mtime());
     while(1){
         schedule();
         free_zombie_task();

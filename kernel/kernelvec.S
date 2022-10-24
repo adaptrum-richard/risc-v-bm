@@ -206,16 +206,22 @@ timervec:
     # scratch[0,8,16] : register save area.
     # scratch[24] : address of CLINT's MTIMECMP register.
     # scratch[32] : desired interval between interrupts.
-    
-    csrrw a0, mscratch, a0
-    sd a1, 0(a0)
-    sd a2, 8(a0)
-    sd a3, 16(a0)
+    csrrw t0, mscratch, t0
+    sd a0, 0(t0)  //借用scratch的内存空间
+    csrr a0, mcause
+    bge a0, zero, hanlder_s_exception //判断是中断还是异常, bge将把s4的二进制补码作为数据和zero比较
+    //中断
+    ld a0, 0(t0)
+
+    //csrrw t0, mscratch, t0
+    sd a1, 0(t0)
+    sd a2, 8(t0)
+    sd a3, 16(t0)
 
     # schedule the next timer interrupt
     # by adding interval to mtimecmp.
-    ld a1, 24(a0) # CLINT_MTIMECMP(hart)
-    ld a2, 32(a0) # interval
+    ld a1, 24(t0) # CLINT_MTIMECMP(hart)
+    ld a2, 32(t0) # interval
     ld a3, 0(a1)
     add a3, a3, a2
     sd a3, 0(a1)
@@ -224,9 +230,36 @@ timervec:
     li a1, 2
     csrw sip, a1
 
-    ld a3, 16(a0)
-    ld a2, 8(a0)
-    ld a1, 0(a0)
-    csrrw a0, mscratch, a0
-
+    ld a3, 16(t0)
+    ld a2, 8(t0)
+    ld a1, 0(t0)
+    csrrw t0, mscratch, t0
     mret
+hanlder_s_exception:
+    sd t1, 8(t0)
+    li t1, 9 // ecall from s-mode
+    beq a0, t1, handle_secall
+    ld t1, 8(t0)
+    ld a0, 0(t0)
+    csrrw t0, mscratch, t0
+    mret 
+/*
+ * 读取mtime的值，0x200BFF8L为mtime的地址
+ * 注意异常返回时，需要mepc加4。
+*/
+handle_secall:
+    li t1, 0x200BFF8L
+    ld a0, (t1)
+    csrr t1, mepc
+    addi t1, t1, 4
+    csrw mepc, t1
+    ld t1, 8(t0)
+    csrrw t0, mscratch, t0
+    mret
+
+.global read_mtime
+.align 4
+read_mtime:
+    li a7, 1
+    ecall
+    ret

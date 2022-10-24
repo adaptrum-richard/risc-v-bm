@@ -22,8 +22,8 @@ void start()
     /*禁止地址翻译*/
     w_satp(0);
 
-    /*代理所有中断和异常到s模式*/
-    w_medeleg(0xffff);
+    /*代理所有中断和异常到s模式, s-mode下调用ecall不被代理到s-mode。*/
+    w_medeleg(0xffff & (~(1<<9)));
     w_mideleg(0xffff);
 
     /*开启s模式下的extension、异常、中断*/

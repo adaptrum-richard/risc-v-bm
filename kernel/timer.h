@@ -18,5 +18,5 @@ int del_timer(struct timer_list *timer);
 int add_timer(struct timer_list *timer);
 void init_timer(struct timer_list *timer);
 void init_timer_thread(void);
-
+extern unsigned long read_mtime(void);
 #endif

@@ -51,7 +51,8 @@ void idle()
             __smp_rmb();
 #endif
     while(1){
-        //printk("current %s run pid:%d, cpu%d\n", current->name, current->pid, smp_processor_id());
+        printk("current %s run pid:%d, cpu%d, mtime = 0x%lx\n", 
+            current->name, current->pid, smp_processor_id(), read_mtime());
         kernel_sleep(smp_processor_id() + 1);
         //traversing_rq();
     }

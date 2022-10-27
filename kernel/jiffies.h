@@ -4,6 +4,7 @@
 
 #define HZ 250
 #define CPU_FREQ 10000000UL
+#define TIMER_MS_TO_NS  (1000)  //mtime的单位是10微秒
 /*一般a参数是为jiffies，b参数是timeout的时间。*/
 
 //time_after(a,b) 返回 true，如果时间a在时间b的后面

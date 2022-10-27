@@ -276,3 +276,27 @@ int create_kernel_thread(void (*fn)(unsigned long arg), unsigned long arg, char 
 {
     return copy_process(PF_KTHREAD, (unsigned long)fn, arg, name);
 }
+
+static void __sched_fork(unsigned long clone_flags, struct task_struct *p)
+{
+    p->on_rq            = 0;
+    p->se.on_rq            = 0;
+    p->se.exec_start        = 0;
+    p->se.sum_exec_runtime        = 0;
+    p->se.prev_sum_exec_runtime    = 0;
+    p->se.vruntime            = 0;
+    p->se.cfs_rq            = NULL;
+}
+
+int sched_fork(unsigned long clone_flags, struct task_struct *p)
+{
+    unsigned long flags;
+    p->prio = current->normal_prio;
+    set_task_sched_class(p);
+    spin_lock_irqsave(&p->lock, flags);
+    p->cpu = smp_processor_id();
+    __smp_wmb();
+    if(p->sched_class->task_fork)
+		p->sched_class->task_fork(p);
+    spin_unlock_irqrestore(&p->lock, flags);
+}

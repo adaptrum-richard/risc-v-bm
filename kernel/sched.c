@@ -11,12 +11,69 @@
 #include "timer.h"
 
 extern struct sched_class simple_sched_class;
+extern struct sched_class fair_sched_class;
 volatile uint64 jiffies = 0;
 struct run_queue g_rq[NCPU];
+
+//一个进程最少要执行0.75毫秒, sched_min_granularity单位是纳秒
+unsigned int sched_min_granularity = 750000ULL;
+//6ms ,单位是纳秒
+unsigned int sched_latency = 6000000ULL;
+
+
+/*
+ *不同的nice值对于数组中的一个值，每个值之间相差10%的cpu使用率
+ */
+const int sched_prio_to_weight[40] = {
+ /* -20 */     88761,     71755,     56483,     46273,     36291,
+ /* -15 */     29154,     23254,     18705,     14949,     11916,
+ /* -10 */      9548,      7620,      6100,      4904,      3906,
+ /*  -5 */      3121,      2501,      1991,      1586,      1277,
+ /*   0 */      1024,       820,       655,       526,       423,
+ /*   5 */       335,       272,       215,       172,       137,
+ /*  10 */       110,        87,        70,        56,        45,
+ /*  15 */        36,        29,        23,        18,        15,
+};
+
+/*
+ * vruntime= (delta_exec*nice_0_weight * 2^32) >> 32  (1)
+ * inv_weight = 2^32 / weight    (2)
+ *  sched_prio_to_wmult 即公式(2)的预设值
+ */
+const uint32 sched_prio_to_wmult[40] = {
+ /* -20 */     48388,     59856,     76040,     92818,    118348,
+ /* -15 */    147320,    184698,    229616,    287308,    360437,
+ /* -10 */    449829,    563644,    704093,    875809,   1099582,
+ /*  -5 */   1376151,   1717300,   2157191,   2708050,   3363326,
+ /*   0 */   4194304,   5237765,   6557202,   8165337,  10153587,
+ /*   5 */  12820798,  15790321,  19976592,  24970740,  31350126,
+ /*  10 */  39045157,  49367440,  61356676,  76695844,  95443717,
+ /*  15 */ 119304647, 148102320, 186737708, 238609294, 286331153,
+};
 
 static inline struct run_queue *get_cpu_rq()
 {
     return &g_rq[smp_processor_id()];
+}
+
+struct run_queue *task_rq(struct task_struct *p)
+{
+    return &g_rq[p->cpu];
+}
+
+unsigned long sched_clock_cpu(int cpu)
+{
+    return read_mtime() * TIMER_MS_TO_NS;
+}
+
+void update_rq_clock(struct run_queue *rq)
+{
+    long delta;
+    delta = sched_clock_cpu(smp_processor_id()) - rq->clock;
+    if(delta < 0)
+        return;
+    /*TODO: 如果这里发生了中断，时间会不准确，如何保证这里时间准确？*/
+    rq->clock += delta;
 }
 
 void traversing_rq(void)
@@ -63,8 +120,7 @@ struct task_struct *switch_to(struct task_struct *prev, struct task_struct *next
 */
 static void schedule_debug(struct task_struct *p)
 {
-    //if(in_atomic_preempt_off()) { 
-    if(READ_ONCE(p->preempt_count) != 1){
+    if(in_atomic_preempt_off()) { 
         printk("BUG: schedule while atomic pid:%d, preempt_count:0x%x, "
             "task_name = %s, cpu = %d, task addr = 0x%lx\n", 
             p->pid, preempt_count(), current->name, smp_processor_id(), current);
@@ -91,7 +147,7 @@ struct task_struct *pick_next_task(struct run_queue *rq,
 
 void dequeue_task(struct run_queue *rq, struct task_struct *p)
 {
-    const struct sched_class *class = &simple_sched_class;
+    const struct sched_class *class = p->sched_class;
     class->dequeue_task(rq, p);
 }
 
@@ -102,14 +158,16 @@ void enqueue_task(struct run_queue *rq, struct task_struct *p)
 
 void task_tick(struct run_queue *rq, struct task_struct *p)
 {
-    const struct sched_class *class = &simple_sched_class;
+    const struct sched_class *class = p->sched_class;
     return class->task_tick(rq, p);
 }
 
 void set_task_sched_class(struct task_struct *p)
 {
-    if((p->flags & TASK_NORMAL) || (p->flags & PF_KTHREAD))
+    if(p->prio <= MAX_USER_RT_PRIO) 
         p->sched_class = &simple_sched_class;
+    else
+        p->sched_class = &fair_sched_class;
 }
 
 void tick_handle_periodic(void)

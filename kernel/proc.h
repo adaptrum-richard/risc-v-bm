@@ -49,6 +49,10 @@ struct task_struct {
     uint64 priority;
     int on_rq;
     struct sched_class *sched_class;
+    struct sched_entity se;
+    int prio;
+    int normal_prio; 
+    int static_prio;
     struct file *ofile[NOFILE]; //open file
     struct inode *cwd; //当前的目录
     struct list_head run_list;

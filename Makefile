@@ -20,7 +20,7 @@ $(KERNEL_BUILD_DIR)/%_c.o: $(KERNEL_DIR)/%.c
 	$(RISCVGNU)-gcc $(COPS) -c $< -o $@
 
 $(KERNEL_BUILD_DIR)/%_s.o: $(KERNEL_DIR)/%.S
-	$(RISCVGNU)-gcc $(ASMOPS) -c -D__ASSEMBLY__ $< -o $@
+	$(RISCVGNU)-gcc $(ASMOPS) -c -D__ASSEMBLY__ -DZCU102 $< -o $@
 
 C_FILES = $(wildcard $(KERNEL_DIR)/*.c)
 ASM_FILES = $(wildcard $(KERNEL_DIR)/*.S)

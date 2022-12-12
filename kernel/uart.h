@@ -1,8 +1,13 @@
 #ifndef __UART_H__
 #define __UART_H__
 #include "memlayout.h"
-
+#ifdef ZUC102
+#define REG_SHIFT (2)
+#define UartReg(reg) ((volatile unsigned char *)(UART0 + ((reg)<<REG_SHIFT)))
+#else
 #define UartReg(reg) ((volatile unsigned char *)(UART0 + reg))
+#endif
+
 #define UartReadReg(reg) (*(UartReg(reg)))
 #define UartWriteReg(reg, v) (*(UartReg(reg)) = (v))
 
@@ -25,6 +30,12 @@
 #define LSR 5                 // line status register
 #define LSR_RX_READY (1<<0)   // input is waiting to be read from RHR
 #define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
+
+#ifdef ZCU102
+#define MCR 4
+#define LSR_TEMT		0x40	/* Transmitter empty */
+#endif
+
 void uartpuc(int c);
 void uartputc_sync(int c);
 void uartinit(void);

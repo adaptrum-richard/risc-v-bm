@@ -15,12 +15,23 @@ DECLARE_WAIT_QUEUE_HEAD(uart_wait_queue);
 static int uart_wait_condition = 0;
 void uartinit(void)
 {
+#ifdef ZCU102
+  while(!UartReadReg(LSR) & LSR_TEMT)
+    ;
+#endif
+
   // disable interrupts.
   UartWriteReg(IER, 0x00);
 
   // special mode to set baud rate.
+  
+#ifdef ZCU102
+  UartWriteReg(MCR, 0x00);
+  UartWriteReg(FCR, 0x01 | 0x2 | 0x4);
+  UartWriteReg(LCR, 0x00);
+  
+#else
   UartWriteReg(LCR, LCR_BAUD_LATCH);
-
   // LSB for baud rate of 38.4K.
   UartWriteReg(0, 0x03);
 
@@ -36,7 +47,7 @@ void uartinit(void)
 
   // enable transmit and receive interrupts.
   UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
-
+#endif
   initlock(&uart_tx_lock, "uart");
 }
 

@@ -16,49 +16,52 @@ static int uart_wait_condition = 0;
 void uartinit(void)
 {
 #ifdef ZCU102
-  while(!UartReadReg(LSR) & LSR_TEMT)
-    ;
+    while (!UartReadReg(LSR) & LSR_TEMT)
+        ;
 #endif
 
-  // disable interrupts.
-  UartWriteReg(IER, 0x00);
+    // disable interrupts.
+    UartWriteReg(IER, 0x00);
 
-  // special mode to set baud rate.
-  
+    // special mode to set baud rate.
+
 #ifdef ZCU102
-  UartWriteReg(MCR, 0x00);
-  UartWriteReg(FCR, 0x01 | 0x2 | 0x4);
-  UartWriteReg(LCR, 0x00);
-  
+    UartWriteReg(MCR, 0x00);
+    UartWriteReg(FCR, 0x01 | 0x2 | 0x4);
+    UartWriteReg(LCR, 0x00);
+
 #else
-  UartWriteReg(LCR, LCR_BAUD_LATCH);
-  // LSB for baud rate of 38.4K.
-  UartWriteReg(0, 0x03);
+    UartWriteReg(LCR, LCR_BAUD_LATCH);
+    // LSB for baud rate of 38.4K.
+    UartWriteReg(0, 0x03);
 
-  // MSB for baud rate of 38.4K.
-  UartWriteReg(1, 0x00);
+    // MSB for baud rate of 38.4K.
+    UartWriteReg(1, 0x00);
 
-  // leave set-baud mode,
-  // and set word length to 8 bits, no parity.
-  UartWriteReg(LCR, LCR_EIGHT_BITS);
+    // leave set-baud mode,
+    // and set word length to 8 bits, no parity.
+    UartWriteReg(LCR, LCR_EIGHT_BITS);
 
-  // reset and enable FIFOs.
-  UartWriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
+    // reset and enable FIFOs.
+    UartWriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-  // enable transmit and receive interrupts.
-  UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
+    // enable transmit and receive interrupts.
+    UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
 #endif
-  initlock(&uart_tx_lock, "uart");
+    initlock(&uart_tx_lock, "uart");
 }
 
 void uartstart()
 {
-    while(1){
+    while (1)
+    {
         /*transmit buffer is empty*/
-        if(uart_tx_w == uart_tx_r){
+        if (uart_tx_w == uart_tx_r)
+        {
             return;
         }
-        if((UartReadReg(LSR) & LSR_TX_IDLE) == 0){
+        if ((UartReadReg(LSR) & LSR_TX_IDLE) == 0)
+        {
             // the UART transmit holding register is full,
             // so we cannot give it another byte.
             // it will interrupt when it's ready for a new byte.
@@ -69,24 +72,28 @@ void uartstart()
         /*注意: uart写不能在关闭外部中断的情况下执行*/
         smp_store_release(&uart_wait_condition, 1);
         wake_up(&uart_wait_queue);
-        
+
         UartWriteReg(THR, c);
-        //wake((uint64)&uart_tx_r);
+        // wake((uint64)&uart_tx_r);
     }
 }
 
 void uartpuc(int c)
 {
     acquire(&uart_tx_lock);
-    while(1){
-        if(uart_tx_w == uart_tx_r + UART_TX_BUF_SIZE){
+    while (1)
+    {
+        if (uart_tx_w == uart_tx_r + UART_TX_BUF_SIZE)
+        {
             /*buffer满了
             需要等候uartstart 开放一些buffer
             */
             release(&uart_tx_lock);
             wait_event(uart_wait_queue, READ_ONCE(uart_wait_condition) == 1);
             acquire(&uart_tx_lock);
-        } else {
+        }
+        else
+        {
             uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE] = c;
             uart_tx_w += 1;
             uartstart();
@@ -100,32 +107,34 @@ void uartpuc(int c)
 void uartputc_sync(int c)
 {
 
-    while((UartReadReg(LSR) & LSR_TX_IDLE) == 0)
+    while ((UartReadReg(LSR) & LSR_TX_IDLE) == 0)
         ;
     UartWriteReg(THR, c);
 }
 
 int uartgetc(void)
 {
-    if(UartReadReg(LSR) & 0x01){
-        //input data is ready
+    if (UartReadReg(LSR) & 0x01)
+    {
+        // input data is ready
         return UartReadReg(RHR);
-    } else
+    }
+    else
         return -1;
 }
 
 void uartintr(void)
 {
-    while(1){
+    while (1)
+    {
         int c = uartgetc();
-        if(c == -1)
+        if (c == -1)
             break;
         consoleintr(c);
     }
 
-    //send buffered char
-    //acquire(&uart_tx_lock);
+    // send buffered char
+    // acquire(&uart_tx_lock);
     uartstart();
-    //release(&uart_tx_lock);
+    // release(&uart_tx_lock);
 }
-

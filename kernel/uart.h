@@ -1,15 +1,16 @@
 #ifndef __UART_H__
 #define __UART_H__
 #include "memlayout.h"
-#ifdef ZUC102
+#include "riscv_io.h"
+#ifdef ZCU102
 #define REG_SHIFT (2)
 #define UartReg(reg) ((volatile unsigned char *)(UART0 + ((reg)<<REG_SHIFT)))
 #else
 #define UartReg(reg) ((volatile unsigned char *)(UART0 + reg))
 #endif
 
-#define UartReadReg(reg) (*(UartReg(reg)))
-#define UartWriteReg(reg, v) (*(UartReg(reg)) = (v))
+#define UartReadReg(reg)      readl(UartReg(reg))
+#define UartWriteReg(reg, v)  writel(v, UartReg(reg))
 
 // the UART control registers.
 // some have different meanings for
@@ -34,6 +35,13 @@
 #ifdef ZCU102
 #define MCR 4
 #define LSR_TEMT		0x40	/* Transmitter empty */
+#define LCR_DLAB		0x80 /* Divisor latch access bit */
+/*
+ * DLAB=1
+ */
+#define DLL	0	/* Out: Divisor Latch Low */
+#define DLM	1	/* Out: Divisor Latch High */
+#define DIV_MAX	0xFFFF	/* Max divisor value */
 #endif
 
 void uartpuc(int c);

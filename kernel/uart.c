@@ -5,18 +5,41 @@
 #include "sched.h"
 #include "wait.h"
 #include "debug.h"
-
+#include "riscv_io.h"
+#ifdef ZCU102
+#include "memlayout.h"
+#endif
 struct spinlock uart_tx_lock;
+
+#ifdef ZCU102
+#define UART_TX_BUF_SIZE 16
+#else
 #define UART_TX_BUF_SIZE 32
+#endif
+
 char uart_tx_buf[UART_TX_BUF_SIZE];
 uint64 uart_tx_w; // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
 uint64 uart_tx_r; // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
 DECLARE_WAIT_QUEUE_HEAD(uart_wait_queue);
 static int uart_wait_condition = 0;
+
+#ifdef ZCU102
+void enable_uart_clock(void)
+{
+    unsigned int clock_value = (0xfffffff0);
+    unsigned char* uart_base = (unsigned char *)(UART_BASE + 8);
+    writel(clock_value, (void *)uart_base);
+}
+#endif
+
 void uartinit(void)
 {
 #ifdef ZCU102
-    while (!UartReadReg(LSR) & LSR_TEMT)
+    int lcr_val = 0;
+    unsigned long uart_clk = 20000000; //20MHz
+    unsigned long baudrate = 115200;
+    int divisor = uart_clk/baudrate;
+    while (!(UartReadReg(LSR) & LSR_TEMT))
         ;
 #endif
 
@@ -27,9 +50,17 @@ void uartinit(void)
 
 #ifdef ZCU102
     UartWriteReg(MCR, 0x00);
-    UartWriteReg(FCR, 0x01 | 0x2 | 0x4);
+    /* [bit 2]reset rx fifo, [bit 3]reset tx fifo*/
+    UartWriteReg(FCR, 0x01 | 0x2 | 0x4); 
     UartWriteReg(LCR, 0x00);
+    // set baudrate
+    lcr_val = UartReadReg(LCR);
+    UartWriteReg(LCR, lcr_val | LCR_DLAB);
+    UartWriteReg(DLL, divisor & 0xff);
+    UartWriteReg(DLM, (divisor >> 8 ) & 0xff);
+    UartWriteReg(LCR, lcr_val & ~LCR_DLAB);
 
+    enable_uart_clock();
 #else
     UartWriteReg(LCR, LCR_BAUD_LATCH);
     // LSB for baud rate of 38.4K.
@@ -44,11 +75,19 @@ void uartinit(void)
 
     // reset and enable FIFOs.
     UartWriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
-
+#endif
     // enable transmit and receive interrupts.
     UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
-#endif
+
     initlock(&uart_tx_lock, "uart");
+#ifdef ZCU102
+    //outout HELLO
+    uartputc_sync('H');
+    uartputc_sync('E');
+    uartputc_sync('L');
+    uartputc_sync('L');
+    uartputc_sync('O');
+#endif
 }
 
 void uartstart()
@@ -114,7 +153,7 @@ void uartputc_sync(int c)
 
 int uartgetc(void)
 {
-    if (UartReadReg(LSR) & 0x01)
+    if (UartReadReg(LSR) & LSR_RX_READY)
     {
         // input data is ready
         return UartReadReg(RHR);

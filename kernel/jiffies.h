@@ -3,8 +3,9 @@
 #include "typecheck.h"
 
 #define HZ 250
-#ifdef ZUC102
-#define CPU_FREQ 300000000UL //300MHz
+#ifdef ZCU102
+//#define CPU_FREQ 300000000UL //300MHz
+#define CPU_FREQ 1000000UL //300MHz
 #else
 #define CPU_FREQ 10000000UL
 #endif

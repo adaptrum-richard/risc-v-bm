@@ -17,7 +17,7 @@ mkdir_kernel_build:
 	mkdir -p $(KERNEL_BUILD_DIR)
 
 $(KERNEL_BUILD_DIR)/%_c.o: $(KERNEL_DIR)/%.c
-	$(RISCVGNU)-gcc $(COPS) -c $< -o $@
+	$(RISCVGNU)-gcc $(COPS) -DZCU102 -c $< -o $@
 
 $(KERNEL_BUILD_DIR)/%_s.o: $(KERNEL_DIR)/%.S
 	$(RISCVGNU)-gcc $(ASMOPS) -c -D__ASSEMBLY__ -DZCU102 $< -o $@

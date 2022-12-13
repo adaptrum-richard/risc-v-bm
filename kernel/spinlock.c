@@ -28,6 +28,10 @@ static void unlock(struct spinlock *lock)
 static inline void lock(struct spinlock *lock)
 {
     unsigned long times = 0;
+#ifdef ZCU102
+    struct spinlock lockval = *lock;
+    lockval.next++;
+#else
     unsigned long tmp;
     struct spinlock lockval;
     asm volatile(
@@ -36,11 +40,12 @@ static inline void lock(struct spinlock *lock)
         "lw %[new_owner], (%[lock_owner])\n"
         "addi %[new_next], %[new_next], 1\n"
         "sc.w %[tmp],%[new_next],(%[lock_next])\n"
-        "bnez %2, 1b\n"
+        "bnez %[tmp], 1b\n"
         :[new_next]"=r"(lockval.next), [new_owner]"=r"(lockval.owner), [tmp]"=r"(tmp)
         :[lock_next]"r"(&lock->next), [lock_owner]"r"(&lock->owner)
         :"memory"
     );
+#endif
     times = jiffies + HZ*2;
     while(lockval.next != lockval.owner){
         wfe();

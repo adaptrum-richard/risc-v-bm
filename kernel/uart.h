@@ -33,6 +33,7 @@
 #define LSR_TX_IDLE (1<<5)    // THR can accept another character to send
 
 #ifdef ZCU102
+#define IIR 2
 #define MCR 4
 #define LSR_TEMT		0x40	/* Transmitter empty */
 #define LCR_DLAB		0x80 /* Divisor latch access bit */
@@ -42,6 +43,7 @@
 #define DLL	0	/* Out: Divisor Latch Low */
 #define DLM	1	/* Out: Divisor Latch High */
 #define DIV_MAX	0xFFFF	/* Max divisor value */
+void test_uart_intr(void);
 #endif
 
 void uartpuc(int c);

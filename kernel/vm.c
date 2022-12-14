@@ -213,13 +213,13 @@ pagetable_t kvmmake(void)
 
     // PLIC
     kvmmap(kpgtbl, PLIC, PLIC, 0x400000, PTE_R | PTE_W);
-
+#ifndef ZCU102
     // pci
     kvmmap(kpgtbl, VIRT_PCIE_ADDR, VIRT_PCIE_ADDR, VIRT_PCIE_ADDR_LENGTH, PTE_R | PTE_W);
     
     //e1000
     kvmmap(kpgtbl, VIRT_E1000_ADDR, VIRT_E1000_ADDR, VIRT_E1000_ADDR_LENGTH, PTE_R | PTE_W);
-    
+#endif
     // map kernel text executable and read-only.
     kvmmap(kpgtbl, KERNBASE, KERNBASE, (uint64)_etext - KERNBASE, PTE_R | PTE_X);
 

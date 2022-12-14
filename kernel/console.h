@@ -20,5 +20,8 @@ struct console {
 void consputc(int c);
 void consoleinit(void);
 void consoleintr(int c);
-
+#ifdef ZCU102
+int consoleread(uint64 dst, int n);
+int consolewrite(uint64 src, int n);
+#endif
 #endif

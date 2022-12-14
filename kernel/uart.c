@@ -18,8 +18,8 @@ struct spinlock uart_tx_lock;
 #endif
 
 char uart_tx_buf[UART_TX_BUF_SIZE];
-uint64 uart_tx_w; // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
-uint64 uart_tx_r; // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
+static uint64 uart_tx_w = 0; // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
+static uint64 uart_tx_r = 0; // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
 DECLARE_WAIT_QUEUE_HEAD(uart_wait_queue);
 static int uart_wait_condition = 0;
 
@@ -51,7 +51,7 @@ void uartinit(void)
 #ifdef ZCU102
     UartWriteReg(MCR, 0x00);
     /* [bit 2]reset rx fifo, [bit 3]reset tx fifo*/
-    UartWriteReg(FCR, 0x01 | 0x2 | 0x4); 
+    UartWriteReg(FCR, 0x01 | 0x2); 
     UartWriteReg(LCR, 0x00);
     // set baudrate
     lcr_val = UartReadReg(LCR);
@@ -60,7 +60,7 @@ void uartinit(void)
     UartWriteReg(DLM, (divisor >> 8 ) & 0xff);
     UartWriteReg(LCR, lcr_val & ~LCR_DLAB);
 
-    enable_uart_clock();
+
 #else
     UartWriteReg(LCR, LCR_BAUD_LATCH);
     // LSB for baud rate of 38.4K.
@@ -78,18 +78,63 @@ void uartinit(void)
 #endif
     // enable transmit and receive interrupts.
     UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
-
+#ifdef ZCU102
+    enable_uart_clock();
+#endif
     initlock(&uart_tx_lock, "uart");
 #ifdef ZCU102
     //outout HELLO
+    /*
     uartputc_sync('H');
     uartputc_sync('E');
     uartputc_sync('L');
     uartputc_sync('L');
     uartputc_sync('O');
+    */
 #endif
+
+    uart_tx_r = uart_tx_w = 0;
 }
 
+#ifdef ZCU102
+static void delay(void)
+{
+    int i;
+    for(i = 0; i < 0xfffff; i++);
+}
+unsigned char read_uart_intr_status(void)
+{
+    return UartReadReg(IIR);
+}
+
+void test_uart_intr(void)
+{
+    unsigned long flags;
+    unsigned char iir1, iir;
+    unsigned status;
+    UartWriteReg(IER, 0);
+    delay();
+    struct spinlock test = INIT_SPINLOCK("test_uart_intr");
+    spin_lock_irqsave(&test, flags);
+    for(;;){
+        status = UartReadReg(LSR);
+        if((status & (1<<5)) == (1<<5))
+            break;
+    }
+
+    UartWriteReg(IER, IER_TX_ENABLE);
+    delay();
+    iir1 = (unsigned char)UartReadReg(IIR);
+    UartWriteReg(IER, 0);
+    UartWriteReg(IER, IER_TX_ENABLE);
+    iir = (unsigned char)UartReadReg(IIR);
+    UartWriteReg(IER, 0);
+    UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
+    spin_unlock_irqrestore(&test, flags);
+    iir = iir+iir1;
+}
+
+#endif
 void uartstart()
 {
     while (1)

@@ -53,6 +53,9 @@ static inline void lock(struct spinlock *lock)
             panic("wait timeout, lock name:%s\n", lock->name);
         lockval.owner = READ_ONCE(lock->owner);
     }
+#ifdef ZCU102
+    lock->next++;
+#endif
 }
 
 /*将new值原子写入*locked，然后返回locked的旧值*/

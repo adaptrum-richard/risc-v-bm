@@ -24,21 +24,40 @@
 #include "slab.h"
 #include "timer.h"
 
+#ifdef ZCU102
+#include "uart.h"
+#endif
+
 volatile int init_done_flag = 0;
 static volatile int fs_init_done = 0;
 
 void kernel_process(uint64 arg)
 {
+#ifdef ZCU102
+#define READ_LEN 32
+    
+    char buff[READ_LEN] = "1234567890ABCDEFGH";
+    kernel_sleep(1);
+    //printk("buff:%s, len = %d\n", buff, strlen(buff));
+    consolewrite((uint64)buff, strlen(buff));
+#endif
     while(1){
-        kernel_sleep(1);
+
+#ifdef ZCU102
+        memset(buff, 0x0, READ_LEN);
+        consoleread((uint64)buff, READ_LEN - 1);
+        printk("read data:%s\n", buff);
         //printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
+#else
+        kernel_sleep(1);
+#endif
     }
 }
 
 void idle()
 {
     //文件系统初始化
-#if 1
+#ifndef ZCU102
     if(smp_processor_id() == 0){
         binit();
         iinit();
@@ -51,8 +70,8 @@ void idle()
             __smp_rmb();
 #endif
     while(1){
-        printk("current %s run pid:%d, cpu%d, mtime = 0x%lx\n", 
-            current->name, current->pid, smp_processor_id(), read_mtime());
+        //printk("current %s run pid:%d, cpu%d, mtime = 0x%lx\n", 
+        //    current->name, current->pid, smp_processor_id(), read_mtime());
         kernel_sleep(smp_processor_id() + 1);
         //traversing_rq();
     }
@@ -141,6 +160,25 @@ void bge_test()
     );
     printk("========================ret = 0x%lx\n", ret);
 }
+#ifdef ZCU102
+void delay(void)
+{
+    int i;
+    for(i = 0; i < 0xffffff; i++);
+}
+
+void print(char *s)
+{
+    int i, len;
+    if(s){
+        len = strlen(s);
+        for(i = 0; i < len; i++){
+            consputc((int)s[i]);
+        }
+    }
+}
+
+#endif
 /*tp寄存器刚开始存放hart id，执行完init_process后，tp寄存器存放task_struct结构体*/
 void main()
 {
@@ -153,7 +191,9 @@ void main()
         printk("boot\n");
         mem_init();
         kvminit();
+#ifndef ZCU102
         kvminithart();
+#endif
         trapinithart();
         plicinit();
         plicinithart();
@@ -161,12 +201,17 @@ void main()
         sched_init();
         init_process(0);
         __sync_synchronize();
+#ifndef ZCU102
         virtio_disk_init();
         net_init();
         pci_init();
+#endif
         run_proc();
         init_timer_thread();
         intr_on();
+#ifdef ZCU102
+        //test_uart_intr();
+#endif
         init_done_flag = 1;
         __sync_synchronize();
     }else{
@@ -183,7 +228,7 @@ void main()
         run_proc();
          __sync_synchronize();
     }
-    printk("hart%d run, now mtime value 0x%lx\n", smp_processor_id(), read_mtime());
+    //printk("hart%d run, now mtime value 0x%lx\n", smp_processor_id(), read_mtime());
     while(1){
         schedule();
         free_zombie_task();

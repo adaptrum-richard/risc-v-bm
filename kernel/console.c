@@ -42,7 +42,13 @@ int consoleread(uint64 dst, int n)
             /*环形缓冲区为空*/
             spin_unlock_irqrestore(&cons.lock, flags);
             /*等待中断唤醒*/
+#ifdef ZCU102
+            uart_rx_intr_enable();
+#endif
             wait_event(console_wait_queue, READ_ONCE(console_wait_condition) == 1);
+#ifdef ZCU102
+            uart_rx_intr_disable();
+#endif
             spin_lock_irqsave(&cons.lock, flags);
         }
 
@@ -87,7 +93,7 @@ void consoleintr(int c)
             if(c != 0 && cons.e - cons.r < INPUT_BUF){
                 c = (c == '\r') ? '\n' : c;
                 /*echo back to the user*/
-                consputc(c);
+                //consputc(c);
 
                 cons.buf[cons.e++ % INPUT_BUF] = c;
                 

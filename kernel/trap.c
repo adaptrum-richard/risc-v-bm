@@ -33,18 +33,9 @@ void devintr()
 {
     /*supervisor mode extension interrupt*/
     int irq = plic_claim();
-#ifdef ZCU102
-    printk_intr("rcv dev intr\n");
-#endif
+
     if(irq == UART0_IRQ)
-#ifdef ZCU102
-    {
-        printk_intr("uart irq\n");
         uartintr();
-    }
-#else
-        uartintr();
-#endif
     else if (irq == VIRTIO0_IRQ)
         virtio_disk_intr();
     else if (irq == E1000_IRQ)

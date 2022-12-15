@@ -31,15 +31,26 @@
 volatile int init_done_flag = 0;
 static volatile int fs_init_done = 0;
 
+#ifdef ZCU102
+void zcu02_console_print(uint64 arg){
+    char buff[32] = "ABCDEFGH1234567890";
+    while(1){
+        //printk("current %s run pid:%d, cpu%d\n", 
+        //    current->name, current->pid, smp_processor_id());
+        kernel_sleep(5);
+        consolewrite((uint64)buff, strlen(buff));
+    }
+}
+#endif
+
 void kernel_process(uint64 arg)
 {
 #ifdef ZCU102
-#define READ_LEN 32
-    
-    char buff[READ_LEN] = "1234567890ABCDEFGH";
-    kernel_sleep(1);
+#define READ_LEN 8
+    char buff[32];
+    //kernel_sleep(100);
     //printk("buff:%s, len = %d\n", buff, strlen(buff));
-    consolewrite((uint64)buff, strlen(buff));
+    //consolewrite((uint64)buff, strlen(buff));
 #endif
     while(1){
 
@@ -49,7 +60,9 @@ void kernel_process(uint64 arg)
         printk("read data:%s\n", buff);
         //printk("hart%d current %s run pid:%d\n", smp_processor_id(),current->name, current->pid);
 #else
-        kernel_sleep(1);
+        kernel_sleep(5);
+        printk("current %s run pid:%d, cpu%d\n", 
+            current->name, current->pid, smp_processor_id());
 #endif
     }
 }
@@ -70,9 +83,9 @@ void idle()
             __smp_rmb();
 #endif
     while(1){
-        //printk("current %s run pid:%d, cpu%d, mtime = 0x%lx\n", 
-        //    current->name, current->pid, smp_processor_id(), read_mtime());
-        kernel_sleep(smp_processor_id() + 1);
+        //printk("current %s run pid:%d, cpu%d\n", 
+        //    current->name, current->pid, smp_processor_id());
+        kernel_sleep(smp_processor_id() + 12);
         //traversing_rq();
     }
 }
@@ -127,6 +140,14 @@ void run_proc()
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 1, name);
     if(ret < 0)
         panic("copy_process error ,arg = 1\n");
+
+#ifdef ZCU102
+    sprintf(name, "zcu%d", smp_processor_id());
+    ret = copy_process(PF_KTHREAD, (uint64)&zcu02_console_print, 1, name);
+    if(ret < 0)
+        panic("copy_process error ,arg = 1\n");
+#endif
+
 #if 0
     ret = copy_process(PF_KTHREAD, (uint64)&kernel_process, 2, "kernel_process2");
     if(ret < 0)
@@ -229,6 +250,7 @@ void main()
          __sync_synchronize();
     }
     //printk("hart%d run, now mtime value 0x%lx\n", smp_processor_id(), read_mtime());
+
     while(1){
         schedule();
         free_zombie_task();

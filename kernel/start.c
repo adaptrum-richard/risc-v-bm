@@ -59,7 +59,7 @@ void timerinit()
     /* 在QEMU上，这个时钟的频率是10MHz, 每过1s, rdtime返回的结果增大10,000,000
      *
      */
-    int interval = CPU_FREQ/HZ; // cycles; about 1/250th second in qemu. 
+    unsigned long interval = CPU_FREQ/HZ; // cycles; about 1/250th second in qemu. 
     *(uint64 *)CLINT_MTIMECMP(id) = *(uint64 *)CLINT_MTIME + interval;
 
     // prepare information in scratch[] for timervec.

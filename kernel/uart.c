@@ -12,7 +12,7 @@
 struct spinlock uart_tx_lock;
 
 #ifdef ZCU102
-#define UART_TX_BUF_SIZE 16
+#define UART_TX_BUF_SIZE 32
 #else
 #define UART_TX_BUF_SIZE 32
 #endif
@@ -75,9 +75,11 @@ void uartinit(void)
 
     // reset and enable FIFOs.
     UartWriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
-#endif
+
     // enable transmit and receive interrupts.
     UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
+#endif
+
 #ifdef ZCU102
     enable_uart_clock();
 #endif
@@ -97,6 +99,31 @@ void uartinit(void)
 }
 
 #ifdef ZCU102
+
+void uart_rx_intr_enable()
+{
+    unsigned int ier = UartReadReg(IER);
+    UartWriteReg(IER, IER_RX_ENABLE | ier);
+}
+
+void uart_rx_intr_disable()
+{
+    unsigned int ier = UartReadReg(IER) & (~(IER_RX_ENABLE));
+    UartWriteReg(IER, ier);
+}
+
+void uart_tx_intr_enable()
+{
+    unsigned int ier = UartReadReg(IER) | IER_TX_ENABLE;
+    UartWriteReg(IER, ier);
+}
+
+void uart_tx_intr_disable()
+{
+    unsigned int ier = UartReadReg(IER) & (~(IER_TX_ENABLE));
+    UartWriteReg(IER, ier);
+}
+
 static void delay(void)
 {
     int i;
@@ -155,9 +182,8 @@ void uartstart()
         uart_tx_r += 1;
         /*注意: uart写不能在关闭外部中断的情况下执行*/
         smp_store_release(&uart_wait_condition, 1);
-        wake_up(&uart_wait_queue);
-
         UartWriteReg(THR, c);
+        wake_up(&uart_wait_queue);
         // wake((uint64)&uart_tx_r);
     }
 }
@@ -172,8 +198,15 @@ void uartpuc(int c)
             /*buffer满了
             需要等候uartstart 开放一些buffer
             */
+            
             release(&uart_tx_lock);
+#ifdef ZCU102
+            uart_tx_intr_enable();
+#endif
             wait_event(uart_wait_queue, READ_ONCE(uart_wait_condition) == 1);
+#ifdef ZCU102
+            uart_tx_intr_disable();
+#endif
             acquire(&uart_tx_lock);
         }
         else
@@ -216,7 +249,6 @@ void uartintr(void)
             break;
         consoleintr(c);
     }
-
     // send buffered char
     // acquire(&uart_tx_lock);
     uartstart();

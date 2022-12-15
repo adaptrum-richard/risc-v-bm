@@ -5,7 +5,7 @@
 #define HZ 250
 #ifdef ZCU102
 //#define CPU_FREQ 300000000UL //300MHz
-#define CPU_FREQ 1000000UL //300MHz
+#define CPU_FREQ   5000000UL //50MHz
 #else
 #define CPU_FREQ 10000000UL
 #endif

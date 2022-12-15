@@ -508,12 +508,12 @@ void printk(const char *fmt, ...)
     locking = pr.locking;
     if(locking)
         acquire(&pr.lock);
-#ifndef ZCU102
+
     va_list va;
 	va_start(va, fmt);
 	simple_vsprintf(0, fmt, va);
 	va_end(va);
-#endif    
+ 
     if(locking)
         release(&pr.lock);
 }

@@ -14,42 +14,9 @@ void plicinithart(void)
     // set this hart's S-mode priority threshold to 0.
     *(uint32 *)PLIC_SPRIORITY(hart) = 0;
 #else
-    *(uint32 *)PLIC_SENABLE(hart) = (0xffffffff);
-    
-    *(uint32*)(PLIC_SENABLE(hart)+4) = 0xffffffff;
-    *(uint32*)(PLIC_SENABLE(hart)+8) = 0xffffffff;
-    *(uint32*)(PLIC_SENABLE(hart)+12) = 0xffffffff;
-
-    *(uint32 *)PLIC_MENABLE(hart) = (0xffffffff);
-    *(uint32 *)(PLIC_MENABLE(hart)+4) = (0xffffffff);
-    *(uint32 *)(PLIC_MENABLE(hart)+8) = (0xffffffff);
-    *(uint32 *)(PLIC_MENABLE(hart)+12) = (0xffffffff);
+    *(uint32 *)PLIC_SENABLE(hart) = (1 << UART0_IRQ);
     *(uint32 *)PLIC_SPRIORITY(hart) = 0;
-    *(uint32 *)PLIC_MPRIORITY(hart) = 0;
-
-    *(uint32 *)PLIC_SENABLE(1) = (0xffffffff);
-    *(uint32 *)PLIC_MENABLE(1) = (0xffffffff);
-    
-    *(uint32 *)PLIC_SPRIORITY(1) = 0;
-    *(uint32 *)PLIC_MPRIORITY(1) = 0;
-
-    *(uint32 *)PLIC_SENABLE(2) = (0xffffffff);
-    *(uint32 *)PLIC_MENABLE(2) = (0xffffffff);
-    
-    *(uint32 *)PLIC_SPRIORITY(2) = 0;
-    *(uint32 *)PLIC_MPRIORITY(2) = 0;
-
-    *(uint32 *)PLIC_SENABLE(3) = (0xffffffff);
-    *(uint32 *)PLIC_MENABLE(3) = (0xffffffff);
-    
-    *(uint32 *)PLIC_SPRIORITY(3) = 0;
-    *(uint32 *)PLIC_MPRIORITY(3) = 0;
-
-    *(uint32 *)PLIC_SENABLE(4) = (0xffffffff);
-    *(uint32 *)PLIC_MENABLE(4) = (0xffffffff);
-    
-    *(uint32 *)PLIC_SPRIORITY(4) = 0;
-    *(uint32 *)PLIC_MPRIORITY(4) = 0;
+    *(uint32 *)(PLIC_PRIORITY+UART0_IRQ * 4) = 0x1;
 #endif
 }
 

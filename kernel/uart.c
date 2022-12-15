@@ -176,6 +176,8 @@ void uartstart()
             // the UART transmit holding register is full,
             // so we cannot give it another byte.
             // it will interrupt when it's ready for a new byte.
+            /*CPU速率很快，当把FIFO填满的时候，就会进入到此分支:如果软件定义的FIFO填满了，
+             *则会将当前的进程休眠，等待中断发送完数据，把此进程唤醒*/
             return;
         }
         int c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];

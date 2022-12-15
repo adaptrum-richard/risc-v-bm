@@ -49,8 +49,10 @@
 #define PLIC_PRIORITY (PLIC + 0x0)
 #define PLIC_PENDING (PLIC + 0x1000)
 
-#ifdef ZCU1021
-/*hart1 start s-mode define*/
+#ifdef ZCU102_ERROR
+/*hart1 start s-mode define
+如果定义为这个，串口中断将有问题。
+*/
 #define PLIC_SENABLE(hart) (PLIC + 0x2100 + (hart)*0x100)
 #define PLIC_SPRIORITY(hart) (PLIC + 0x202000 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC + 0x202004 + (hart)*0x2000)

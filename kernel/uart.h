@@ -43,7 +43,7 @@
 #define DLL	0	/* Out: Divisor Latch Low */
 #define DLM	1	/* Out: Divisor Latch High */
 #define DIV_MAX	0xFFFF	/* Max divisor value */
-void test_uart_intr(void);
+
 void uart_tx_intr_enable();
 void uart_tx_intr_disable();
 

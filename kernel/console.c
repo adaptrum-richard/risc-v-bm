@@ -42,7 +42,9 @@ int consoleread(uint64 dst, int n)
             /*环形缓冲区为空*/
             spin_unlock_irqrestore(&cons.lock, flags);
             /*等待中断唤醒*/
+            uart_enable_rx_irq();
             wait_event(console_wait_queue, READ_ONCE(console_wait_condition) == 1);
+            uart_disable_rx_irq();
             spin_lock_irqsave(&cons.lock, flags);
         }
 

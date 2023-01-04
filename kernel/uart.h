@@ -29,5 +29,6 @@ void uartpuc(int c);
 void uartputc_sync(int c);
 void uartinit(void);
 void uartintr(void);
-
+void uart_enable_rx_irq();
+void uart_disable_rx_irq();
 #endif

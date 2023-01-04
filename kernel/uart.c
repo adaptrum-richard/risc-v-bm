@@ -13,6 +13,31 @@ uint64 uart_tx_w; // write next to uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE]
 uint64 uart_tx_r; // read next from uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE]
 DECLARE_WAIT_QUEUE_HEAD(uart_wait_queue);
 static int uart_wait_condition = 0;
+
+static void uart_enable_tx_irq()
+{
+    unsigned int v = UartReadReg(IER) | IER_TX_ENABLE;
+    UartWriteReg(IER, v);
+}
+
+static void uart_disable_tx_irq()
+{
+    unsigned int v = UartReadReg(IER) & (~IER_TX_ENABLE);
+    UartWriteReg(IER, v);
+}
+
+void uart_enable_rx_irq()
+{
+    unsigned int v = UartReadReg(IER) | IER_RX_ENABLE;
+    UartWriteReg(IER, v);
+}
+
+void uart_disable_rx_irq()
+{
+    unsigned int v = UartReadReg(IER) & (~IER_RX_ENABLE);
+    UartWriteReg(IER, v);
+}
+
 void uartinit(void)
 {
   // disable interrupts.
@@ -34,9 +59,6 @@ void uartinit(void)
   // reset and enable FIFOs.
   UartWriteReg(FCR, FCR_FIFO_ENABLE | FCR_FIFO_CLEAR);
 
-  // enable transmit and receive interrupts.
-  UartWriteReg(IER, IER_TX_ENABLE | IER_RX_ENABLE);
-
   initlock(&uart_tx_lock, "uart");
 }
 
@@ -48,19 +70,17 @@ void uartstart()
             return;
         }
         if((UartReadReg(LSR) & LSR_TX_IDLE) == 0){
-            // the UART transmit holding register is full,
-            // so we cannot give it another byte.
-            // it will interrupt when it's ready for a new byte.
+            /* 
+             * CPU速率很快，当把FIFO填满的时候，就会进入到此分支:如果软件定义的FIFO填满了，
+             * 则会将当前的进程休眠，等待中断发送完数据，把此进程唤醒
+             */
             return;
         }
         int c = uart_tx_buf[uart_tx_r % UART_TX_BUF_SIZE];
         uart_tx_r += 1;
-        /*注意: uart写不能在关闭外部中断的情况下执行*/
+        UartWriteReg(THR, c);
         smp_store_release(&uart_wait_condition, 1);
         wake_up(&uart_wait_queue);
-        
-        UartWriteReg(THR, c);
-        //wake((uint64)&uart_tx_r);
     }
 }
 
@@ -73,7 +93,9 @@ void uartpuc(int c)
             需要等候uartstart 开放一些buffer
             */
             release(&uart_tx_lock);
+            uart_enable_tx_irq();
             wait_event(uart_wait_queue, READ_ONCE(uart_wait_condition) == 1);
+            uart_disable_tx_irq();
             acquire(&uart_tx_lock);
         } else {
             uart_tx_buf[uart_tx_w % UART_TX_BUF_SIZE] = c;
@@ -113,8 +135,6 @@ void uartintr(void)
     }
 
     //send buffered char
-    //acquire(&uart_tx_lock);
     uartstart();
-    //release(&uart_tx_lock);
 }
 

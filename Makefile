@@ -173,7 +173,7 @@ QEMUOPTS += -netdev user,id=net0,hostfwd=udp::$(FWDPORT)-:2000,net=192.168.100.0
 	-object filter-dump,id=net0,netdev=net0,file=packets.pcap
 QEMUOPTS += -device e1000,netdev=net0,bus=pcie.0
 run:
-	qemu-system-riscv64 -machine virt -m 128M -smp 4  -bios none -kernel $(KERNEL_BUILD_DIR)/kernel.elf  $(QEMU_FLAGS) $(QEMUOPTS)
+	qemu-system-riscv64 -machine virt -m 128M  -bios none -kernel $(KERNEL_BUILD_DIR)/kernel.elf  $(QEMU_FLAGS) $(QEMUOPTS)
 debug:
 	qemu-system-riscv64 -machine virt -m 128M  -bios none $(QEMU_FLAGS) -kernel $(KERNEL_BUILD_DIR)/kernel.elf $(QEMUOPTS) -S -s
 gdb:

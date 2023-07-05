@@ -22,9 +22,9 @@
 #define __MEMLAOUT_H__
 #ifdef ZCU102
 
-#define UART_BASE   0x30000000L
-#define UART0       0x30000100L
-#define UART0_IRQ   5
+#define UART_BASE   0x3e103000L
+#define UART0       0x3e103100L
+#define UART0_IRQ   7
 
 #else
 

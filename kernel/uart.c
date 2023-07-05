@@ -36,7 +36,7 @@ void uartinit(void)
 {
 #ifdef ZCU102
     int lcr_val = 0;
-    unsigned long uart_clk = 20000000; //20MHz
+    unsigned long uart_clk = 10000000; //20MHz
     unsigned long baudrate = 115200;
     int divisor = uart_clk/baudrate;
     while (!(UartReadReg(LSR) & LSR_TEMT))

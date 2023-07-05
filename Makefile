@@ -11,7 +11,7 @@ USER_BUILD_DIR = user_build
 KERNEL_BUILD_DIR = kernel_build
 KERNEL_DIR = kernel
 
-all : clean mkdir_kernel_build kernel.img fs.img kallsyms
+all : clean mkdir_kernel_build kernel.img  kallsyms
 
 mkdir_kernel_build:
 	mkdir -p $(KERNEL_BUILD_DIR)
@@ -126,15 +126,15 @@ $(USER_DIR)/_dhcpc: $(ULIB)
 	$(RISCVGNU)-objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 
 
-mkfs/mkfs: mkfs/mkfs.c
-	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+#mkfs/mkfs: mkfs/mkfs.c
+#	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
 
 USER_PROGS= $(USER_DIR)/_init $(USER_DIR)/initcode.out $(USER_DIR)/_sh $(USER_DIR)/_cat \
 	$(USER_DIR)/_ls $(USER_DIR)/_echo $(USER_DIR)/_mkdir $(USER_DIR)/_rm \
 	$(USER_DIR)/_pipetest $(USER_DIR)/_udptest  $(USER_DIR)/_dhcpc
 
-fs.img: mkfs/mkfs readme.md $(USER_PROGS)
-	mkfs/mkfs fs.img readme.md $(USER_PROGS)
+#fs.img: mkfs/mkfs readme.md $(USER_PROGS)
+#	mkfs/mkfs fs.img readme.md $(USER_PROGS)
 
 scripts/kallsyms: scripts/kallsyms.c
 	gcc -Werror -Wall -I. -o scripts/kallsyms scripts/kallsyms.c
